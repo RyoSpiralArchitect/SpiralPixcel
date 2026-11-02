@@ -1,0 +1,42 @@
+--- a/ggml/src/ggml-vulkan/ggml-vulkan.cpp
++++ b/ggml/src/ggml-vulkan/ggml-vulkan.cpp
+@@ -4293,7 +4293,9 @@
+ 
+         const bool force_disable_f16 = getenv("GGML_VK_DISABLE_F16") != nullptr;
+ 
+-        device->fp16 = !force_disable_f16 && fp16_storage && fp16_compute;
++        // A promoted core feature need not advertise its former extension name.
++        const bool fp16_storage_available = fp16_storage || device->properties.apiVersion >= VK_API_VERSION_1_1;
++        device->fp16 = !force_disable_f16 && fp16_storage_available && fp16_compute;
+ 
+         if (!ggml_vk_khr_cooperative_matrix_support(device->properties, driver_props, device->architecture)) {
+             device->coopmat_support = false;
+@@ -4517,7 +4519,7 @@
+ 
+         device->pipeline_executable_properties_support = pipeline_executable_properties_support;
+ 
+-        device->fp16 = device->fp16 && vk12_features.shaderFloat16;
++        device->fp16 = device->fp16 && vk11_features.storageBuffer16BitAccess && vk12_features.shaderFloat16;
+ 
+ #if defined(VK_KHR_shader_bfloat16)
+         device->bf16 = bfloat16_support && bfloat16_features.shaderBFloat16Type;
+@@ -5030,8 +5032,6 @@
+     const char* GGML_VK_DISABLE_F16 = getenv("GGML_VK_DISABLE_F16");
+     bool force_disable_f16 = GGML_VK_DISABLE_F16 != nullptr;
+ 
+-    bool fp16 = !force_disable_f16 && fp16_storage && fp16_compute;
+-
+     vk::PhysicalDeviceProperties2 props2;
+     vk::PhysicalDeviceMaintenance3Properties props3;
+     vk::PhysicalDeviceSubgroupProperties subgroup_props;
+@@ -5136,7 +5136,9 @@
+ 
+     vkGetPhysicalDeviceFeatures2(physical_device, &device_features2);
+ 
+-    fp16 = fp16 && vk12_features.shaderFloat16;
++    const bool fp16_storage_available = fp16_storage || props2.properties.apiVersion >= VK_API_VERSION_1_1;
++    const bool fp16 = !force_disable_f16 && fp16_storage_available && fp16_compute &&
++                      vk11_features.storageBuffer16BitAccess && vk12_features.shaderFloat16;
+ 
+ #if defined(VK_KHR_shader_bfloat16)
+     bool bf16 = bfloat16_support && bfloat16_features.shaderBFloat16Type;

@@ -21,3 +21,5 @@ jobs:
           git archive HEAD guest | tar -xC "$RUNNER_TEMP"
           cd "$RUNNER_TEMP/guest"
           python3 experiment.py diffusion --trace "$GITHUB_WORKSPACE/examples/touch/spiral.json" --steps 24 --allow-software
+      - name: Inference receipts reject incomplete or substituted benchmark rows
+        run: python3 tests/test_inference.py

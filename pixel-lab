@@ -118,6 +118,12 @@ def collect(ssh, run_id):
         print(f"{result['experiment']}: {result['status']} on {result['vulkan']['device']}")
         if result["experiment"] == "doctor":
             print(f"{result['elements']} integers, {result['mismatches']} mismatches")
+        elif result["experiment"] == "inference":
+            if result["status"] == "pass":
+                print(f"decode tg32: {result['decode_tg32_tokens_s']:.2f} tokens/s")
+                print(f"peak process RSS: {result['sampled_peak_rss_kib']} KiB")
+            else:
+                print(result.get("error", "benchmark failed"), file=sys.stderr)
         elif result["experiment"] == "diffusion":
             for checkpoint in result["checkpoints"]:
                 print(f"step {checkpoint['step']:>4}: max |GPU - CPU| = {checkpoint['max_abs_error']:.3g}")
@@ -148,11 +154,29 @@ def execute(ssh, args):
     sp.run(ssh + [f"umask 077 && mkdir -p ~/.local/share/SpiralPixcel/runs && mkdir {base} && cd {base} && mkdir result && tar -xzf -"],
            input=blob.getvalue(), check=True)
     guest_args = [args.command]
-    if args.command == "run":
+    if args.command == "run" and args.experiment == "diffusion":
         guest_args = ["diffusion", "--steps", str(args.steps), "--rate", str(args.rate), "--decay", str(args.decay)]
         if args.trace:
             guest_args += ["--trace", "replay.json"]
-    cmd = f"cd {base} && python3 experiment.py {shlex.join(guest_args)} >result/build-run.log 2>&1"
+    if args.command == "run" and args.experiment == "inference":
+        inference_args = ["--gpu-layers", str(args.gpu_layers), "--repetitions", str(args.repetitions),
+                          "--profile", args.profile, "--flash-attn", args.flash_attn, "--repack", str(args.repack)]
+        for flag in ("runtime", "model"):
+            value = getattr(args, flag)
+            if value:
+                inference_args += ["--" + flag, value]
+        if args.disable_fp16:
+            inference_args += ["--disable-fp16"]
+        if args.workgroup:
+            inference_args += ["--workgroup", str(args.workgroup)]
+        if args.rms_subgroups:
+            inference_args += ["--rms-subgroups"]
+        # The integer GPU check completes in the same guest source snapshot first.
+        command = "python3 experiment.py doctor && cp result/result.json result/doctor.json"
+        command += " && python3 inference.py " + shlex.join(inference_args)
+    else:
+        command = "python3 experiment.py " + shlex.join(guest_args)
+    cmd = f"cd {base} && {{ {command}; }} >result/build-run.log 2>&1"
     completed = sp.run(ssh + [cmd])
     success = collect(ssh, run_id)
     if completed.returncode or not success:
@@ -177,9 +201,20 @@ def main():
     diffusion.add_argument("--steps", type=int, default=96)
     diffusion.add_argument("--rate", type=float, default=0.18)
     diffusion.add_argument("--decay", type=float, default=0.995)
+    inference = experiments.add_parser("inference", help="doctor followed by a bounded llama.cpp model benchmark")
+    inference.add_argument("--runtime", help="absolute runtime path in the Debian VM")
+    inference.add_argument("--model", help="absolute GGUF path in the Debian VM")
+    inference.add_argument("--gpu-layers", type=int, default=99, choices=range(1000), metavar="N")
+    inference.add_argument("--repetitions", type=int, default=3, choices=range(1, 21), metavar="N")
+    inference.add_argument("--repack", type=int, choices=(0, 1), default=1)
+    inference.add_argument("--disable-fp16", action="store_true", help="FP32 control using the same runtime")
+    inference.add_argument("--workgroup", type=int, choices=(32, 64, 128), help="patched PowerVR MMV workgroup")
+    inference.add_argument("--flash-attn", choices=("off", "on"), default="off")
+    inference.add_argument("--rms-subgroups", action="store_true")
+    inference.add_argument("--profile", choices=("baseline", "host-memory", "mmvq"), default="baseline")
     diffusion.add_argument("--trace", type=Path, help="replay touch/v1 JSON before the requested free diffusion steps")
     args = parser.parse_args()
-    if args.command == "run" and not (1 <= args.steps <= 1024 and 0 <= args.rate <= 0.25 and 0 <= args.decay <= 1):
+    if args.command == "run" and args.experiment == "diffusion" and not (1 <= args.steps <= 1024 and 0 <= args.rate <= 0.25 and 0 <= args.decay <= 1):
         parser.error("steps: 1..1024, rate: 0..0.25, decay: 0..1")
     if args.command == "pair":
         pair()
