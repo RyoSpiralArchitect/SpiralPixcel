@@ -1,0 +1,11 @@
+#version 450
+layout(local_size_x = 8, local_size_y = 8) in;
+layout(set = 0, binding = 0, std430) readonly buffer Input { uint x[]; };
+layout(set = 0, binding = 1, std430) writeonly buffer Output { uint y[]; };
+layout(push_constant) uniform Params { uint width, height; float rate, decay; } p;
+void main() {
+    uvec2 pos = gl_GlobalInvocationID.xy;
+    if (pos.x >= p.width || pos.y >= p.height) return;
+    uint i = pos.y * p.width + pos.x;
+    y[i] = 2u * x[i];
+}

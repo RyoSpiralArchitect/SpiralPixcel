@@ -17,3 +17,11 @@ MacにAndroid SDK Platform-Toolsを入れ、開発者向けオプションでUSB
     adb -d shell dumpsys power | grep -E 'mStayOn=|mPlugType=|mMaximumScreenOffTimeoutFromDeviceAdmin'
 
 検証端末の元の値は0。戻すには最後の値を0にして settings put を再実行する。端末管理者による上限が適用されると mStayOn=false のままになる。画面がロックされたら端末で解除する。
+
+## USBとSSH
+
+Macは信頼済みのUSB ADBからAndroidの nc を起動し、VMのプライベートアドレスのSSHに接続する。Terminalの外部ポート転送設定は不要。接続開始時はVMのホスト鍵を照合し、専用のEd25519鍵で droid として認証する。秘密鍵と既知のホストはMacの `~/Library/Application Support/SpiralPixcel/` に保存する。 Linux等では `SPIRALPIXCEL_STATE` でこの場所を変更できる。
+
+再起動後は標準ターミナルを開く。通常はVM用ネットワークの近隣アドレスから再発見する。到達できない場合はDebianの `hostname -I` を確認し、Macで `SPIRALPIXCEL_VM_IP=<VMのIPv4> ./pixel-lab doctor` を試す。VMを作り直した場合は再度 pair と trust を行う。鍵の登録を取り消すには、Debianの `~/.ssh/authorized_keys` から対応する末尾 SpiralPixcel の行を取り除く。
+
+既存のQwen実験はAndroidの Download/SpiralPixel 配下にある。この公開ツールは別の Download/SpiralPixcel を鍵登録時の受け渡しに使う。計算時のアップロードと回収はSSH経由で行う。

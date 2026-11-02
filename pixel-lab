@@ -1,0 +1,167 @@
+#!/usr/bin/env -S python3 -IS
+"""Run experiments on a Pixel Debian VM via the authenticated USB device."""
+import argparse
+import hashlib
+import io
+import ipaddress
+import json
+import os
+from pathlib import Path
+import re
+import shlex
+import subprocess as sp
+import sys
+import tarfile
+import tempfile
+import time
+import uuid
+from datetime import datetime, timezone
+
+ROOT = Path(__file__).resolve().parent
+STATE = Path(os.environ.get("SPIRALPIXCEL_STATE", Path.home() / "Library/Application Support/SpiralPixcel"))
+KEY = STATE / "id_ed25519"
+KNOWN = STATE / "known_hosts"
+SHARE = "/sdcard/Download/SpiralPixcel"
+RUN_ID = re.compile(r"[0-9]{8}T[0-9]{6}Z-[0-9a-f]{12}")
+
+
+def adb(*args):
+    return sp.check_output(["adb", "-d", *args], timeout=15)
+
+
+def pair():
+    STATE.mkdir(mode=0o700, parents=True, exist_ok=True)
+    if not KEY.exists():
+        sp.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", "SpiralPixcel", "-f", KEY], check=True)
+    pub = sp.check_output(["ssh-keygen", "-y", "-f", KEY], text=True).split()
+    key = " ".join(pub[:2]) + " SpiralPixcel"
+    payload = ("mac_public_key=" + shlex.quote(key) + "\n").encode() + (ROOT / "guest/enroll.sh").read_bytes()
+    digest = hashlib.sha256(payload).hexdigest()
+    adb("shell", "mkdir", "-p", SHARE)
+    with tempfile.NamedTemporaryFile() as f:
+        f.write(payload)
+        f.flush()
+        adb("push", f.name, f"{SHARE}/pair")
+    print("In the Pixel Debian terminal, run this once and read the SHA256 host fingerprint:")
+    print(f'(cd "$(mktemp -d)" && cp /mnt/shared/Download/SpiralPixcel/pair p && sha256sum p | cut -c1-64 | grep -qx {digest} && sh p)')
+    print("Then on the Mac: pixel-lab trust SHA256:<fingerprint shown by Debian>")
+
+
+def trust(fingerprint):
+    public = adb("exec-out", "cat", SHARE + "/vm-host.pub")
+    actual = sp.check_output(["ssh-keygen", "-lf", "-"], input=public).decode().split()[1]
+    if actual != fingerprint:
+        raise ValueError("host fingerprint differs from Debian; pairing stopped")
+    fields = public.decode("ascii").split()
+    if fields[0] != "ssh-ed25519":
+        raise ValueError("expected an Ed25519 host key")
+    STATE.mkdir(mode=0o700, parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(dir=STATE, delete=False) as f:
+        f.write(f"spiralpixcel-vm {fields[0]} {fields[1]}\n".encode())
+    os.replace(f.name, KNOWN)
+    print("Pinned Debian's SSH host key.")
+
+
+def ssh_command():
+    if not KEY.is_file() or not KNOWN.is_file():
+        raise ValueError("pair the VM first: pixel-lab pair")
+    if os.environ.get("SPIRALPIXCEL_VM_IP"):
+        candidates = [os.environ["SPIRALPIXCEL_VM_IP"]]
+    else:
+        neigh = adb("shell", "ip -4 neigh show dev avf_tap_fixed").decode()
+        candidates = [line.split()[0] for line in neigh.splitlines() if line.split() and "FAILED" not in line]
+        candidates.extend(adb("shell", f"cat {SHARE}/vm-ip 2>/dev/null || true").decode().split())
+    for candidate in dict.fromkeys(candidates):
+        ip = str(ipaddress.IPv4Address(candidate))
+        cmd = ["ssh", "-F", "/dev/null", "-T", "-i", str(KEY), "-o", "IdentitiesOnly=yes",
+               "-o", "HostKeyAlias=spiralpixcel-vm", "-o", "StrictHostKeyChecking=yes",
+               "-o", 'UserKnownHostsFile="' + str(KNOWN) + '"', "-o", "BatchMode=yes",
+               "-o", "ConnectTimeout=5", "-o", "ServerAliveInterval=10", "-o", "ServerAliveCountMax=3",
+               "-o", "ProxyCommand=adb -d shell -T nc -w 5 %h %p", "droid@" + ip]
+        if sp.run(cmd + ["true"], stdin=sp.DEVNULL, stdout=sp.DEVNULL, stderr=sp.DEVNULL).returncode == 0:
+            return cmd
+    raise ValueError("cannot reach the paired VM; open Debian in Terminal, check USB, or set SPIRALPIXCEL_VM_IP")
+
+
+def collect(ssh, run_id):
+    if not RUN_ID.fullmatch(run_id):
+        raise ValueError("invalid run ID")
+    dest = Path("runs") / run_id
+    dest.mkdir(parents=True, exist_ok=True)
+    base = f".local/share/SpiralPixcel/runs/{run_id}"
+    # Stream regular files only. Temporary files keep interrupted downloads retryable.
+    proc = sp.Popen(ssh + [f"cd {base}/result && tar -cf - ."], stdout=sp.PIPE)
+    try:
+        with tarfile.open(fileobj=proc.stdout, mode="r|") as tar:
+            for member in tar:
+                if member.name == "." and member.isdir():
+                    continue
+                name = member.name.removeprefix("./")
+                if not re.fullmatch(r"[a-zA-Z0-9_.-]+", name) or name in (".", "..") or not member.isfile() or member.size > 32*1024*1024:
+                    raise ValueError("unexpected result entry")
+                data = tar.extractfile(member).read()
+                with tempfile.NamedTemporaryFile(dir=dest, delete=False) as f:
+                    f.write(data)
+                os.replace(f.name, dest / name)
+    finally:
+        proc.stdout.close()
+        rc = proc.wait()
+    if rc:
+        raise ValueError("download interrupted; collect this run again")
+    print(f"Results: {dest.resolve()}")
+    receipt = dest / "result.json"
+    if receipt.is_file():
+        result = json.loads(receipt.read_text())
+        print(f"{result['experiment']}: {result['status']} on {result['vulkan']['device']}")
+        return result["status"] == "pass"
+    print("No completed result yet. See build-run.log, or try collect again.", file=sys.stderr)
+    return False
+
+
+def execute(ssh, args):
+    run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ-") + uuid.uuid4().hex[:12]
+    base = f".local/share/SpiralPixcel/runs/{run_id}"
+    print(f"Run {run_id}", flush=True)
+    blob = io.BytesIO()
+    with tarfile.open(fileobj=blob, mode="w:gz") as tar:
+        for p in sorted((ROOT / "guest").rglob("*")):
+            if p.is_file() and p.suffix in (".comp", ".cpp", ".py"):
+                tar.add(p, arcname=str(p.relative_to(ROOT / "guest")), recursive=False)
+    start = time.monotonic()
+    sp.run(ssh + [f"umask 077 && mkdir -p ~/.local/share/SpiralPixcel/runs && mkdir {base} && cd {base} && mkdir result && tar -xzf -"],
+           input=blob.getvalue(), check=True)
+    guest_args = [args.command]
+    cmd = f"cd {base} && python3 experiment.py {shlex.join(guest_args)} >result/build-run.log 2>&1"
+    completed = sp.run(ssh + [cmd])
+    success = collect(ssh, run_id)
+    if completed.returncode or not success:
+        raise ValueError(f"run incomplete or failed; inspect runs/{run_id}/build-run.log")
+    (Path("runs") / run_id / "host.json").write_text(json.dumps({
+        "transport": "SSH via USB ADB", "run_id": run_id, "source_archive_sha256": hashlib.sha256(blob.getvalue()).hexdigest(),
+        "upload_run_collect_seconds": round(time.monotonic() - start, 3)}, indent=2) + "\n")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    commands = parser.add_subparsers(dest="command", required=True)
+    commands.add_parser("pair", help="enroll a dedicated Mac key in the Debian VM")
+    commands.add_parser("trust", help="pin the fingerprint displayed on the Pixel").add_argument("fingerprint")
+    commands.add_parser("doctor", help="double integers on the Vulkan device and verify every value")
+    commands.add_parser("collect", help="recover results from an earlier run").add_argument("run_id")
+    args = parser.parse_args()
+    if args.command == "pair":
+        pair()
+    elif args.command == "trust":
+        trust(args.fingerprint)
+    elif args.command == "collect":
+        if not collect(ssh_command(), args.run_id):
+            sys.exit(1)
+    else:
+        execute(ssh_command(), args)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (OSError, ValueError, sp.SubprocessError, tarfile.TarError) as exc:
+        sys.exit(f"pixel-lab: {exc}")
