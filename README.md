@@ -4,6 +4,10 @@ SpiralRealityのPixel実験ノートと、標準ターミナルのDebian VMでVu
 
 [端末設定と再開手順](docs/device.md) · [MITライセンス](LICENSE)
 
+## Pixelに指で描く
+
+USB接続とペアリングが済んだMacで `pixel-lab draw`（リポジトリからは `./pixel-lab draw`）。Pixelの画面に好きな線を描き「保存して比較」を押すと、同じ軌跡を2つの係数で計算したGPU画像がPixelに戻る。[使い方・再現コマンド・実機画像](docs/touch.md)
+
 ## Macから実行
 
 MacにPython 3.9以降・OpenSSH・Android Platform-Tools、Pixelの標準ターミナルにDebianとGPUアクセラレーションが必要。Debianで次を一度実行する。

@@ -15,3 +15,9 @@ jobs:
       - name: Diffusion and CPU reference on Mesa software Vulkan
         working-directory: guest
         run: python3 experiment.py diffusion --steps 17 --allow-software
+      - name: Check touch timing and a replay on Mesa software Vulkan
+        run: |
+          python3 tests/touch_schedule.py
+          git archive HEAD guest | tar -xC "$RUNNER_TEMP"
+          cd "$RUNNER_TEMP/guest"
+          python3 experiment.py diffusion --trace "$GITHUB_WORKSPACE/examples/touch/spiral.json" --steps 24 --allow-software

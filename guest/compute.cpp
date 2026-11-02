@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdint>
+#include <cstddef>
 #include <cstring>
 #include <fstream>
 #include <iostream>
@@ -59,18 +60,25 @@ static Buffer allocate(VkDevice dev, VkPhysicalDevice gpu, VkDeviceSize bytes) {
     return b;
 }
 
-struct Params { uint32_t width, height; float rate, decay; };
-static_assert(sizeof(Params) == 16);
+struct Params { uint32_t width, height; float rate, decay; uint32_t tick, drive_ticks; };
+static_assert(sizeof(Params) == 24);
 
 static int run(char** a) {
-    const Params params{static_cast<uint32_t>(std::stoul(a[4])), static_cast<uint32_t>(std::stoul(a[5])),
-                        std::stof(a[7]), std::stof(a[8])};
+    Params params{static_cast<uint32_t>(std::stoul(a[4])), static_cast<uint32_t>(std::stoul(a[5])),
+                        std::stof(a[7]), std::stof(a[8]), 0, 0};
     const auto steps = std::stoul(a[6]);
     const auto input = read_words(a[2]);
     const auto code = read_words(a[1]);
-    if (!steps || steps > 1024 || !params.width || !params.height ||
+    if (!steps || steps > 1225 || !params.width || !params.height ||
         uint64_t(params.width) * params.height != input.size()) throw std::runtime_error("invalid grid or steps");
     const VkDeviceSize bytes = input.size() * 4;
+    std::vector<uint32_t> masks;
+    if (a[10]) {
+        masks = read_words(a[10]);
+        const size_t stride = (input.size() + 31) / 32;
+        if (masks.size() % stride || masks.size() / stride > 201) throw std::runtime_error("invalid touch mask");
+        params.drive_ticks = static_cast<uint32_t>(masks.size() / stride);
+    }
     VkApplicationInfo app{VK_STRUCTURE_TYPE_APPLICATION_INFO};
     app.pApplicationName = "SpiralPixcel"; app.apiVersion = VK_API_VERSION_1_0;
     VkInstanceCreateInfo ii{VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
@@ -118,19 +126,25 @@ static int run(char** a) {
     VK(vkCreateDevice(gpu, &di, nullptr, &dev));
     VkQueue queue;
     vkGetDeviceQueue(dev, family, 0, &queue);
-    Buffer buffers[]{allocate(dev, gpu, bytes), allocate(dev, gpu, bytes)};
+    std::vector<Buffer> buffers{allocate(dev, gpu, bytes), allocate(dev, gpu, bytes)};
+    if (!masks.empty()) {
+        buffers.push_back(allocate(dev, gpu, masks.size()*4));
+        std::memcpy(buffers[2].mapped, masks.data(), masks.size()*4);
+    }
     std::memcpy(buffers[0].mapped, input.data(), bytes);
     auto range = [](const Buffer& b) {
         VkMappedMemoryRange r{VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE};
         r.memory = b.memory; r.size = VK_WHOLE_SIZE; return r;
     };
-    if (!buffers[0].coherent) { auto r = range(buffers[0]); VK(vkFlushMappedMemoryRanges(dev, 1, &r)); }
+    for (const auto& b : buffers) {
+        if (!b.coherent) { auto r = range(b); VK(vkFlushMappedMemoryRanges(dev, 1, &r)); }
+    }
 
-    VkDescriptorSetLayoutBinding bindings[2]{};
-    for (uint32_t i = 0; i < 2; ++i)
+    std::vector<VkDescriptorSetLayoutBinding> bindings(buffers.size());
+    for (uint32_t i = 0; i < bindings.size(); ++i)
         bindings[i] = {i, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr};
     VkDescriptorSetLayoutCreateInfo li{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
-    li.bindingCount = 2; li.pBindings = bindings;
+    li.bindingCount = static_cast<uint32_t>(bindings.size()); li.pBindings = bindings.data();
     VkDescriptorSetLayout layout;
     VK(vkCreateDescriptorSetLayout(dev, &li, nullptr, &layout));
     VkPushConstantRange push{VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(params)};
@@ -148,7 +162,7 @@ static int run(char** a) {
     ci.layout = pipe_layout;
     VkPipeline pipeline;
     VK(vkCreateComputePipelines(dev, VK_NULL_HANDLE, 1, &ci, nullptr, &pipeline));
-    VkDescriptorPoolSize pool_size{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 4};
+    VkDescriptorPoolSize pool_size{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2 * li.bindingCount};
     VkDescriptorPoolCreateInfo dpi{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
     dpi.maxSets = 2; dpi.poolSizeCount = 1; dpi.pPoolSizes = &pool_size;
     VkDescriptorPool pool;
@@ -159,8 +173,9 @@ static int run(char** a) {
     VkDescriptorSet sets[2];
     VK(vkAllocateDescriptorSets(dev, &ai, sets));
     for (unsigned j = 0; j < 2; ++j) {
-        for (unsigned k = 0; k < 2; ++k) {
-            VkDescriptorBufferInfo bi{buffers[j ^ k].handle, 0, bytes};
+        for (unsigned k = 0; k < bindings.size(); ++k) {
+            const auto index = k < 2 ? j ^ k : k;
+            VkDescriptorBufferInfo bi{buffers[index].handle, 0, VK_WHOLE_SIZE};
             VkWriteDescriptorSet w{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
             w.dstSet = sets[j]; w.dstBinding = k; w.descriptorCount = 1;
             w.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w.pBufferInfo = &bi;
@@ -191,6 +206,9 @@ static int run(char** a) {
     vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
     vkCmdPushConstants(cb, pipe_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(params), &params);
     for (unsigned i = 0; i < steps; ++i) {
+        if (params.drive_ticks) {
+            vkCmdPushConstants(cb, pipe_layout, VK_SHADER_STAGE_COMPUTE_BIT, offsetof(Params, tick), sizeof(i), &i);
+        }
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_COMPUTE, pipe_layout, 0, 1, &sets[i % 2], 0, nullptr);
         vkCmdDispatch(cb, (params.width + 7) / 8, (params.height + 7) / 8, 1);
         const bool last = i + 1 == steps;
@@ -234,7 +252,7 @@ static int run(char** a) {
 }
 int main(int argc, char** argv) {
     try {
-        if (argc != 10) throw std::runtime_error("expected: shader input output width height steps rate decay hardware|allow-software");
+        if (argc != 10 && argc != 11) throw std::runtime_error("expected: shader input output width height steps rate decay hardware|allow-software [touch-mask]");
         return run(argv);
     } catch (const std::exception& e) { std::cerr << e.what() << '\n'; return 1; }
 }
