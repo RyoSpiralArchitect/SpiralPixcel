@@ -1,0 +1,12 @@
+{
+  "status": "pass",
+  "command": [
+    "/bin/sh",
+    "-c",
+    "cp -R /home/droid/.cache/spiralpixcel-large-kit/session-snapshot/. . && python3 experiment.py doctor && cp result/result.json result/doctor.json && python3 inference.py --runtime /home/droid/.local/share/SpiralPixcel/large-study/runtime-output-matched --model /home/droid/.local/share/spiral-pixel/models/qwen2.5-0.5b-q4_k_m.gguf --gpu-layers 1 --split-output --repetitions 3 --timeout 60"
+  ],
+  "deadline_seconds": 90.0,
+  "exit_code": 0,
+  "stop_reason": null,
+  "wall_seconds": 27.669
+}

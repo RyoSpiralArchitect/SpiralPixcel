@@ -1,0 +1,16 @@
+{
+  "status": "pass",
+  "technical_validation_only": true,
+  "prompt_sha256": "3ae35bc99e935fea913bbae40ac007931405b8242c50f63bd06b32aac923a762",
+  "prompt_tokens": 33,
+  "logit_count": 151936,
+  "nmse": 0.0022463046499501178,
+  "nmse_limit": 0.005,
+  "max_abs_error": 0.8356946706771851,
+  "top1_equal": true,
+  "reference_top1_token": 44,
+  "candidate_top1_token": 44,
+  "batch_tokens": 16,
+  "run_id": "session-20261102T190147Z-70f7ada8",
+  "reference_batch_tokens": 16
+}

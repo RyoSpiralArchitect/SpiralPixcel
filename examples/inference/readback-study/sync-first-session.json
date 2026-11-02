@@ -1,0 +1,61 @@
+{
+  "status": "pass",
+  "seconds": 20.0,
+  "command": [
+    "/usr/bin/env",
+    "GGML_VK_SPLIT_OUTPUT=1",
+    "GGML_VK_DISABLE_ASYNC=1",
+    "LD_LIBRARY_PATH=/home/droid/.local/share/SpiralPixcel/large-study/runtime-output-matched",
+    "/home/droid/.local/share/SpiralPixcel/large-study/runtime-output-matched/check-readback",
+    "/home/droid/.local/share/SpiralPixcel/large-study/runtime-output-matched"
+  ],
+  "require_unlocked": false,
+  "auto_reboot": false,
+  "before": {
+    "wakefulness": "Dreaming",
+    "powered": true,
+    "stay_on_effective": false,
+    "admin_max_screen_off_ms": 60000,
+    "locked": true,
+    "frame": {
+      "width": 1080,
+      "height": 2410,
+      "bytes": 61928,
+      "sha256": "84978cc5501156e8328ceee11914cd6cf85e111ab2b61329d448d2032880abd0",
+      "content_assessed": false
+    },
+    "scope": "ADB and frame-capture responsiveness; not visual correctness or GPU recovery guarantee"
+  },
+  "supervisor_sha256": "81e549c13232825647546b245c733c884963d4c14ab34e961dc4953104363603",
+  "ssh_exit_code": 0,
+  "after": {
+    "wakefulness": "Dreaming",
+    "powered": true,
+    "stay_on_effective": false,
+    "admin_max_screen_off_ms": 60000,
+    "locked": true,
+    "frame": {
+      "width": 1080,
+      "height": 2410,
+      "bytes": 61928,
+      "sha256": "84978cc5501156e8328ceee11914cd6cf85e111ab2b61329d448d2032880abd0",
+      "content_assessed": false
+    },
+    "scope": "ADB and frame-capture responsiveness; not visual correctness or GPU recovery guarantee"
+  },
+  "guest": {
+    "status": "pass",
+    "command": [
+      "/usr/bin/env",
+      "GGML_VK_SPLIT_OUTPUT=1",
+      "GGML_VK_DISABLE_ASYNC=1",
+      "LD_LIBRARY_PATH=/home/droid/.local/share/SpiralPixcel/large-study/runtime-output-matched",
+      "/home/droid/.local/share/SpiralPixcel/large-study/runtime-output-matched/check-readback",
+      "/home/droid/.local/share/SpiralPixcel/large-study/runtime-output-matched"
+    ],
+    "deadline_seconds": 20.0,
+    "exit_code": 0,
+    "stop_reason": null,
+    "wall_seconds": 0.31
+  }
+}

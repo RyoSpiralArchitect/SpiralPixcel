@@ -128,9 +128,9 @@ class SplitModelAcceptance(unittest.TestCase):
             (runtime / (family + ".so.0")).symlink_to(filename)
             (runtime / (family + ".so")).symlink_to(family + ".so.0")
         core = {p.name: inference.sha256(p) for p in runtime.iterdir()}
-        for name in ("libggml-vulkan.so", "libllama.so.0.8.0", "check-mmv", "check-large", "check-model", "llama-bench", "llama-completion"):
+        for name in ("libggml-vulkan.so", "libllama.so.0.8.0", "check-mmv", "check-large", "check-model", "check-readback", "llama-bench", "llama-completion"):
             (runtime / name).write_bytes(name.encode())
-        marker = {"output_row_split": True, "core_library_sha256": core}
+        marker = {"output_row_split": True, "core_library_sha256": core, "queue_idle_completion": True}
         for name, key in (("libggml-vulkan.so", "libggml-vulkan_sha256"), ("check-mmv", "check-mmv_sha256"),
                           ("libllama.so.0.8.0", "libllama_sha256"), ("check-large", "check-large_sha256"),
                           ("check-model", "check-model_sha256")):
@@ -139,7 +139,7 @@ class SplitModelAcceptance(unittest.TestCase):
         (runtime / "libllama.so").symlink_to("libllama.so.0")
         marker["runtime_library_sha256"] = {p.name: inference.sha256(p) for p in runtime.glob("*.so*")}
         marker["runtime_executable_sha256"] = {name: inference.sha256(runtime / name) for name in
-                                               ("llama-bench", "llama-completion", "check-mmv", "check-large", "check-model")}
+                                               ("llama-bench", "llama-completion", "check-mmv", "check-large", "check-model", "check-readback")}
         (runtime / "spiralpixcel-kernel.json").write_text(json.dumps(marker))
         model = root / "model.gguf"
         model.write_bytes(b"model fixture")
@@ -150,7 +150,19 @@ class SplitModelAcceptance(unittest.TestCase):
             name = Path(command[0]).name
             stderr.write(("mock " + name + "\n").encode())
             exit_code = 0
-            if name == "check-mmv":
+            if name == "check-readback":
+                self.assertEqual(env["GGML_VK_DISABLE_ASYNC"], "1")
+                self.assertTrue((env.get("GGML_VK_WAIT_IDLE") == "1" and "GGML_VK_SERIALIZE_SUBMISSIONS" not in env)
+                                or (env.get("GGML_VK_SERIALIZE_SUBMISSIONS") == "1" and "GGML_VK_WAIT_IDLE" not in env))
+                records = [{"route": route, "bytes": size, "trial": trial, "offset": 64,
+                            "mismatched_bytes": 0, "status": "pass"}
+                           for route in ("sync_normal", "async_api_normal", "async_api_vulkan_host")
+                           for size in (64, 4096, 1048576) for trial in range(3)]
+                records.append({"status": "pass", "cases": 27, "failed": 0,
+                                "transfer_only": True, "max_payload_bytes": 1048576})
+                if mode == "bad-readback":
+                    records[0].update(mismatched_bytes=64, status="fail")
+            elif name == "check-mmv":
                 records = [{"op": op, "status": "pass"} for op, count in
                            (("MUL_MAT", 40), ("RMS_NORM", 8), ("RMS_NORM_MUL", 8)) for _ in range(count)]
                 records.append({"status": "pass", "cases": 56, "failed": 0})
@@ -165,7 +177,7 @@ class SplitModelAcceptance(unittest.TestCase):
                 records.append({"status": "pass", "cases": 2, "failed": 0})
             elif name == "check-model":
                 layers = int(command[4])
-                self.assertEqual(env["GGML_VK_SPLIT_OUTPUT"], "0" if layers == 0 else "1")
+                self.assertEqual(env.get("GGML_VK_SPLIT_OUTPUT", "0"), "0" if layers == 0 or mode == "matching-baseline" else "1")
                 values = [1., 2., 3.]
                 if layers and mode == "zero":
                     values = [0., 0., 0.]
@@ -214,6 +226,19 @@ class SplitModelAcceptance(unittest.TestCase):
                 if mode == "zero":
                     self.assertIn("all-zero", gate["error"])
 
+    def test_failed_small_transfer_never_starts_large_or_model_checks(self):
+        with tempfile.TemporaryDirectory() as folder:
+            runtime, model = self.make_fixture(Path(folder))
+            output = Path(folder) / "result"
+            command = ["inference.py", "--runtime", str(runtime), "--model", str(model), "--split-output"]
+            with patch.object(inference, "OUT", output), patch.object(sys, "argv", command), \
+                    patch("inference.subprocess.run", side_effect=self.fake_checkers("bad-readback")) as checks, \
+                    patch("inference.run_benchmark") as benchmark, redirect_stdout(io.StringIO()):
+                self.assertEqual(inference.main(), 1)
+            benchmark.assert_not_called()
+            self.assertEqual([Path(call.args[0][0]).name for call in checks.call_args_list], ["check-readback"])
+            self.assertFalse((output / "large-check.jsonl").exists())
+
     def test_matching_full_model_can_reach_timing(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
@@ -254,6 +279,29 @@ class SplitModelAcceptance(unittest.TestCase):
             self.assertIn("large-output", json.loads((output / "result.json").read_text())["error"])
             self.assertFalse((output / "model-reference.bin").exists())
 
+    def test_sync_control_does_not_silently_enable_row_splitting(self):
+        for completion in ("queue", "serial"):
+            with tempfile.TemporaryDirectory() as folder:
+                root = Path(folder)
+                runtime, model = self.make_fixture(root)
+                output = root / "result"
+                command = ["inference.py", "--runtime", str(runtime), "--model", str(model), "--sync-transfers", "--completion-wait", completion]
+                placement = {"nodes_per_backend": {"CPU": 1}, "cpu_nodes": [], "rejected_weights": [], "output_nodes": []}
+                def timing(command, env, timeout):
+                    self.assertNotIn("GGML_VK_SPLIT_OUTPUT", env)
+                    self.assertEqual(env.get("GGML_VK_WAIT_IDLE" if completion == "queue" else "GGML_VK_SERIALIZE_SUBMISSIONS"), "1")
+                    (output / "bench.json").write_text(json.dumps(rows()))
+                    (output / "bench.log").write_text("")
+                    return {"exit_code": 0, "timed_out": False}
+                with patch.object(inference, "OUT", output), patch.object(sys, "argv", command), \
+                        patch("inference.subprocess.run", side_effect=self.fake_checkers("matching-baseline")), \
+                        patch("schedule_report.collect", return_value=placement), \
+                        patch("inference.run_benchmark", side_effect=timing), redirect_stdout(io.StringIO()):
+                    self.assertEqual(inference.main(), 0)
+                gate = json.loads((output / "model-check.json").read_text())
+                self.assertEqual(gate["executions"]["candidate"]["environment_overrides"]["GGML_VK_SPLIT_OUTPUT"], "0")
+                self.assertFalse((output / "large-check.jsonl").exists())
+
     def test_full_runtime_manifest_rejects_changed_llama_alias_or_missing_executable(self):
         with tempfile.TemporaryDirectory() as folder:
             runtime, _ = self.make_fixture(Path(folder))
@@ -284,6 +332,28 @@ class SplitModelAcceptance(unittest.TestCase):
                 redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as error:
             inference.main()
         self.assertEqual(error.exception.code, 2)
+
+    def test_checked_profiles_reject_repack_parameters_not_used_by_model_checker(self):
+        for option in ("--sync-transfers", "--split-output"):
+            with self.subTest(option=option), patch.object(sys, "argv", ["inference.py", option, "--repack", "0"]), \
+                    redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as error:
+                inference.main()
+            self.assertEqual(error.exception.code, 2)
+
+    def test_queue_wait_requires_runtime_support_before_gpu_tests(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            runtime, model = self.make_fixture(root)
+            marker_path = runtime / "spiralpixcel-kernel.json"
+            marker = json.loads(marker_path.read_text())
+            del marker["queue_idle_completion"]
+            marker_path.write_text(json.dumps(marker))
+            with patch.object(inference, "OUT", root / "result"), \
+                    patch.object(sys, "argv", ["inference.py", "--runtime", str(runtime), "--model", str(model), "--split-output"]), \
+                    patch("inference.subprocess.run") as run, redirect_stdout(io.StringIO()):
+                self.assertEqual(inference.main(), 1)
+            run.assert_not_called()
+            self.assertIn("queue completion", json.loads((root / "result/result.json").read_text())["error"])
 
 
 if __name__ == "__main__":

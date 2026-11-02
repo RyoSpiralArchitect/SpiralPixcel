@@ -28,4 +28,5 @@ jobs:
           python3 tests/test_inference.py
           python3 tests/test_schedule.py
           python3 tests/test_model_check.py
+          python3 tests/test_readback.py
           sh -n guest/build-inference-runtime.sh

@@ -62,7 +62,7 @@ def validate_core_libraries(runtime, marker, required=False):
 def validate_runtime_files(runtime, marker):
     """Bind the split experiment to every bundled library alias and used executable."""
     runtime = Path(runtime)
-    executables = {"llama-bench", "llama-completion", "check-mmv", "check-large", "check-model"}
+    executables = {"llama-bench", "llama-completion", "check-mmv", "check-large", "check-model", "check-readback"}
     libraries = {p.name for p in runtime.glob("*.so*")}
     if "libllama.so.0" not in libraries:
         raise ValueError("split runtime requires its local libllama.so.0 dependency alias")
@@ -188,6 +188,8 @@ def run_model_gate(runtime, model, gpu_layers, environment, output, *, model_sha
               "model_sha256": model_sha256, "runtime_manifest": runtime_manifest,
               "runtime_manifest_sha256": hashlib.sha256(identity).hexdigest(),
               "checker_sha256": sha256(runtime / "check-model"), "executions": {},
+              "environment": {key: value for key, value in environment.items()
+                              if key.startswith("GGML_VK_") or key == "LD_LIBRARY_PATH"},
               "parameters": {"context_tokens": 512, "batch_tokens": 16, "ubatch_tokens": 16,
                              "threads": 4, "flash_attn": "off", "output_positions": 1,
                              "weight_repack": "runtime default"}}
@@ -200,7 +202,7 @@ def run_model_gate(runtime, model, gpu_layers, environment, output, *, model_sha
             command = [str(runtime / "check-model"), str(runtime), str(model),
                        str(output / f"model-{arm}.bin"), str(layers)]
             env = environment.copy()
-            split = "0" if arm == "reference" else "1"
+            split = "0" if arm == "reference" else environment.get("GGML_VK_SPLIT_OUTPUT", "0")
             env["GGML_VK_SPLIT_OUTPUT"] = split
             env.pop("GGML_SCHED_DEBUG", None)
             execution = {"command": command, "gpu_layers": layers,
@@ -246,6 +248,9 @@ def main():
     parser.add_argument("--profile", choices=("baseline", "host-memory", "mmvq"), default="baseline")
     parser.add_argument("--split-output", action="store_true", help="opt-in bounded Qwen2 output-head row views")
     parser.add_argument("--schedule-report", action="store_true", help="record CPU/GPU graph placement before timing")
+    parser.add_argument("--sync-transfers", action="store_true", help="use Vulkan's synchronous backend mode; automatic with --split-output")
+    parser.add_argument("--completion-wait", choices=("queue", "serial"), default="queue",
+                        help="queue completion wait (patched runtime), or slow per-operation diagnostic waits")
     parser.add_argument("--disable-fp16", action="store_true", help="same-runtime FP32 control")
     parser.add_argument("--workgroup", type=int, choices=(32, 64, 128), help="opt-in patched PowerVR MMV specialization")
     parser.add_argument("--rms-subgroups", action="store_true")
@@ -263,6 +268,10 @@ def main():
         parser.error("--split-output requires at least one GPU layer")
     if args.split_output and args.flash_attn != "off":
         parser.error("--split-output requires --flash-attn off to match its fixed-prompt gate")
+    if args.sync_transfers and (not args.gpu_layers or args.flash_attn != "off"):
+        parser.error("--sync-transfers requires GPU layers and --flash-attn off for its fixed-prompt gate")
+    if (args.split_output or args.sync_transfers) and args.repack != 1:
+        parser.error("checked transfer profiles require --repack 1 to match the pinned model checker's default")
     OUT.mkdir(exist_ok=True)
     # A failed retry must never leave the previous success receipt visible.
     result = {"experiment": "inference", "status": "fail", "guest_arch": platform.machine(),
@@ -279,7 +288,7 @@ def main():
     result["command"] = command
     environment = os.environ.copy()
     for key in ("GGML_VK_PREFER_HOST_MEMORY", "GGML_VK_FORCE_MMVQ", "GGML_VK_DISABLE_MMVQ",
-                "GGML_VK_PWR_MMV_WG", "GGML_VK_PWR_RMS_SUBGROUPS", "GGML_VK_PERF_LOGGER", "GGML_VK_DISABLE_F16", "GGML_VK_SPLIT_OUTPUT"):
+                "GGML_VK_PWR_MMV_WG", "GGML_VK_PWR_RMS_SUBGROUPS", "GGML_VK_PERF_LOGGER", "GGML_VK_DISABLE_F16", "GGML_VK_SPLIT_OUTPUT", "GGML_VK_DISABLE_ASYNC", "GGML_VK_SERIALIZE_SUBMISSIONS", "GGML_VK_WAIT_IDLE"):
         environment.pop(key, None)
     environment.pop("GGML_SCHED_DEBUG", None)
     environment["GGML_VK_MEMORY_LOGGER"] = "1"
@@ -289,6 +298,10 @@ def main():
         environment["GGML_VK_FORCE_MMVQ"] = "1"
     if args.split_output:
         environment["GGML_VK_SPLIT_OUTPUT"] = "1"
+    if args.sync_transfers or args.split_output:
+        environment["GGML_VK_DISABLE_ASYNC"] = "1"
+        # The graph-completion wait preserves batching; per-operation waits are a diagnostic control.
+        environment["GGML_VK_WAIT_IDLE" if args.completion_wait == "queue" else "GGML_VK_SERIALIZE_SUBMISSIONS"] = "1"
     if args.disable_fp16:
         environment["GGML_VK_DISABLE_F16"] = "1"
     if args.workgroup:
@@ -302,17 +315,26 @@ def main():
     result["environment"] = {key: value for key, value in environment.items()
                              if key.startswith("GGML_VK_") or key == "LD_LIBRARY_PATH"}
     try:
-        if args.split_output or args.workgroup or args.rms_subgroups or (args.runtime / "spiralpixcel-kernel.json").exists():
+        if args.split_output or args.sync_transfers or args.workgroup or args.rms_subgroups or (args.runtime / "spiralpixcel-kernel.json").exists():
             marker = json.loads((args.runtime / "spiralpixcel-kernel.json").read_text())
-            core = validate_core_libraries(args.runtime, marker, required=args.split_output)
+            core = validate_core_libraries(args.runtime, marker, required=args.split_output or args.sync_transfers)
             result["core_library_manifest_verified"] = bool(core)
-            if args.split_output:
+            result["kernel_build"] = marker
+            if args.split_output or args.sync_transfers:
                 runtime_manifest = validate_runtime_files(args.runtime, marker)
                 result["runtime_manifest_verified"] = True
+                if args.completion_wait == "queue" and marker.get("queue_idle_completion") is not True:
+                    raise ValueError("runtime lacks queue completion waits; rebuild it or choose --completion-wait serial")
             if marker.get("libggml-vulkan_sha256") != sha256(args.runtime / "libggml-vulkan.so"):
                 raise ValueError("patched runtime identity differs from its build receipt")
             if marker.get("check-mmv_sha256") != sha256(args.runtime / "check-mmv"):
                 raise ValueError("kernel checker identity differs from its build receipt")
+            if args.split_output or args.sync_transfers:
+                from readback_check import parse_readback
+                with (OUT / "readback-check.jsonl").open("wb") as out, (OUT / "readback-check.log").open("wb") as err:
+                    subprocess.run([str(args.runtime / "check-readback"), str(args.runtime)], env=environment,
+                                   stdout=out, stderr=err, check=True, timeout=30)
+                result["readback_check"] = parse_readback((OUT / "readback-check.jsonl").read_text())
             with (OUT / "kernel-check.jsonl").open("wb") as out, (OUT / "kernel-check.log").open("wb") as err:
                 subprocess.run([str(args.runtime / "check-mmv"), str(args.runtime)], env=environment,
                                stdout=out, stderr=err, check=True, timeout=180)
@@ -324,6 +346,7 @@ def main():
             for row in checks[:-1]:
                 operations[row.get("op")] = operations.get(row.get("op"), 0) + 1
             if (gate.get("status") != "pass" or gate.get("cases") != 56 or gate.get("failed") != 0
+                    or any(row.get("status") != "pass" for row in checks[:-1])
                     or operations != {"MUL_MAT": 40, "RMS_NORM": 8, "RMS_NORM_MUL": 8}):
                 raise ValueError("CPU vs Vulkan numerical gate did not pass")
             if args.split_output:
@@ -359,11 +382,11 @@ def main():
                 cache[resolved] = sha256(resolved)
             hashes[path.name] = cache[resolved]
         result["runtime_sha256"] = hashes
-        if args.split_output:
+        if args.split_output or args.sync_transfers:
             result["model_check"] = run_model_gate(
                 args.runtime, args.model, args.gpu_layers, environment, OUT,
                 model_sha256=result["model_sha256"], runtime_manifest=runtime_manifest)
-        if args.schedule_report or args.split_output:
+        if args.schedule_report or args.split_output or args.sync_transfers:
             from schedule_report import collect
             placement = collect(args.runtime, args.model, args.gpu_layers, args.repack, args.flash_attn, environment, OUT)
             if args.split_output:

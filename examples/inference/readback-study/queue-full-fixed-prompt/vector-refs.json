@@ -1,0 +1,14 @@
+{
+  "reference.bin": {
+    "file": "../vectors/433c8bc1f161564b8a8b6ae2ec73d17623e5541335cc39ebb3b0e77258b1ac00.bin",
+    "sha256": "433c8bc1f161564b8a8b6ae2ec73d17623e5541335cc39ebb3b0e77258b1ac00",
+    "bytes": 607744,
+    "format": "float32-le"
+  },
+  "candidate.bin": {
+    "file": "../vectors/c0e7340f653d022994852e5895ef34bdd11385a4e25b0e60b8c3a712b2640df1.bin",
+    "sha256": "c0e7340f653d022994852e5895ef34bdd11385a4e25b0e60b8c3a712b2640df1",
+    "bytes": 607744,
+    "format": "float32-le"
+  }
+}

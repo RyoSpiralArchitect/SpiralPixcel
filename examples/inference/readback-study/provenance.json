@@ -1,0 +1,26 @@
+{
+  "source_ref": "llama.cpp b11960/v0.8.0",
+  "source_commit": "8642541b255bfb5dc39cd351a178be09013a55d6",
+  "source_archive_sha256": "51b1e025d7b12e83fa55736e65bc254acd9d23e49f546be7531368fef82210ee",
+  "patch_sha256": {
+    "core16": "6f1da061a8d0c7cdd84b26b135de64c50a2a9c5c7f369f2a81add92021df556c",
+    "powervr-mmv": "9ed6ff3f7b44eef13a5a5348be1644d2153d6156dd339ca6c5ff113a70bf6f46",
+    "powervr-rms": "137115f5e3cac5a9907ea975d7c7a36437804e95b0946a859842e39de3014e7e",
+    "core-fp16": "22104942d2e89eeac595958daef91e067082c49d70abfbc555a3af80d147928a",
+    "output-row-split": "a17677018f3a80742b0434e75bb117545a503665200d2d8f8aa129f699d7197e",
+    "metadata-views": "1de4a958b59373f705d8cc692e38b45821d0aa4e6d41c0eae33f24cde8661592",
+    "bounded-upload": "0d8855ac30fc7b00e13eb07ce0696bbbb76813a7dd718d1227ca4e1d6587bee1",
+    "host-read-barrier": "63c05b3d13587f8127ea965da405b6fbdec52e7aa4e6bac1fa410b1ab1034316",
+    "coherent-readback": "a82e466564af1dc5208b94248a9dc2853cf37c9f519f55c9be478cd9cbb90fc1",
+    "completion-wait": "b8af8eff4383988b5d0f952540a325ed8134fa23865891c92f085c357f98e3cb"
+  },
+  "patched_source_sha256": {
+    "ggml/src/ggml-vulkan/ggml-vulkan.cpp": "cf31730183a5d1456b68c4c7892496f33c73fb8ff3fd510f561877fe240f915b",
+    "ggml/src/ggml-vulkan/ggml-vulkan-buffers.cpp": "cb8dd42d8f646996c404553c4260acefcdcb26366b479529cbf01d61c58eac13",
+    "src/llama-model-loader.cpp": "8f681c58ea9fe8e296b790c7e1f434895d604f880acd126275aecb87df9d3f27",
+    "src/models/qwen2.cpp": "9ab4f38fe9d9be36b174419990bbf72aa751f47be7352c0a372e07507407d8b0",
+    "src/llama-vulkan-split.h": "14025e8f1e9f50082319c59241d7dff1f898b09d6186c54cb24a5e56b933da19"
+  },
+  "batch1_diagnostic_patch_sha256": "3b2c24c06823224a464b3c415734320a3db749a0e2324b062998b260dcec032a",
+  "batch1_diagnostic_scope": "standalone failed model control only; not in the runtime builder"
+}

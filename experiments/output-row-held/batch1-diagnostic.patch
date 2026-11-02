@@ -1,0 +1,31 @@
+--- a/guest/check_model.cpp
++++ b/guest/check_model.cpp
+@@ -62,8 +62,8 @@
+ 
+         auto context_params = llama_context_default_params();
+         context_params.n_ctx = 512;
+-        context_params.n_batch = 16;
+-        context_params.n_ubatch = 16;
++        context_params.n_batch = 1;
++        context_params.n_ubatch = 1;
+         context_params.n_seq_max = 1;
+         context_params.n_outputs_max = 1;
+         context_params.n_threads = 4;
+@@ -75,14 +75,14 @@
+         std::unique_ptr<llama_context, decltype(&llama_free)> context(
+             llama_init_from_model(model.get(), context_params), llama_free);
+         if (!context) throw std::runtime_error("context creation failed");
+-        llama_batch batch = llama_batch_init(16, 0, 1);
++        llama_batch batch = llama_batch_init(1, 0, 1);
+         if (!batch.token || !batch.pos || !batch.n_seq_id || !batch.seq_id || !batch.logits) {
+             llama_batch_free(batch);
+             throw std::runtime_error("batch allocation failed");
+         }
+         int decode_error = 0;
+-        for (int32_t first = 0; first < count; first += 16) {
+-            batch.n_tokens = std::min<int32_t>(16, count - first);
++        for (int32_t first = 0; first < count; first += 1) {
++            batch.n_tokens = std::min<int32_t>(1, count - first);
+             for (int32_t i = 0; i < batch.n_tokens; ++i) {
+                 batch.token[i] = tokens[size_t(first+i)];
+                 batch.pos[i] = first+i;

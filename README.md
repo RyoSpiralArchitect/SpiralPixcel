@@ -56,4 +56,4 @@ Macで拡散係数を変え、同じ点刺激がどこまで広がるかを比�
 
 `./pixel-lab run inference` でdoctorを通してから、既存モデルの速度・メモリ・モデルとランタイムのハッシュを記録する。[比較手順とPowerVR用の実験パッチ](docs/inference.md)
 
-`--schedule-report` を付けると、速度測定とは別にCPU/GPUの演算配置を保存する。[128 MiB超の出力行列を分割する実験](docs/large-output.md)は、実モデルのゼロ出力と画面停止を観測したため採用保留。通常の推論とは分けて管理している。
+`--schedule-report` を付けると、速度測定とは別にCPU/GPUの演算配置を保存する。[128 MiB超の出力行列の分割](docs/large-output.md)と[転送検査・完了待ちの修正](docs/readback.md)も用意した。Qwen2.5-0.5Bの全GPU要求で固定プロンプトの数値ゲートを通過し、演算ごとに待つ対照からdecodeを改善した。CPU主体の方が速かった結果と、失敗した条件も保存している。

@@ -1,0 +1,69 @@
+{
+  "status": "pass",
+  "seconds": 40.0,
+  "command": [
+    "/usr/bin/env",
+    "GGML_VK_SPLIT_OUTPUT=1",
+    "GGML_VK_DISABLE_ASYNC=1",
+    "GGML_VK_SERIALIZE_SUBMISSIONS=1",
+    "LD_LIBRARY_PATH=/home/droid/.local/share/SpiralPixcel/large-study/runtime-output-matched",
+    "/home/droid/.local/share/SpiralPixcel/large-study/runtime-output-matched/check-model",
+    "/home/droid/.local/share/SpiralPixcel/large-study/runtime-output-matched",
+    "/home/droid/.local/share/spiral-pixel/models/qwen2.5-0.5b-q4_k_m.gguf",
+    "/home/droid/.local/share/SpiralPixcel/large-study/model-full-serialized.bin",
+    "99"
+  ],
+  "require_unlocked": false,
+  "auto_reboot": false,
+  "before": {
+    "wakefulness": "Awake",
+    "powered": true,
+    "stay_on_effective": false,
+    "admin_max_screen_off_ms": 60000,
+    "locked": false,
+    "frame": {
+      "width": 1080,
+      "height": 2410,
+      "bytes": 475959,
+      "sha256": "3c028ac9eb1832d059eac1d3683818d00eff6ef68f56e2e32131a37ce78d2722",
+      "content_assessed": false
+    },
+    "scope": "ADB and frame-capture responsiveness; not visual correctness or GPU recovery guarantee"
+  },
+  "supervisor_sha256": "81e549c13232825647546b245c733c884963d4c14ab34e961dc4953104363603",
+  "ssh_exit_code": 0,
+  "after": {
+    "wakefulness": "Awake",
+    "powered": true,
+    "stay_on_effective": false,
+    "admin_max_screen_off_ms": 60000,
+    "locked": false,
+    "frame": {
+      "width": 1080,
+      "height": 2410,
+      "bytes": 475959,
+      "sha256": "3c028ac9eb1832d059eac1d3683818d00eff6ef68f56e2e32131a37ce78d2722",
+      "content_assessed": false
+    },
+    "scope": "ADB and frame-capture responsiveness; not visual correctness or GPU recovery guarantee"
+  },
+  "guest": {
+    "status": "pass",
+    "command": [
+      "/usr/bin/env",
+      "GGML_VK_SPLIT_OUTPUT=1",
+      "GGML_VK_DISABLE_ASYNC=1",
+      "GGML_VK_SERIALIZE_SUBMISSIONS=1",
+      "LD_LIBRARY_PATH=/home/droid/.local/share/SpiralPixcel/large-study/runtime-output-matched",
+      "/home/droid/.local/share/SpiralPixcel/large-study/runtime-output-matched/check-model",
+      "/home/droid/.local/share/SpiralPixcel/large-study/runtime-output-matched",
+      "/home/droid/.local/share/spiral-pixel/models/qwen2.5-0.5b-q4_k_m.gguf",
+      "/home/droid/.local/share/SpiralPixcel/large-study/model-full-serialized.bin",
+      "99"
+    ],
+    "deadline_seconds": 40.0,
+    "exit_code": 0,
+    "stop_reason": null,
+    "wall_seconds": 4.847
+  }
+}

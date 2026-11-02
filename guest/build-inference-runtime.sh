@@ -27,7 +27,7 @@ for patch_name in core16 powervr-mmv powervr-rms core-fp16; do
     patch -d "$src" -p1 < "$repo/patches/llama-b11960-$patch_name.patch"
 done
 if [ "$split_output" -eq 1 ]; then
-    for patch_name in output-row-split metadata-views bounded-upload host-read-barrier coherent-readback; do
+    for patch_name in output-row-split metadata-views bounded-upload host-read-barrier coherent-readback completion-wait; do
         patch -d "$src" -p1 < "$repo/patches/llama-b11960-$patch_name.patch"
     done
 fi
@@ -82,7 +82,7 @@ if [ "$split_output" -eq 1 ]; then
         rm -f "$stage/$executable"
         cp -a "$build/bin/$executable" "$stage/"
     done
-    rm -f "$stage/check-large" "$stage/check-model"
+    rm -f "$stage/check-large" "$stage/check-model" "$stage/check-readback"
 else
     copy_library_family libggml
     copy_library_family libggml-base
@@ -92,6 +92,8 @@ rm -f "$stage/check-mmv"
 c++ -std=c++17 -O1 -I "$src/ggml/include" "$repo/guest/check_mmv.cpp" \
     -L "$stage" -lggml -lggml-base -o "$stage/check-mmv"
 if [ "$split_output" -eq 1 ]; then
+    c++ -std=c++17 -O1 -I "$src/ggml/include" "$repo/guest/check_readback.cpp" \
+        -L "$stage" -lggml -lggml-base -o "$stage/check-readback"
     c++ -std=c++17 -O1 -I "$src/ggml/include" "$repo/guest/check_large.cpp" \
         -L "$stage" -lggml -lggml-base -o "$stage/check-large"
     c++ -std=c++17 -O1 -I "$src/include" -I "$src/ggml/include" "$repo/guest/check_model.cpp" \
@@ -117,23 +119,26 @@ data = {
     "build_cxx_optimization": "O1", "jobs": 1,
 }
 if sys.argv[3] == "1":
-    executables = ("llama-bench", "llama-completion", "check-mmv", "check-large", "check-model")
+    executables = ("llama-bench", "llama-completion", "check-mmv", "check-large", "check-model", "check-readback")
     data.update(
         output_row_split=True,
         experimental=True,
         validation_status="experimental_not_model_validated",
         model_correctness_validated=False,
+        queue_idle_completion=True,
+        validation_transfer_mode="GGML_VK_DISABLE_ASYNC=1 GGML_VK_WAIT_IDLE=1",
         libllama_sha256=digest(p / "libllama.so.0.8.0"),
         runtime_library_sha256={path.name: digest(path) for path in sorted(p.glob("*.so*")) if path.is_file()},
         runtime_executable_sha256={name: digest(p / name) for name in executables},
         **{"check-large_sha256": digest(p / "check-large"), "check-model_sha256": digest(p / "check-model")},
     )
-    data["patches"] += ["output-row-split", "metadata-views", "bounded-upload", "host-read-barrier", "coherent-readback"]
+    data["patches"] += ["output-row-split", "metadata-views", "bounded-upload", "host-read-barrier", "coherent-readback", "completion-wait"]
 (p / "spiralpixcel-kernel.json").write_text(json.dumps(data, indent=2) + "\n")
 PY
 if [ "$split_output" -eq 1 ]; then
-    GGML_VK_SPLIT_OUTPUT=1 LD_LIBRARY_PATH="$stage" "$stage/check-mmv" "$stage" >"$stage/kernel-check.jsonl"
-    GGML_VK_SPLIT_OUTPUT=1 LD_LIBRARY_PATH="$stage" "$stage/check-large" "$stage" >"$stage/large-check.jsonl"
+    GGML_VK_SPLIT_OUTPUT=1 GGML_VK_DISABLE_ASYNC=1 GGML_VK_WAIT_IDLE=1 LD_LIBRARY_PATH="$stage" "$stage/check-readback" "$stage" >"$stage/readback-check.jsonl"
+    GGML_VK_SPLIT_OUTPUT=1 GGML_VK_DISABLE_ASYNC=1 GGML_VK_WAIT_IDLE=1 LD_LIBRARY_PATH="$stage" "$stage/check-mmv" "$stage" >"$stage/kernel-check.jsonl"
+    GGML_VK_SPLIT_OUTPUT=1 GGML_VK_DISABLE_ASYNC=1 GGML_VK_WAIT_IDLE=1 LD_LIBRARY_PATH="$stage" "$stage/check-large" "$stage" >"$stage/large-check.jsonl"
 else
     LD_LIBRARY_PATH="$stage" "$stage/check-mmv" "$stage" >"$stage/kernel-check.jsonl"
 fi

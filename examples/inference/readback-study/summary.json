@@ -1,0 +1,379 @@
+{
+  "date_local": "2026-11-03",
+  "timezone": "Asia/Tokyo",
+  "format": "SpiralPixcel.readback-study.v1",
+  "model_scope": "one fixed 33-token prompt; no broad answer-quality or capacity claim",
+  "measurements": [
+    {
+      "label": "sync-only-head-calibration",
+      "run_id": "session-20261102T181304Z-04c4a8ff",
+      "status": "pass",
+      "decode_tg32_tokens_s": 12.411791,
+      "prefill_pp64_tokens_s": 59.086471,
+      "sampled_peak_rss_kib": 466236,
+      "peak_device_allocated_mib": 166.35,
+      "environment": {
+        "GGML_VK_MEMORY_LOGGER": "1",
+        "GGML_VK_SPLIT_OUTPUT": "1",
+        "GGML_VK_DISABLE_ASYNC": "1",
+        "LD_LIBRARY_PATH": "/home/droid/.local/share/SpiralPixcel/large-study/runtime-output-matched"
+      },
+      "model_sha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+      "model_nmse": 7.223271964306981e-05,
+      "top1_equal": true,
+      "nodes_per_backend": {
+        "CPU": 605,
+        "Vulkan0": 8
+      },
+      "error": null,
+      "bench_attempted": true
+    },
+    {
+      "label": "sync-only-control-a1",
+      "run_id": "session-20261102T181505Z-4539f927",
+      "status": "pass",
+      "decode_tg32_tokens_s": 35.735521,
+      "prefill_pp64_tokens_s": 73.404881,
+      "sampled_peak_rss_kib": 607248,
+      "peak_device_allocated_mib": 10.29,
+      "environment": {
+        "GGML_VK_MEMORY_LOGGER": "1",
+        "GGML_VK_DISABLE_ASYNC": "1",
+        "LD_LIBRARY_PATH": "/home/droid/.local/share/SpiralPixcel/large-study/runtime-output-matched"
+      },
+      "model_sha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+      "model_nmse": 0.0,
+      "top1_equal": true,
+      "nodes_per_backend": {
+        "CPU": 606,
+        "Vulkan0": 3
+      },
+      "error": null,
+      "bench_attempted": true
+    },
+    {
+      "label": "sync-only-head-b1",
+      "run_id": "session-20261102T181748Z-22515198",
+      "status": "pass",
+      "decode_tg32_tokens_s": 11.477589,
+      "prefill_pp64_tokens_s": 62.066567,
+      "sampled_peak_rss_kib": 466228,
+      "peak_device_allocated_mib": 166.35,
+      "environment": {
+        "GGML_VK_MEMORY_LOGGER": "1",
+        "GGML_VK_SPLIT_OUTPUT": "1",
+        "GGML_VK_DISABLE_ASYNC": "1",
+        "LD_LIBRARY_PATH": "/home/droid/.local/share/SpiralPixcel/large-study/runtime-output-matched"
+      },
+      "model_sha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+      "model_nmse": 7.223271964306981e-05,
+      "top1_equal": true,
+      "nodes_per_backend": {
+        "CPU": 605,
+        "Vulkan0": 8
+      },
+      "error": null,
+      "bench_attempted": true
+    },
+    {
+      "label": "sync-only-control-a2",
+      "run_id": "session-20261102T182126Z-d22988c5",
+      "status": "pass",
+      "decode_tg32_tokens_s": 32.983354,
+      "prefill_pp64_tokens_s": 75.479546,
+      "sampled_peak_rss_kib": 607252,
+      "peak_device_allocated_mib": 10.29,
+      "environment": {
+        "GGML_VK_MEMORY_LOGGER": "1",
+        "GGML_VK_DISABLE_ASYNC": "1",
+        "LD_LIBRARY_PATH": "/home/droid/.local/share/SpiralPixcel/large-study/runtime-output-matched"
+      },
+      "model_sha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+      "model_nmse": 0.0,
+      "top1_equal": true,
+      "nodes_per_backend": {
+        "CPU": 606,
+        "Vulkan0": 3
+      },
+      "error": null,
+      "bench_attempted": true
+    },
+    {
+      "label": "sync-only-head-b2-failed",
+      "run_id": "session-20261102T182654Z-90ea4327",
+      "status": "fail",
+      "decode_tg32_tokens_s": null,
+      "prefill_pp64_tokens_s": null,
+      "sampled_peak_rss_kib": null,
+      "peak_device_allocated_mib": null,
+      "environment": {
+        "GGML_VK_MEMORY_LOGGER": "1",
+        "GGML_VK_SPLIT_OUTPUT": "1",
+        "GGML_VK_DISABLE_ASYNC": "1",
+        "LD_LIBRARY_PATH": "/home/droid/.local/share/SpiralPixcel/large-study/runtime-output-matched"
+      },
+      "model_sha256": null,
+      "model_nmse": null,
+      "top1_equal": null,
+      "nodes_per_backend": null,
+      "error": "Command '['/home/droid/.local/share/SpiralPixcel/large-study/runtime-output-matched/check-mmv', '/home/droid/.local/share/SpiralPixcel/large-study/runtime-output-matched']' returned non-zero exit status 1.",
+      "bench_attempted": false
+    },
+    {
+      "label": "serial-original-full",
+      "run_id": "session-20261102T184254Z-9dd4c498",
+      "status": "pass",
+      "decode_tg32_tokens_s": 2.16703,
+      "prefill_pp64_tokens_s": 17.160898,
+      "sampled_peak_rss_kib": 223836,
+      "peak_device_allocated_mib": 404.48,
+      "environment": {
+        "GGML_VK_MEMORY_LOGGER": "1",
+        "GGML_VK_SPLIT_OUTPUT": "1",
+        "GGML_VK_DISABLE_ASYNC": "1",
+        "GGML_VK_SERIALIZE_SUBMISSIONS": "1",
+        "LD_LIBRARY_PATH": "/home/droid/.local/share/SpiralPixcel/large-study/runtime-output-matched"
+      },
+      "model_sha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+      "model_nmse": 0.0022463046499501178,
+      "top1_equal": true,
+      "nodes_per_backend": {
+        "CPU": 2,
+        "Vulkan0": 611
+      },
+      "error": null,
+      "bench_attempted": true
+    },
+    {
+      "label": "queue-full-0edc77dd",
+      "run_id": "session-20261102T190540Z-0edc77dd",
+      "status": "pass",
+      "decode_tg32_tokens_s": 8.143779,
+      "prefill_pp64_tokens_s": 39.694103,
+      "sampled_peak_rss_kib": 223284,
+      "peak_device_allocated_mib": 404.48,
+      "environment": {
+        "GGML_VK_MEMORY_LOGGER": "1",
+        "GGML_VK_SPLIT_OUTPUT": "1",
+        "GGML_VK_DISABLE_ASYNC": "1",
+        "GGML_VK_WAIT_IDLE": "1",
+        "LD_LIBRARY_PATH": "/home/droid/.local/share/SpiralPixcel/large-study/runtime-completion-wait"
+      },
+      "model_sha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+      "model_nmse": 0.0022463046499501178,
+      "top1_equal": true,
+      "nodes_per_backend": {
+        "CPU": 2,
+        "Vulkan0": 611
+      },
+      "error": null,
+      "bench_attempted": true
+    },
+    {
+      "label": "serial-patched-full-4cea6ebb",
+      "run_id": "session-20261102T191124Z-4cea6ebb",
+      "status": "pass",
+      "decode_tg32_tokens_s": 2.173966,
+      "prefill_pp64_tokens_s": 17.00623,
+      "sampled_peak_rss_kib": 223840,
+      "peak_device_allocated_mib": 404.48,
+      "environment": {
+        "GGML_VK_MEMORY_LOGGER": "1",
+        "GGML_VK_SPLIT_OUTPUT": "1",
+        "GGML_VK_DISABLE_ASYNC": "1",
+        "GGML_VK_SERIALIZE_SUBMISSIONS": "1",
+        "LD_LIBRARY_PATH": "/home/droid/.local/share/SpiralPixcel/large-study/runtime-completion-wait"
+      },
+      "model_sha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+      "model_nmse": 0.0022463046499501178,
+      "top1_equal": true,
+      "nodes_per_backend": {
+        "CPU": 2,
+        "Vulkan0": 611
+      },
+      "error": null,
+      "bench_attempted": true
+    },
+    {
+      "label": "queue-cpu-control-4de7d7f2",
+      "run_id": "session-20261102T191354Z-4de7d7f2",
+      "status": "pass",
+      "decode_tg32_tokens_s": 35.536816,
+      "prefill_pp64_tokens_s": 68.754369,
+      "sampled_peak_rss_kib": 607312,
+      "peak_device_allocated_mib": 10.29,
+      "environment": {
+        "GGML_VK_MEMORY_LOGGER": "1",
+        "GGML_VK_DISABLE_ASYNC": "1",
+        "GGML_VK_WAIT_IDLE": "1",
+        "LD_LIBRARY_PATH": "/home/droid/.local/share/SpiralPixcel/large-study/runtime-completion-wait"
+      },
+      "model_sha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+      "model_nmse": 0.0,
+      "top1_equal": true,
+      "nodes_per_backend": {
+        "CPU": 606,
+        "Vulkan0": 3
+      },
+      "error": null,
+      "bench_attempted": true
+    }
+  ],
+  "model_controls": [
+    {
+      "label": "sync-only-full",
+      "status": "fail",
+      "technical_validation_only": true,
+      "prompt_sha256": "3ae35bc99e935fea913bbae40ac007931405b8242c50f63bd06b32aac923a762",
+      "prompt_tokens": 33,
+      "logit_count": 151936,
+      "nmse": 1.244852866515583,
+      "nmse_limit": 0.005,
+      "max_abs_error": 19.988757371902466,
+      "top1_equal": false,
+      "reference_top1_token": 44,
+      "candidate_top1_token": 277,
+      "batch_tokens": 16,
+      "run_id": "session-20261102T175434Z-fafeb24b",
+      "reference_batch_tokens": 16
+    },
+    {
+      "label": "sync-only-full-f32",
+      "status": "fail",
+      "technical_validation_only": true,
+      "prompt_sha256": "3ae35bc99e935fea913bbae40ac007931405b8242c50f63bd06b32aac923a762",
+      "prompt_tokens": 33,
+      "logit_count": 151936,
+      "nmse": 1.3378938693205586,
+      "nmse_limit": 0.005,
+      "max_abs_error": 20.95505404472351,
+      "top1_equal": false,
+      "reference_top1_token": 44,
+      "candidate_top1_token": 311,
+      "batch_tokens": 16,
+      "run_id": "session-20261102T175640Z-a710e924",
+      "reference_batch_tokens": 16
+    },
+    {
+      "label": "sync-only-full-no-fusion",
+      "status": "fail",
+      "technical_validation_only": true,
+      "prompt_sha256": "3ae35bc99e935fea913bbae40ac007931405b8242c50f63bd06b32aac923a762",
+      "prompt_tokens": 33,
+      "logit_count": 151936,
+      "nmse": 1.3802193434976155,
+      "nmse_limit": 0.005,
+      "max_abs_error": 22.39128303527832,
+      "top1_equal": false,
+      "reference_top1_token": 44,
+      "candidate_top1_token": 51109,
+      "batch_tokens": 16,
+      "run_id": "session-20261102T175902Z-759ac79f",
+      "reference_batch_tokens": 16
+    },
+    {
+      "label": "sync-only-full-batch1",
+      "status": "fail",
+      "technical_validation_only": true,
+      "prompt_sha256": "3ae35bc99e935fea913bbae40ac007931405b8242c50f63bd06b32aac923a762",
+      "prompt_tokens": 33,
+      "logit_count": 151936,
+      "nmse": 1.2638667538676258,
+      "nmse_limit": 0.005,
+      "max_abs_error": 21.812549352645874,
+      "top1_equal": false,
+      "reference_top1_token": 44,
+      "candidate_top1_token": 290,
+      "batch_tokens": 1,
+      "run_id": "session-20261102T180205Z-54b914b7",
+      "reference_batch_tokens": 16
+    },
+    {
+      "label": "sync-only-unsplit-request1",
+      "status": "pass",
+      "technical_validation_only": true,
+      "prompt_sha256": "3ae35bc99e935fea913bbae40ac007931405b8242c50f63bd06b32aac923a762",
+      "prompt_tokens": 33,
+      "logit_count": 151936,
+      "nmse": 0.0,
+      "nmse_limit": 0.005,
+      "max_abs_error": 0.0,
+      "top1_equal": true,
+      "reference_top1_token": 44,
+      "candidate_top1_token": 44,
+      "batch_tokens": 16,
+      "run_id": "session-20261102T175923Z-292968e5",
+      "reference_batch_tokens": 16
+    },
+    {
+      "label": "sync-only-head-fixed-prompt",
+      "status": "pass",
+      "technical_validation_only": true,
+      "prompt_sha256": "3ae35bc99e935fea913bbae40ac007931405b8242c50f63bd06b32aac923a762",
+      "prompt_tokens": 33,
+      "logit_count": 151936,
+      "nmse": 7.223271964306981e-05,
+      "nmse_limit": 0.005,
+      "max_abs_error": 0.16525918245315552,
+      "top1_equal": true,
+      "reference_top1_token": 44,
+      "candidate_top1_token": 44,
+      "batch_tokens": 16,
+      "run_id": "session-20261102T180400Z-2489dd0a",
+      "reference_batch_tokens": 16
+    },
+    {
+      "label": "serial-full-fixed-prompt",
+      "status": "pass",
+      "technical_validation_only": true,
+      "prompt_sha256": "3ae35bc99e935fea913bbae40ac007931405b8242c50f63bd06b32aac923a762",
+      "prompt_tokens": 33,
+      "logit_count": 151936,
+      "nmse": 0.0022463046499501178,
+      "nmse_limit": 0.005,
+      "max_abs_error": 0.8356946706771851,
+      "top1_equal": true,
+      "reference_top1_token": 44,
+      "candidate_top1_token": 44,
+      "batch_tokens": 16,
+      "run_id": "session-20261102T183746Z-61c93a68",
+      "reference_batch_tokens": 16
+    },
+    {
+      "label": "queue-full-fixed-prompt",
+      "status": "pass",
+      "technical_validation_only": true,
+      "prompt_sha256": "3ae35bc99e935fea913bbae40ac007931405b8242c50f63bd06b32aac923a762",
+      "prompt_tokens": 33,
+      "logit_count": 151936,
+      "nmse": 0.0022463046499501178,
+      "nmse_limit": 0.005,
+      "max_abs_error": 0.8356946706771851,
+      "top1_equal": true,
+      "reference_top1_token": 44,
+      "candidate_top1_token": 44,
+      "batch_tokens": 16,
+      "run_id": "session-20261102T190147Z-70f7ada8",
+      "reference_batch_tokens": 16
+    }
+  ],
+  "same_runtime_comparison": {
+    "profiles": [
+      "queue-full-0edc77dd",
+      "serial-patched-full-4cea6ebb",
+      "queue-cpu-control-4de7d7f2"
+    ],
+    "runtime_hashes_equal": true,
+    "model_hashes_equal": true,
+    "queue_and_serial_logits_byte_identical": true,
+    "candidate_vector_sha256": "c0e7340f653d022994852e5895ef34bdd11385a4e25b0e60b8c3a712b2640df1",
+    "queue_over_serial_decode_ratio": 3.746047086292978,
+    "scope": "one completed pipeline per configuration, pp64/tg32 each three samples, no warmup; not sustained performance"
+  },
+  "sync_only_comparison_incomplete": true,
+  "sync_only_failure": "second head timing attempt stopped at 56-case gate; it has no timing row",
+  "source_cpp_sha256": {
+    "check_readback.cpp": "2b256177fdeaa020fcbedfcd061c3f793d655f47a531c80424aa5f3ca34578f5",
+    "check_model.cpp": "25fcfecfc8f6247688bb6390cf992f173eecdd76a0e41d67989036aedc3f6dd9"
+  }
+}

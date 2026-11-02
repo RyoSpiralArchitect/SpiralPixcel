@@ -169,6 +169,9 @@ def execute(ssh, args):
             inference_args += ["--split-output"]
         if args.schedule_report:
             inference_args += ["--schedule-report"]
+        if args.sync_transfers:
+            inference_args += ["--sync-transfers"]
+        inference_args += ["--completion-wait", args.completion_wait]
         if args.disable_fp16:
             inference_args += ["--disable-fp16"]
         if args.workgroup:
@@ -225,8 +228,11 @@ def main():
     inference.add_argument("--gpu-layers", type=int, default=99, choices=range(1000), metavar="N")
     inference.add_argument("--repetitions", type=int, default=3, choices=range(1, 21), metavar="N")
     inference.add_argument("--repack", type=int, choices=(0, 1), default=1)
-    inference.add_argument("--split-output", action="store_true", help="held Qwen2 row-split experiment; full-model gate required")
+    inference.add_argument("--split-output", action="store_true", help="checked Qwen2 output row splitting; fixed-prompt model gate required")
     inference.add_argument("--schedule-report", action="store_true", help="record graph placement separately from timing")
+    inference.add_argument("--sync-transfers", action="store_true", help="synchronous Vulkan backend mode; automatic with --split-output")
+    inference.add_argument("--completion-wait", choices=("queue", "serial"), default="queue",
+                           help="patched queue completion wait, or slower per-operation diagnostic waits")
     inference.add_argument("--disable-fp16", action="store_true", help="FP32 control using the same runtime")
     inference.add_argument("--workgroup", type=int, choices=(32, 64, 128), help="patched PowerVR MMV workgroup")
     inference.add_argument("--flash-attn", choices=("off", "on"), default="off")
@@ -239,6 +245,11 @@ def main():
             parser.error("--split-output requires GPU layers")
         if args.flash_attn != "off":
             parser.error("--split-output currently requires --flash-attn off")
+    if args.command == "run" and args.experiment == "inference" and args.sync_transfers:
+        if not args.gpu_layers or args.flash_attn != "off":
+            parser.error("--sync-transfers requires GPU layers and --flash-attn off")
+    if args.command == "run" and args.experiment == "inference" and (args.split_output or args.sync_transfers) and args.repack != 1:
+        parser.error("checked transfer profiles require --repack 1")
     if args.command == "run" and args.experiment == "diffusion" and not (1 <= args.steps <= 1024 and 0 <= args.rate <= 0.25 and 0 <= args.decay <= 1):
         parser.error("steps: 1..1024, rate: 0..0.25, decay: 0..1")
     if args.command == "pair":
