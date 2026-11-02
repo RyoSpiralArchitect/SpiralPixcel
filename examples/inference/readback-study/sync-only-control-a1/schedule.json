@@ -1,0 +1,5529 @@
+{
+  "format": "SpiralPixcel.schedule.v1",
+  "completed": true,
+  "command": [
+    "/home/droid/.local/share/SpiralPixcel/large-study/runtime-output-matched/llama-bench",
+    "-m",
+    "/home/droid/.local/share/spiral-pixel/models/qwen2.5-0.5b-q4_k_m.gguf",
+    "-p",
+    "0",
+    "-n",
+    "1",
+    "-r",
+    "1",
+    "-b",
+    "16",
+    "-ub",
+    "16",
+    "-t",
+    "4",
+    "-fa",
+    "off",
+    "-ngl",
+    "1",
+    "-dev",
+    "Vulkan0",
+    "--repack",
+    "1",
+    "--no-warmup",
+    "-v",
+    "-o",
+    "json"
+  ],
+  "diagnostic_only": true,
+  "environment_overrides": {
+    "GGML_SCHED_DEBUG": "2"
+  },
+  "disabled_environment_flags": [
+    "GGML_VK_PERF_LOGGER",
+    "GGML_VK_PERF_LOGGER_CONCURRENT"
+  ],
+  "exit_code": 0,
+  "placement_scope": "last graph placement dump in scheduler.log",
+  "logged_graphs": 7,
+  "final_logged_node_count": 609,
+  "nodes_per_backend": {
+    "CPU": 606,
+    "Vulkan0": 3
+  },
+  "cpu_nodes": [
+    {
+      "index": 0,
+      "op": "GET_ROWS",
+      "name": "embd",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "token_embd.weight (  89M) [  CPU         ]           inp_tokens (   0K) [  CPU         ]"
+    },
+    {
+      "index": 1,
+      "op": "GET_ROWS",
+      "name": "node_1",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "token_embd.weight (  89M) [  CPU         ]     inp_mixed_tokens (   0K) [  CPU         ]"
+    },
+    {
+      "index": 2,
+      "op": "DUP",
+      "name": "node_2",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "inp_mixed_embd (   3K) [  CPU         ]"
+    },
+    {
+      "index": 3,
+      "op": "SET_ROWS",
+      "name": "(view)",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "node_1 (   3K) [  CPU         ]      inp_mixed_slots (   0K) [  CPU         ]               node_2 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 4,
+      "op": "RMS_NORM",
+      "name": "norm-0",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "embd (   3K) [  CPU         ]"
+    },
+    {
+      "index": 5,
+      "op": "MUL",
+      "name": "attn_norm-0",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-0 (   3K) [  CPU         ] blk.0.attn_norm.weig (   3K) [  CPU         ]"
+    },
+    {
+      "index": 6,
+      "op": "MUL_MAT",
+      "name": "Qcur-0",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.0.attn_q.weight ( 539K) [  CPU         ]          attn_norm-0 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 7,
+      "op": "ADD",
+      "name": "Qcur-0",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-0 (   3K) [  CPU         ]    blk.0.attn_q.bias (   3K) [  CPU         ]"
+    },
+    {
+      "index": 9,
+      "op": "ROPE",
+      "name": "Qcur-0",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-0 (   3K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 10,
+      "op": "MUL_MAT",
+      "name": "Vcur-0",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.0.attn_v.weight ( 119K) [  CPU         ]          attn_norm-0 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 11,
+      "op": "ADD",
+      "name": "Vcur-0",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-0 (   0K) [  CPU         ]    blk.0.attn_v.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 13,
+      "op": "MUL_MAT",
+      "name": "Kcur-0",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.0.attn_k.weight (  77K) [  CPU         ]          attn_norm-0 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 14,
+      "op": "ADD",
+      "name": "Kcur-0",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-0 (   0K) [  CPU         ]    blk.0.attn_k.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 16,
+      "op": "ROPE",
+      "name": "Kcur-0",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-0 (   0K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 18,
+      "op": "SET_ROWS",
+      "name": "cache_k_l0 (view)",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-0 (view) (   0K) [  CPU         ]      attn_inp_k_idxs (   0K) [  CPU         ]           cache_k_l0 (  64K) [  CPU         ]"
+    },
+    {
+      "index": 22,
+      "op": "SET_ROWS",
+      "name": "cache_v_l0",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-0 (reshaped) (r (   0K) [  CPU         ]      attn_inp_v_idxs (   1K) [  CPU         ] cache_v_l0 (reshaped (  64K) [  CPU         ]"
+    },
+    {
+      "index": 29,
+      "op": "MUL_MAT",
+      "name": "kq-0",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_k_l0 (view) (p (  64K) [  CPU         ] Qcur-0 (view) (permu (   3K) [  CPU         ]"
+    },
+    {
+      "index": 30,
+      "op": "SOFT_MAX",
+      "name": "kq_soft_max-0",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kq-0 (  14K) [  CPU         ]     attn_inp_kq_mask (   1K) [  CPU         ]"
+    },
+    {
+      "index": 31,
+      "op": "MUL_MAT",
+      "name": "kqv-0",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_v_l0 (view) (p (  64K) [  CPU         ]        kq_soft_max-0 (  14K) [  CPU         ]"
+    },
+    {
+      "index": 33,
+      "op": "CONT",
+      "name": "kqv_out-0",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kqv-0 (permuted) (   3K) [  CPU         ]"
+    },
+    {
+      "index": 34,
+      "op": "MUL_MAT",
+      "name": "node_34",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.0.attn_output.we ( 539K) [  CPU         ]            kqv_out-0 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 35,
+      "op": "ADD",
+      "name": "ffn_inp-0",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "node_34 (   3K) [  CPU         ]                 embd (   3K) [  CPU         ]"
+    },
+    {
+      "index": 36,
+      "op": "RMS_NORM",
+      "name": "norm-0",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_inp-0 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 37,
+      "op": "MUL",
+      "name": "ffn_norm-0",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-0 (   3K) [  CPU         ] blk.0.ffn_norm.weigh (   3K) [  CPU         ]"
+    },
+    {
+      "index": 38,
+      "op": "MUL_MAT",
+      "name": "ffn_gate-0",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.0.ffn_gate.weigh (   2M) [  CPU         ]           ffn_norm-0 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 39,
+      "op": "MUL_MAT",
+      "name": "ffn_up-0",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.0.ffn_up.weight (   2M) [  CPU         ]           ffn_norm-0 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 40,
+      "op": "SWIGLU",
+      "name": "ffn_swiglu-0",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_gate-0 (  19K) [  CPU         ]             ffn_up-0 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 41,
+      "op": "MUL_MAT",
+      "name": "ffn_out-0",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.0.ffn_down.weigh (   3M) [  CPU         ]         ffn_swiglu-0 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 42,
+      "op": "ADD",
+      "name": "l_out-0",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_out-0 (   3K) [  CPU         ]            ffn_inp-0 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 43,
+      "op": "RMS_NORM",
+      "name": "norm-1",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "l_out-0 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 44,
+      "op": "MUL",
+      "name": "attn_norm-1",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-1 (   3K) [  CPU         ] blk.1.attn_norm.weig (   3K) [  CPU         ]"
+    },
+    {
+      "index": 45,
+      "op": "MUL_MAT",
+      "name": "Qcur-1",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.1.attn_q.weight ( 539K) [  CPU         ]          attn_norm-1 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 46,
+      "op": "ADD",
+      "name": "Qcur-1",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-1 (   3K) [  CPU         ]    blk.1.attn_q.bias (   3K) [  CPU         ]"
+    },
+    {
+      "index": 48,
+      "op": "ROPE",
+      "name": "Qcur-1",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-1 (   3K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 49,
+      "op": "MUL_MAT",
+      "name": "Vcur-1",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.1.attn_v.weight ( 119K) [  CPU         ]          attn_norm-1 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 50,
+      "op": "ADD",
+      "name": "Vcur-1",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-1 (   0K) [  CPU         ]    blk.1.attn_v.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 52,
+      "op": "MUL_MAT",
+      "name": "Kcur-1",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.1.attn_k.weight (  77K) [  CPU         ]          attn_norm-1 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 53,
+      "op": "ADD",
+      "name": "Kcur-1",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-1 (   0K) [  CPU         ]    blk.1.attn_k.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 55,
+      "op": "ROPE",
+      "name": "Kcur-1",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-1 (   0K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 57,
+      "op": "SET_ROWS",
+      "name": "cache_k_l1 (view)",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-1 (view) (   0K) [  CPU         ]      attn_inp_k_idxs (   0K) [  CPU         ]           cache_k_l1 (  64K) [  CPU         ]"
+    },
+    {
+      "index": 61,
+      "op": "SET_ROWS",
+      "name": "cache_v_l1",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-1 (reshaped) (r (   0K) [  CPU         ]      attn_inp_v_idxs (   1K) [  CPU         ] cache_v_l1 (reshaped (  64K) [  CPU         ]"
+    },
+    {
+      "index": 68,
+      "op": "MUL_MAT",
+      "name": "kq-1",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_k_l1 (view) (p (  64K) [  CPU         ] Qcur-1 (view) (permu (   3K) [  CPU         ]"
+    },
+    {
+      "index": 69,
+      "op": "SOFT_MAX",
+      "name": "kq_soft_max-1",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kq-1 (  14K) [  CPU         ]     attn_inp_kq_mask (   1K) [  CPU         ]"
+    },
+    {
+      "index": 70,
+      "op": "MUL_MAT",
+      "name": "kqv-1",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_v_l1 (view) (p (  64K) [  CPU         ]        kq_soft_max-1 (  14K) [  CPU         ]"
+    },
+    {
+      "index": 72,
+      "op": "CONT",
+      "name": "kqv_out-1",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kqv-1 (permuted) (   3K) [  CPU         ]"
+    },
+    {
+      "index": 73,
+      "op": "MUL_MAT",
+      "name": "node_73",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.1.attn_output.we ( 539K) [  CPU         ]            kqv_out-1 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 74,
+      "op": "ADD",
+      "name": "ffn_inp-1",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "node_73 (   3K) [  CPU         ]              l_out-0 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 75,
+      "op": "RMS_NORM",
+      "name": "norm-1",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_inp-1 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 76,
+      "op": "MUL",
+      "name": "ffn_norm-1",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-1 (   3K) [  CPU         ] blk.1.ffn_norm.weigh (   3K) [  CPU         ]"
+    },
+    {
+      "index": 77,
+      "op": "MUL_MAT",
+      "name": "ffn_gate-1",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.1.ffn_gate.weigh (   2M) [  CPU         ]           ffn_norm-1 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 78,
+      "op": "MUL_MAT",
+      "name": "ffn_up-1",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.1.ffn_up.weight (   2M) [  CPU         ]           ffn_norm-1 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 79,
+      "op": "SWIGLU",
+      "name": "ffn_swiglu-1",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_gate-1 (  19K) [  CPU         ]             ffn_up-1 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 80,
+      "op": "MUL_MAT",
+      "name": "ffn_out-1",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.1.ffn_down.weigh (   3M) [  CPU         ]         ffn_swiglu-1 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 81,
+      "op": "ADD",
+      "name": "l_out-1",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_out-1 (   3K) [  CPU         ]            ffn_inp-1 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 82,
+      "op": "RMS_NORM",
+      "name": "norm-2",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "l_out-1 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 83,
+      "op": "MUL",
+      "name": "attn_norm-2",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-2 (   3K) [  CPU         ] blk.2.attn_norm.weig (   3K) [  CPU         ]"
+    },
+    {
+      "index": 84,
+      "op": "MUL_MAT",
+      "name": "Qcur-2",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.2.attn_q.weight ( 539K) [  CPU         ]          attn_norm-2 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 85,
+      "op": "ADD",
+      "name": "Qcur-2",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-2 (   3K) [  CPU         ]    blk.2.attn_q.bias (   3K) [  CPU         ]"
+    },
+    {
+      "index": 87,
+      "op": "ROPE",
+      "name": "Qcur-2",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-2 (   3K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 88,
+      "op": "MUL_MAT",
+      "name": "Vcur-2",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.2.attn_v.weight (  77K) [  CPU         ]          attn_norm-2 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 89,
+      "op": "ADD",
+      "name": "Vcur-2",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-2 (   0K) [  CPU         ]    blk.2.attn_v.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 91,
+      "op": "MUL_MAT",
+      "name": "Kcur-2",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.2.attn_k.weight (  77K) [  CPU         ]          attn_norm-2 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 92,
+      "op": "ADD",
+      "name": "Kcur-2",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-2 (   0K) [  CPU         ]    blk.2.attn_k.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 94,
+      "op": "ROPE",
+      "name": "Kcur-2",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-2 (   0K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 96,
+      "op": "SET_ROWS",
+      "name": "cache_k_l2 (view)",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-2 (view) (   0K) [  CPU         ]      attn_inp_k_idxs (   0K) [  CPU         ]           cache_k_l2 (  64K) [  CPU         ]"
+    },
+    {
+      "index": 100,
+      "op": "SET_ROWS",
+      "name": "cache_v_l2",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-2 (reshaped) (r (   0K) [  CPU         ]      attn_inp_v_idxs (   1K) [  CPU         ] cache_v_l2 (reshaped (  64K) [  CPU         ]"
+    },
+    {
+      "index": 107,
+      "op": "MUL_MAT",
+      "name": "kq-2",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_k_l2 (view) (p (  64K) [  CPU         ] Qcur-2 (view) (permu (   3K) [  CPU         ]"
+    },
+    {
+      "index": 108,
+      "op": "SOFT_MAX",
+      "name": "kq_soft_max-2",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kq-2 (  14K) [  CPU         ]     attn_inp_kq_mask (   1K) [  CPU         ]"
+    },
+    {
+      "index": 109,
+      "op": "MUL_MAT",
+      "name": "kqv-2",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_v_l2 (view) (p (  64K) [  CPU         ]        kq_soft_max-2 (  14K) [  CPU         ]"
+    },
+    {
+      "index": 111,
+      "op": "CONT",
+      "name": "kqv_out-2",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kqv-2 (permuted) (   3K) [  CPU         ]"
+    },
+    {
+      "index": 112,
+      "op": "MUL_MAT",
+      "name": "node_112",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.2.attn_output.we ( 539K) [  CPU         ]            kqv_out-2 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 113,
+      "op": "ADD",
+      "name": "ffn_inp-2",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "node_112 (   3K) [  CPU         ]              l_out-1 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 114,
+      "op": "RMS_NORM",
+      "name": "norm-2",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_inp-2 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 115,
+      "op": "MUL",
+      "name": "ffn_norm-2",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-2 (   3K) [  CPU         ] blk.2.ffn_norm.weigh (   3K) [  CPU         ]"
+    },
+    {
+      "index": 116,
+      "op": "MUL_MAT",
+      "name": "ffn_gate-2",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.2.ffn_gate.weigh (   2M) [  CPU         ]           ffn_norm-2 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 117,
+      "op": "MUL_MAT",
+      "name": "ffn_up-2",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.2.ffn_up.weight (   2M) [  CPU         ]           ffn_norm-2 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 118,
+      "op": "SWIGLU",
+      "name": "ffn_swiglu-2",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_gate-2 (  19K) [  CPU         ]             ffn_up-2 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 119,
+      "op": "MUL_MAT",
+      "name": "ffn_out-2",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.2.ffn_down.weigh (   2M) [  CPU         ]         ffn_swiglu-2 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 120,
+      "op": "ADD",
+      "name": "l_out-2",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_out-2 (   3K) [  CPU         ]            ffn_inp-2 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 121,
+      "op": "RMS_NORM",
+      "name": "norm-3",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "l_out-2 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 122,
+      "op": "MUL",
+      "name": "attn_norm-3",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-3 (   3K) [  CPU         ] blk.3.attn_norm.weig (   3K) [  CPU         ]"
+    },
+    {
+      "index": 123,
+      "op": "MUL_MAT",
+      "name": "Qcur-3",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.3.attn_q.weight ( 539K) [  CPU         ]          attn_norm-3 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 124,
+      "op": "ADD",
+      "name": "Qcur-3",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-3 (   3K) [  CPU         ]    blk.3.attn_q.bias (   3K) [  CPU         ]"
+    },
+    {
+      "index": 126,
+      "op": "ROPE",
+      "name": "Qcur-3",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-3 (   3K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 127,
+      "op": "MUL_MAT",
+      "name": "Vcur-3",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.3.attn_v.weight ( 119K) [  CPU         ]          attn_norm-3 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 128,
+      "op": "ADD",
+      "name": "Vcur-3",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-3 (   0K) [  CPU         ]    blk.3.attn_v.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 130,
+      "op": "MUL_MAT",
+      "name": "Kcur-3",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.3.attn_k.weight (  77K) [  CPU         ]          attn_norm-3 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 131,
+      "op": "ADD",
+      "name": "Kcur-3",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-3 (   0K) [  CPU         ]    blk.3.attn_k.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 133,
+      "op": "ROPE",
+      "name": "Kcur-3",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-3 (   0K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 135,
+      "op": "SET_ROWS",
+      "name": "cache_k_l3 (view)",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-3 (view) (   0K) [  CPU         ]      attn_inp_k_idxs (   0K) [  CPU         ]           cache_k_l3 (  64K) [  CPU         ]"
+    },
+    {
+      "index": 139,
+      "op": "SET_ROWS",
+      "name": "cache_v_l3",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-3 (reshaped) (r (   0K) [  CPU         ]      attn_inp_v_idxs (   1K) [  CPU         ] cache_v_l3 (reshaped (  64K) [  CPU         ]"
+    },
+    {
+      "index": 146,
+      "op": "MUL_MAT",
+      "name": "kq-3",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_k_l3 (view) (p (  64K) [  CPU         ] Qcur-3 (view) (permu (   3K) [  CPU         ]"
+    },
+    {
+      "index": 147,
+      "op": "SOFT_MAX",
+      "name": "kq_soft_max-3",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kq-3 (  14K) [  CPU         ]     attn_inp_kq_mask (   1K) [  CPU         ]"
+    },
+    {
+      "index": 148,
+      "op": "MUL_MAT",
+      "name": "kqv-3",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_v_l3 (view) (p (  64K) [  CPU         ]        kq_soft_max-3 (  14K) [  CPU         ]"
+    },
+    {
+      "index": 150,
+      "op": "CONT",
+      "name": "kqv_out-3",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kqv-3 (permuted) (   3K) [  CPU         ]"
+    },
+    {
+      "index": 151,
+      "op": "MUL_MAT",
+      "name": "node_151",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.3.attn_output.we ( 539K) [  CPU         ]            kqv_out-3 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 152,
+      "op": "ADD",
+      "name": "ffn_inp-3",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "node_151 (   3K) [  CPU         ]              l_out-2 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 153,
+      "op": "RMS_NORM",
+      "name": "norm-3",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_inp-3 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 154,
+      "op": "MUL",
+      "name": "ffn_norm-3",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-3 (   3K) [  CPU         ] blk.3.ffn_norm.weigh (   3K) [  CPU         ]"
+    },
+    {
+      "index": 155,
+      "op": "MUL_MAT",
+      "name": "ffn_gate-3",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.3.ffn_gate.weigh (   2M) [  CPU         ]           ffn_norm-3 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 156,
+      "op": "MUL_MAT",
+      "name": "ffn_up-3",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.3.ffn_up.weight (   2M) [  CPU         ]           ffn_norm-3 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 157,
+      "op": "SWIGLU",
+      "name": "ffn_swiglu-3",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_gate-3 (  19K) [  CPU         ]             ffn_up-3 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 158,
+      "op": "MUL_MAT",
+      "name": "ffn_out-3",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.3.ffn_down.weigh (   3M) [  CPU         ]         ffn_swiglu-3 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 159,
+      "op": "ADD",
+      "name": "l_out-3",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_out-3 (   3K) [  CPU         ]            ffn_inp-3 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 160,
+      "op": "RMS_NORM",
+      "name": "norm-4",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "l_out-3 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 161,
+      "op": "MUL",
+      "name": "attn_norm-4",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-4 (   3K) [  CPU         ] blk.4.attn_norm.weig (   3K) [  CPU         ]"
+    },
+    {
+      "index": 162,
+      "op": "MUL_MAT",
+      "name": "Qcur-4",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.4.attn_q.weight ( 539K) [  CPU         ]          attn_norm-4 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 163,
+      "op": "ADD",
+      "name": "Qcur-4",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-4 (   3K) [  CPU         ]    blk.4.attn_q.bias (   3K) [  CPU         ]"
+    },
+    {
+      "index": 165,
+      "op": "ROPE",
+      "name": "Qcur-4",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-4 (   3K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 166,
+      "op": "MUL_MAT",
+      "name": "Vcur-4",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.4.attn_v.weight (  77K) [  CPU         ]          attn_norm-4 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 167,
+      "op": "ADD",
+      "name": "Vcur-4",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-4 (   0K) [  CPU         ]    blk.4.attn_v.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 169,
+      "op": "MUL_MAT",
+      "name": "Kcur-4",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.4.attn_k.weight (  77K) [  CPU         ]          attn_norm-4 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 170,
+      "op": "ADD",
+      "name": "Kcur-4",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-4 (   0K) [  CPU         ]    blk.4.attn_k.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 172,
+      "op": "ROPE",
+      "name": "Kcur-4",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-4 (   0K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 174,
+      "op": "SET_ROWS",
+      "name": "cache_k_l4 (view)",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-4 (view) (   0K) [  CPU         ]      attn_inp_k_idxs (   0K) [  CPU         ]           cache_k_l4 (  64K) [  CPU         ]"
+    },
+    {
+      "index": 178,
+      "op": "SET_ROWS",
+      "name": "cache_v_l4",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-4 (reshaped) (r (   0K) [  CPU         ]      attn_inp_v_idxs (   1K) [  CPU         ] cache_v_l4 (reshaped (  64K) [  CPU         ]"
+    },
+    {
+      "index": 185,
+      "op": "MUL_MAT",
+      "name": "kq-4",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_k_l4 (view) (p (  64K) [  CPU         ] Qcur-4 (view) (permu (   3K) [  CPU         ]"
+    },
+    {
+      "index": 186,
+      "op": "SOFT_MAX",
+      "name": "kq_soft_max-4",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kq-4 (  14K) [  CPU         ]     attn_inp_kq_mask (   1K) [  CPU         ]"
+    },
+    {
+      "index": 187,
+      "op": "MUL_MAT",
+      "name": "kqv-4",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_v_l4 (view) (p (  64K) [  CPU         ]        kq_soft_max-4 (  14K) [  CPU         ]"
+    },
+    {
+      "index": 189,
+      "op": "CONT",
+      "name": "kqv_out-4",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kqv-4 (permuted) (   3K) [  CPU         ]"
+    },
+    {
+      "index": 190,
+      "op": "MUL_MAT",
+      "name": "node_190",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.4.attn_output.we ( 539K) [  CPU         ]            kqv_out-4 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 191,
+      "op": "ADD",
+      "name": "ffn_inp-4",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "node_190 (   3K) [  CPU         ]              l_out-3 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 192,
+      "op": "RMS_NORM",
+      "name": "norm-4",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_inp-4 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 193,
+      "op": "MUL",
+      "name": "ffn_norm-4",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-4 (   3K) [  CPU         ] blk.4.ffn_norm.weigh (   3K) [  CPU         ]"
+    },
+    {
+      "index": 194,
+      "op": "MUL_MAT",
+      "name": "ffn_gate-4",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.4.ffn_gate.weigh (   2M) [  CPU         ]           ffn_norm-4 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 195,
+      "op": "MUL_MAT",
+      "name": "ffn_up-4",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.4.ffn_up.weight (   2M) [  CPU         ]           ffn_norm-4 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 196,
+      "op": "SWIGLU",
+      "name": "ffn_swiglu-4",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_gate-4 (  19K) [  CPU         ]             ffn_up-4 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 197,
+      "op": "MUL_MAT",
+      "name": "ffn_out-4",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.4.ffn_down.weigh (   2M) [  CPU         ]         ffn_swiglu-4 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 198,
+      "op": "ADD",
+      "name": "l_out-4",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_out-4 (   3K) [  CPU         ]            ffn_inp-4 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 199,
+      "op": "RMS_NORM",
+      "name": "norm-5",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "l_out-4 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 200,
+      "op": "MUL",
+      "name": "attn_norm-5",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-5 (   3K) [  CPU         ] blk.5.attn_norm.weig (   3K) [  CPU         ]"
+    },
+    {
+      "index": 201,
+      "op": "MUL_MAT",
+      "name": "Qcur-5",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.5.attn_q.weight ( 539K) [  CPU         ]          attn_norm-5 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 202,
+      "op": "ADD",
+      "name": "Qcur-5",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-5 (   3K) [  CPU         ]    blk.5.attn_q.bias (   3K) [  CPU         ]"
+    },
+    {
+      "index": 204,
+      "op": "ROPE",
+      "name": "Qcur-5",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-5 (   3K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 205,
+      "op": "MUL_MAT",
+      "name": "Vcur-5",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.5.attn_v.weight (  77K) [  CPU         ]          attn_norm-5 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 206,
+      "op": "ADD",
+      "name": "Vcur-5",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-5 (   0K) [  CPU         ]    blk.5.attn_v.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 208,
+      "op": "MUL_MAT",
+      "name": "Kcur-5",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.5.attn_k.weight (  77K) [  CPU         ]          attn_norm-5 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 209,
+      "op": "ADD",
+      "name": "Kcur-5",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-5 (   0K) [  CPU         ]    blk.5.attn_k.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 211,
+      "op": "ROPE",
+      "name": "Kcur-5",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-5 (   0K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 213,
+      "op": "SET_ROWS",
+      "name": "cache_k_l5 (view)",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-5 (view) (   0K) [  CPU         ]      attn_inp_k_idxs (   0K) [  CPU         ]           cache_k_l5 (  64K) [  CPU         ]"
+    },
+    {
+      "index": 217,
+      "op": "SET_ROWS",
+      "name": "cache_v_l5",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-5 (reshaped) (r (   0K) [  CPU         ]      attn_inp_v_idxs (   1K) [  CPU         ] cache_v_l5 (reshaped (  64K) [  CPU         ]"
+    },
+    {
+      "index": 224,
+      "op": "MUL_MAT",
+      "name": "kq-5",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_k_l5 (view) (p (  64K) [  CPU         ] Qcur-5 (view) (permu (   3K) [  CPU         ]"
+    },
+    {
+      "index": 225,
+      "op": "SOFT_MAX",
+      "name": "kq_soft_max-5",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kq-5 (  14K) [  CPU         ]     attn_inp_kq_mask (   1K) [  CPU         ]"
+    },
+    {
+      "index": 226,
+      "op": "MUL_MAT",
+      "name": "kqv-5",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_v_l5 (view) (p (  64K) [  CPU         ]        kq_soft_max-5 (  14K) [  CPU         ]"
+    },
+    {
+      "index": 228,
+      "op": "CONT",
+      "name": "kqv_out-5",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kqv-5 (permuted) (   3K) [  CPU         ]"
+    },
+    {
+      "index": 229,
+      "op": "MUL_MAT",
+      "name": "node_229",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.5.attn_output.we ( 539K) [  CPU         ]            kqv_out-5 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 230,
+      "op": "ADD",
+      "name": "ffn_inp-5",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "node_229 (   3K) [  CPU         ]              l_out-4 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 231,
+      "op": "RMS_NORM",
+      "name": "norm-5",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_inp-5 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 232,
+      "op": "MUL",
+      "name": "ffn_norm-5",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-5 (   3K) [  CPU         ] blk.5.ffn_norm.weigh (   3K) [  CPU         ]"
+    },
+    {
+      "index": 233,
+      "op": "MUL_MAT",
+      "name": "ffn_gate-5",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.5.ffn_gate.weigh (   2M) [  CPU         ]           ffn_norm-5 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 234,
+      "op": "MUL_MAT",
+      "name": "ffn_up-5",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.5.ffn_up.weight (   2M) [  CPU         ]           ffn_norm-5 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 235,
+      "op": "SWIGLU",
+      "name": "ffn_swiglu-5",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_gate-5 (  19K) [  CPU         ]             ffn_up-5 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 236,
+      "op": "MUL_MAT",
+      "name": "ffn_out-5",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.5.ffn_down.weigh (   2M) [  CPU         ]         ffn_swiglu-5 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 237,
+      "op": "ADD",
+      "name": "l_out-5",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_out-5 (   3K) [  CPU         ]            ffn_inp-5 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 238,
+      "op": "RMS_NORM",
+      "name": "norm-6",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "l_out-5 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 239,
+      "op": "MUL",
+      "name": "attn_norm-6",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-6 (   3K) [  CPU         ] blk.6.attn_norm.weig (   3K) [  CPU         ]"
+    },
+    {
+      "index": 240,
+      "op": "MUL_MAT",
+      "name": "Qcur-6",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.6.attn_q.weight ( 539K) [  CPU         ]          attn_norm-6 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 241,
+      "op": "ADD",
+      "name": "Qcur-6",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-6 (   3K) [  CPU         ]    blk.6.attn_q.bias (   3K) [  CPU         ]"
+    },
+    {
+      "index": 243,
+      "op": "ROPE",
+      "name": "Qcur-6",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-6 (   3K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 244,
+      "op": "MUL_MAT",
+      "name": "Vcur-6",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.6.attn_v.weight ( 119K) [  CPU         ]          attn_norm-6 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 245,
+      "op": "ADD",
+      "name": "Vcur-6",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-6 (   0K) [  CPU         ]    blk.6.attn_v.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 247,
+      "op": "MUL_MAT",
+      "name": "Kcur-6",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.6.attn_k.weight (  77K) [  CPU         ]          attn_norm-6 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 248,
+      "op": "ADD",
+      "name": "Kcur-6",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-6 (   0K) [  CPU         ]    blk.6.attn_k.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 250,
+      "op": "ROPE",
+      "name": "Kcur-6",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-6 (   0K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 252,
+      "op": "SET_ROWS",
+      "name": "cache_k_l6 (view)",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-6 (view) (   0K) [  CPU         ]      attn_inp_k_idxs (   0K) [  CPU         ]           cache_k_l6 (  64K) [  CPU         ]"
+    },
+    {
+      "index": 256,
+      "op": "SET_ROWS",
+      "name": "cache_v_l6",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-6 (reshaped) (r (   0K) [  CPU         ]      attn_inp_v_idxs (   1K) [  CPU         ] cache_v_l6 (reshaped (  64K) [  CPU         ]"
+    },
+    {
+      "index": 263,
+      "op": "MUL_MAT",
+      "name": "kq-6",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_k_l6 (view) (p (  64K) [  CPU         ] Qcur-6 (view) (permu (   3K) [  CPU         ]"
+    },
+    {
+      "index": 264,
+      "op": "SOFT_MAX",
+      "name": "kq_soft_max-6",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kq-6 (  14K) [  CPU         ]     attn_inp_kq_mask (   1K) [  CPU         ]"
+    },
+    {
+      "index": 265,
+      "op": "MUL_MAT",
+      "name": "kqv-6",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_v_l6 (view) (p (  64K) [  CPU         ]        kq_soft_max-6 (  14K) [  CPU         ]"
+    },
+    {
+      "index": 267,
+      "op": "CONT",
+      "name": "kqv_out-6",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kqv-6 (permuted) (   3K) [  CPU         ]"
+    },
+    {
+      "index": 268,
+      "op": "MUL_MAT",
+      "name": "node_268",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.6.attn_output.we ( 539K) [  CPU         ]            kqv_out-6 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 269,
+      "op": "ADD",
+      "name": "ffn_inp-6",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "node_268 (   3K) [  CPU         ]              l_out-5 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 270,
+      "op": "RMS_NORM",
+      "name": "norm-6",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_inp-6 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 271,
+      "op": "MUL",
+      "name": "ffn_norm-6",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-6 (   3K) [  CPU         ] blk.6.ffn_norm.weigh (   3K) [  CPU         ]"
+    },
+    {
+      "index": 272,
+      "op": "MUL_MAT",
+      "name": "ffn_gate-6",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.6.ffn_gate.weigh (   2M) [  CPU         ]           ffn_norm-6 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 273,
+      "op": "MUL_MAT",
+      "name": "ffn_up-6",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.6.ffn_up.weight (   2M) [  CPU         ]           ffn_norm-6 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 274,
+      "op": "SWIGLU",
+      "name": "ffn_swiglu-6",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_gate-6 (  19K) [  CPU         ]             ffn_up-6 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 275,
+      "op": "MUL_MAT",
+      "name": "ffn_out-6",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.6.ffn_down.weigh (   3M) [  CPU         ]         ffn_swiglu-6 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 276,
+      "op": "ADD",
+      "name": "l_out-6",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_out-6 (   3K) [  CPU         ]            ffn_inp-6 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 277,
+      "op": "RMS_NORM",
+      "name": "norm-7",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "l_out-6 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 278,
+      "op": "MUL",
+      "name": "attn_norm-7",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-7 (   3K) [  CPU         ] blk.7.attn_norm.weig (   3K) [  CPU         ]"
+    },
+    {
+      "index": 279,
+      "op": "MUL_MAT",
+      "name": "Qcur-7",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.7.attn_q.weight ( 539K) [  CPU         ]          attn_norm-7 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 280,
+      "op": "ADD",
+      "name": "Qcur-7",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-7 (   3K) [  CPU         ]    blk.7.attn_q.bias (   3K) [  CPU         ]"
+    },
+    {
+      "index": 282,
+      "op": "ROPE",
+      "name": "Qcur-7",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-7 (   3K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 283,
+      "op": "MUL_MAT",
+      "name": "Vcur-7",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.7.attn_v.weight ( 119K) [  CPU         ]          attn_norm-7 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 284,
+      "op": "ADD",
+      "name": "Vcur-7",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-7 (   0K) [  CPU         ]    blk.7.attn_v.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 286,
+      "op": "MUL_MAT",
+      "name": "Kcur-7",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.7.attn_k.weight (  77K) [  CPU         ]          attn_norm-7 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 287,
+      "op": "ADD",
+      "name": "Kcur-7",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-7 (   0K) [  CPU         ]    blk.7.attn_k.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 289,
+      "op": "ROPE",
+      "name": "Kcur-7",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-7 (   0K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 291,
+      "op": "SET_ROWS",
+      "name": "cache_k_l7 (view)",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-7 (view) (   0K) [  CPU         ]      attn_inp_k_idxs (   0K) [  CPU         ]           cache_k_l7 (  64K) [  CPU         ]"
+    },
+    {
+      "index": 295,
+      "op": "SET_ROWS",
+      "name": "cache_v_l7",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-7 (reshaped) (r (   0K) [  CPU         ]      attn_inp_v_idxs (   1K) [  CPU         ] cache_v_l7 (reshaped (  64K) [  CPU         ]"
+    },
+    {
+      "index": 302,
+      "op": "MUL_MAT",
+      "name": "kq-7",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_k_l7 (view) (p (  64K) [  CPU         ] Qcur-7 (view) (permu (   3K) [  CPU         ]"
+    },
+    {
+      "index": 303,
+      "op": "SOFT_MAX",
+      "name": "kq_soft_max-7",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kq-7 (  14K) [  CPU         ]     attn_inp_kq_mask (   1K) [  CPU         ]"
+    },
+    {
+      "index": 304,
+      "op": "MUL_MAT",
+      "name": "kqv-7",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_v_l7 (view) (p (  64K) [  CPU         ]        kq_soft_max-7 (  14K) [  CPU         ]"
+    },
+    {
+      "index": 306,
+      "op": "CONT",
+      "name": "kqv_out-7",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kqv-7 (permuted) (   3K) [  CPU         ]"
+    },
+    {
+      "index": 307,
+      "op": "MUL_MAT",
+      "name": "node_307",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.7.attn_output.we ( 539K) [  CPU         ]            kqv_out-7 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 308,
+      "op": "ADD",
+      "name": "ffn_inp-7",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "node_307 (   3K) [  CPU         ]              l_out-6 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 309,
+      "op": "RMS_NORM",
+      "name": "norm-7",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_inp-7 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 310,
+      "op": "MUL",
+      "name": "ffn_norm-7",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-7 (   3K) [  CPU         ] blk.7.ffn_norm.weigh (   3K) [  CPU         ]"
+    },
+    {
+      "index": 311,
+      "op": "MUL_MAT",
+      "name": "ffn_gate-7",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.7.ffn_gate.weigh (   2M) [  CPU         ]           ffn_norm-7 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 312,
+      "op": "MUL_MAT",
+      "name": "ffn_up-7",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.7.ffn_up.weight (   2M) [  CPU         ]           ffn_norm-7 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 313,
+      "op": "SWIGLU",
+      "name": "ffn_swiglu-7",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_gate-7 (  19K) [  CPU         ]             ffn_up-7 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 314,
+      "op": "MUL_MAT",
+      "name": "ffn_out-7",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.7.ffn_down.weigh (   3M) [  CPU         ]         ffn_swiglu-7 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 315,
+      "op": "ADD",
+      "name": "l_out-7",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_out-7 (   3K) [  CPU         ]            ffn_inp-7 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 316,
+      "op": "RMS_NORM",
+      "name": "norm-8",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "l_out-7 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 317,
+      "op": "MUL",
+      "name": "attn_norm-8",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-8 (   3K) [  CPU         ] blk.8.attn_norm.weig (   3K) [  CPU         ]"
+    },
+    {
+      "index": 318,
+      "op": "MUL_MAT",
+      "name": "Qcur-8",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.8.attn_q.weight ( 539K) [  CPU         ]          attn_norm-8 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 319,
+      "op": "ADD",
+      "name": "Qcur-8",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-8 (   3K) [  CPU         ]    blk.8.attn_q.bias (   3K) [  CPU         ]"
+    },
+    {
+      "index": 321,
+      "op": "ROPE",
+      "name": "Qcur-8",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-8 (   3K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 322,
+      "op": "MUL_MAT",
+      "name": "Vcur-8",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.8.attn_v.weight ( 119K) [  CPU         ]          attn_norm-8 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 323,
+      "op": "ADD",
+      "name": "Vcur-8",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-8 (   0K) [  CPU         ]    blk.8.attn_v.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 325,
+      "op": "MUL_MAT",
+      "name": "Kcur-8",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.8.attn_k.weight (  77K) [  CPU         ]          attn_norm-8 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 326,
+      "op": "ADD",
+      "name": "Kcur-8",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-8 (   0K) [  CPU         ]    blk.8.attn_k.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 328,
+      "op": "ROPE",
+      "name": "Kcur-8",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-8 (   0K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 330,
+      "op": "SET_ROWS",
+      "name": "cache_k_l8 (view)",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-8 (view) (   0K) [  CPU         ]      attn_inp_k_idxs (   0K) [  CPU         ]           cache_k_l8 (  64K) [  CPU         ]"
+    },
+    {
+      "index": 334,
+      "op": "SET_ROWS",
+      "name": "cache_v_l8",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-8 (reshaped) (r (   0K) [  CPU         ]      attn_inp_v_idxs (   1K) [  CPU         ] cache_v_l8 (reshaped (  64K) [  CPU         ]"
+    },
+    {
+      "index": 341,
+      "op": "MUL_MAT",
+      "name": "kq-8",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_k_l8 (view) (p (  64K) [  CPU         ] Qcur-8 (view) (permu (   3K) [  CPU         ]"
+    },
+    {
+      "index": 342,
+      "op": "SOFT_MAX",
+      "name": "kq_soft_max-8",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kq-8 (  14K) [  CPU         ]     attn_inp_kq_mask (   1K) [  CPU         ]"
+    },
+    {
+      "index": 343,
+      "op": "MUL_MAT",
+      "name": "kqv-8",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_v_l8 (view) (p (  64K) [  CPU         ]        kq_soft_max-8 (  14K) [  CPU         ]"
+    },
+    {
+      "index": 345,
+      "op": "CONT",
+      "name": "kqv_out-8",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kqv-8 (permuted) (   3K) [  CPU         ]"
+    },
+    {
+      "index": 346,
+      "op": "MUL_MAT",
+      "name": "node_346",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.8.attn_output.we ( 539K) [  CPU         ]            kqv_out-8 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 347,
+      "op": "ADD",
+      "name": "ffn_inp-8",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "node_346 (   3K) [  CPU         ]              l_out-7 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 348,
+      "op": "RMS_NORM",
+      "name": "norm-8",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_inp-8 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 349,
+      "op": "MUL",
+      "name": "ffn_norm-8",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-8 (   3K) [  CPU         ] blk.8.ffn_norm.weigh (   3K) [  CPU         ]"
+    },
+    {
+      "index": 350,
+      "op": "MUL_MAT",
+      "name": "ffn_gate-8",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.8.ffn_gate.weigh (   2M) [  CPU         ]           ffn_norm-8 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 351,
+      "op": "MUL_MAT",
+      "name": "ffn_up-8",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.8.ffn_up.weight (   2M) [  CPU         ]           ffn_norm-8 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 352,
+      "op": "SWIGLU",
+      "name": "ffn_swiglu-8",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_gate-8 (  19K) [  CPU         ]             ffn_up-8 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 353,
+      "op": "MUL_MAT",
+      "name": "ffn_out-8",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.8.ffn_down.weigh (   3M) [  CPU         ]         ffn_swiglu-8 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 354,
+      "op": "ADD",
+      "name": "l_out-8",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_out-8 (   3K) [  CPU         ]            ffn_inp-8 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 355,
+      "op": "RMS_NORM",
+      "name": "norm-9",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "l_out-8 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 356,
+      "op": "MUL",
+      "name": "attn_norm-9",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-9 (   3K) [  CPU         ] blk.9.attn_norm.weig (   3K) [  CPU         ]"
+    },
+    {
+      "index": 357,
+      "op": "MUL_MAT",
+      "name": "Qcur-9",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.9.attn_q.weight ( 539K) [  CPU         ]          attn_norm-9 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 358,
+      "op": "ADD",
+      "name": "Qcur-9",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-9 (   3K) [  CPU         ]    blk.9.attn_q.bias (   3K) [  CPU         ]"
+    },
+    {
+      "index": 360,
+      "op": "ROPE",
+      "name": "Qcur-9",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-9 (   3K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 361,
+      "op": "MUL_MAT",
+      "name": "Vcur-9",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.9.attn_v.weight ( 119K) [  CPU         ]          attn_norm-9 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 362,
+      "op": "ADD",
+      "name": "Vcur-9",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-9 (   0K) [  CPU         ]    blk.9.attn_v.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 364,
+      "op": "MUL_MAT",
+      "name": "Kcur-9",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.9.attn_k.weight (  77K) [  CPU         ]          attn_norm-9 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 365,
+      "op": "ADD",
+      "name": "Kcur-9",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-9 (   0K) [  CPU         ]    blk.9.attn_k.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 367,
+      "op": "ROPE",
+      "name": "Kcur-9",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-9 (   0K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 369,
+      "op": "SET_ROWS",
+      "name": "cache_k_l9 (view)",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-9 (view) (   0K) [  CPU         ]      attn_inp_k_idxs (   0K) [  CPU         ]           cache_k_l9 (  64K) [  CPU         ]"
+    },
+    {
+      "index": 373,
+      "op": "SET_ROWS",
+      "name": "cache_v_l9",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-9 (reshaped) (r (   0K) [  CPU         ]      attn_inp_v_idxs (   1K) [  CPU         ] cache_v_l9 (reshaped (  64K) [  CPU         ]"
+    },
+    {
+      "index": 380,
+      "op": "MUL_MAT",
+      "name": "kq-9",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_k_l9 (view) (p (  64K) [  CPU         ] Qcur-9 (view) (permu (   3K) [  CPU         ]"
+    },
+    {
+      "index": 381,
+      "op": "SOFT_MAX",
+      "name": "kq_soft_max-9",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kq-9 (  14K) [  CPU         ]     attn_inp_kq_mask (   1K) [  CPU         ]"
+    },
+    {
+      "index": 382,
+      "op": "MUL_MAT",
+      "name": "kqv-9",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_v_l9 (view) (p (  64K) [  CPU         ]        kq_soft_max-9 (  14K) [  CPU         ]"
+    },
+    {
+      "index": 384,
+      "op": "CONT",
+      "name": "kqv_out-9",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kqv-9 (permuted) (   3K) [  CPU         ]"
+    },
+    {
+      "index": 385,
+      "op": "MUL_MAT",
+      "name": "node_385",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.9.attn_output.we ( 539K) [  CPU         ]            kqv_out-9 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 386,
+      "op": "ADD",
+      "name": "ffn_inp-9",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "node_385 (   3K) [  CPU         ]              l_out-8 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 387,
+      "op": "RMS_NORM",
+      "name": "norm-9",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_inp-9 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 388,
+      "op": "MUL",
+      "name": "ffn_norm-9",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-9 (   3K) [  CPU         ] blk.9.ffn_norm.weigh (   3K) [  CPU         ]"
+    },
+    {
+      "index": 389,
+      "op": "MUL_MAT",
+      "name": "ffn_gate-9",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.9.ffn_gate.weigh (   2M) [  CPU         ]           ffn_norm-9 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 390,
+      "op": "MUL_MAT",
+      "name": "ffn_up-9",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.9.ffn_up.weight (   2M) [  CPU         ]           ffn_norm-9 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 391,
+      "op": "SWIGLU",
+      "name": "ffn_swiglu-9",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_gate-9 (  19K) [  CPU         ]             ffn_up-9 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 392,
+      "op": "MUL_MAT",
+      "name": "ffn_out-9",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.9.ffn_down.weigh (   3M) [  CPU         ]         ffn_swiglu-9 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 393,
+      "op": "ADD",
+      "name": "l_out-9",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_out-9 (   3K) [  CPU         ]            ffn_inp-9 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 394,
+      "op": "RMS_NORM",
+      "name": "norm-10",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "l_out-9 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 395,
+      "op": "MUL",
+      "name": "attn_norm-10",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-10 (   3K) [  CPU         ] blk.10.attn_norm.wei (   3K) [  CPU         ]"
+    },
+    {
+      "index": 396,
+      "op": "MUL_MAT",
+      "name": "Qcur-10",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.10.attn_q.weight ( 539K) [  CPU         ]         attn_norm-10 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 397,
+      "op": "ADD",
+      "name": "Qcur-10",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-10 (   3K) [  CPU         ]   blk.10.attn_q.bias (   3K) [  CPU         ]"
+    },
+    {
+      "index": 399,
+      "op": "ROPE",
+      "name": "Qcur-10",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-10 (   3K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 400,
+      "op": "MUL_MAT",
+      "name": "Vcur-10",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.10.attn_v.weight ( 119K) [  CPU         ]         attn_norm-10 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 401,
+      "op": "ADD",
+      "name": "Vcur-10",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-10 (   0K) [  CPU         ]   blk.10.attn_v.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 403,
+      "op": "MUL_MAT",
+      "name": "Kcur-10",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.10.attn_k.weight (  77K) [  CPU         ]         attn_norm-10 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 404,
+      "op": "ADD",
+      "name": "Kcur-10",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-10 (   0K) [  CPU         ]   blk.10.attn_k.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 406,
+      "op": "ROPE",
+      "name": "Kcur-10",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-10 (   0K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 408,
+      "op": "SET_ROWS",
+      "name": "cache_k_l10 (view)",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-10 (view) (   0K) [  CPU         ]      attn_inp_k_idxs (   0K) [  CPU         ]          cache_k_l10 (  64K) [  CPU         ]"
+    },
+    {
+      "index": 412,
+      "op": "SET_ROWS",
+      "name": "cache_v_l10",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-10 (reshaped) ( (   0K) [  CPU         ]      attn_inp_v_idxs (   1K) [  CPU         ] cache_v_l10 (reshape (  64K) [  CPU         ]"
+    },
+    {
+      "index": 419,
+      "op": "MUL_MAT",
+      "name": "kq-10",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_k_l10 (view) ( (  64K) [  CPU         ] Qcur-10 (view) (perm (   3K) [  CPU         ]"
+    },
+    {
+      "index": 420,
+      "op": "SOFT_MAX",
+      "name": "kq_soft_max-10",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kq-10 (  14K) [  CPU         ]     attn_inp_kq_mask (   1K) [  CPU         ]"
+    },
+    {
+      "index": 421,
+      "op": "MUL_MAT",
+      "name": "kqv-10",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_v_l10 (view) ( (  64K) [  CPU         ]       kq_soft_max-10 (  14K) [  CPU         ]"
+    },
+    {
+      "index": 423,
+      "op": "CONT",
+      "name": "kqv_out-10",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kqv-10 (permuted) (   3K) [  CPU         ]"
+    },
+    {
+      "index": 424,
+      "op": "MUL_MAT",
+      "name": "node_424",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.10.attn_output.w ( 539K) [  CPU         ]           kqv_out-10 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 425,
+      "op": "ADD",
+      "name": "ffn_inp-10",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "node_424 (   3K) [  CPU         ]              l_out-9 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 426,
+      "op": "RMS_NORM",
+      "name": "norm-10",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_inp-10 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 427,
+      "op": "MUL",
+      "name": "ffn_norm-10",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-10 (   3K) [  CPU         ] blk.10.ffn_norm.weig (   3K) [  CPU         ]"
+    },
+    {
+      "index": 428,
+      "op": "MUL_MAT",
+      "name": "ffn_gate-10",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.10.ffn_gate.weig (   2M) [  CPU         ]          ffn_norm-10 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 429,
+      "op": "MUL_MAT",
+      "name": "ffn_up-10",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.10.ffn_up.weight (   2M) [  CPU         ]          ffn_norm-10 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 430,
+      "op": "SWIGLU",
+      "name": "ffn_swiglu-10",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_gate-10 (  19K) [  CPU         ]            ffn_up-10 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 431,
+      "op": "MUL_MAT",
+      "name": "ffn_out-10",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.10.ffn_down.weig (   3M) [  CPU         ]        ffn_swiglu-10 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 432,
+      "op": "ADD",
+      "name": "l_out-10",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_out-10 (   3K) [  CPU         ]           ffn_inp-10 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 433,
+      "op": "RMS_NORM",
+      "name": "norm-11",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "l_out-10 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 434,
+      "op": "MUL",
+      "name": "attn_norm-11",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-11 (   3K) [  CPU         ] blk.11.attn_norm.wei (   3K) [  CPU         ]"
+    },
+    {
+      "index": 435,
+      "op": "MUL_MAT",
+      "name": "Qcur-11",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.11.attn_q.weight ( 539K) [  CPU         ]         attn_norm-11 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 436,
+      "op": "ADD",
+      "name": "Qcur-11",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-11 (   3K) [  CPU         ]   blk.11.attn_q.bias (   3K) [  CPU         ]"
+    },
+    {
+      "index": 438,
+      "op": "ROPE",
+      "name": "Qcur-11",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-11 (   3K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 439,
+      "op": "MUL_MAT",
+      "name": "Vcur-11",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.11.attn_v.weight (  77K) [  CPU         ]         attn_norm-11 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 440,
+      "op": "ADD",
+      "name": "Vcur-11",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-11 (   0K) [  CPU         ]   blk.11.attn_v.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 442,
+      "op": "MUL_MAT",
+      "name": "Kcur-11",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.11.attn_k.weight (  77K) [  CPU         ]         attn_norm-11 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 443,
+      "op": "ADD",
+      "name": "Kcur-11",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-11 (   0K) [  CPU         ]   blk.11.attn_k.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 445,
+      "op": "ROPE",
+      "name": "Kcur-11",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-11 (   0K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 447,
+      "op": "SET_ROWS",
+      "name": "cache_k_l11 (view)",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-11 (view) (   0K) [  CPU         ]      attn_inp_k_idxs (   0K) [  CPU         ]          cache_k_l11 (  64K) [  CPU         ]"
+    },
+    {
+      "index": 451,
+      "op": "SET_ROWS",
+      "name": "cache_v_l11",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-11 (reshaped) ( (   0K) [  CPU         ]      attn_inp_v_idxs (   1K) [  CPU         ] cache_v_l11 (reshape (  64K) [  CPU         ]"
+    },
+    {
+      "index": 458,
+      "op": "MUL_MAT",
+      "name": "kq-11",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_k_l11 (view) ( (  64K) [  CPU         ] Qcur-11 (view) (perm (   3K) [  CPU         ]"
+    },
+    {
+      "index": 459,
+      "op": "SOFT_MAX",
+      "name": "kq_soft_max-11",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kq-11 (  14K) [  CPU         ]     attn_inp_kq_mask (   1K) [  CPU         ]"
+    },
+    {
+      "index": 460,
+      "op": "MUL_MAT",
+      "name": "kqv-11",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_v_l11 (view) ( (  64K) [  CPU         ]       kq_soft_max-11 (  14K) [  CPU         ]"
+    },
+    {
+      "index": 462,
+      "op": "CONT",
+      "name": "kqv_out-11",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kqv-11 (permuted) (   3K) [  CPU         ]"
+    },
+    {
+      "index": 463,
+      "op": "MUL_MAT",
+      "name": "node_463",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.11.attn_output.w ( 539K) [  CPU         ]           kqv_out-11 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 464,
+      "op": "ADD",
+      "name": "ffn_inp-11",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "node_463 (   3K) [  CPU         ]             l_out-10 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 465,
+      "op": "RMS_NORM",
+      "name": "norm-11",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_inp-11 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 466,
+      "op": "MUL",
+      "name": "ffn_norm-11",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-11 (   3K) [  CPU         ] blk.11.ffn_norm.weig (   3K) [  CPU         ]"
+    },
+    {
+      "index": 467,
+      "op": "MUL_MAT",
+      "name": "ffn_gate-11",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.11.ffn_gate.weig (   2M) [  CPU         ]          ffn_norm-11 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 468,
+      "op": "MUL_MAT",
+      "name": "ffn_up-11",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.11.ffn_up.weight (   2M) [  CPU         ]          ffn_norm-11 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 469,
+      "op": "SWIGLU",
+      "name": "ffn_swiglu-11",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_gate-11 (  19K) [  CPU         ]            ffn_up-11 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 470,
+      "op": "MUL_MAT",
+      "name": "ffn_out-11",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.11.ffn_down.weig (   2M) [  CPU         ]        ffn_swiglu-11 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 471,
+      "op": "ADD",
+      "name": "l_out-11",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_out-11 (   3K) [  CPU         ]           ffn_inp-11 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 472,
+      "op": "RMS_NORM",
+      "name": "norm-12",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "l_out-11 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 473,
+      "op": "MUL",
+      "name": "attn_norm-12",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-12 (   3K) [  CPU         ] blk.12.attn_norm.wei (   3K) [  CPU         ]"
+    },
+    {
+      "index": 474,
+      "op": "MUL_MAT",
+      "name": "Qcur-12",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.12.attn_q.weight ( 539K) [  CPU         ]         attn_norm-12 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 475,
+      "op": "ADD",
+      "name": "Qcur-12",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-12 (   3K) [  CPU         ]   blk.12.attn_q.bias (   3K) [  CPU         ]"
+    },
+    {
+      "index": 477,
+      "op": "ROPE",
+      "name": "Qcur-12",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-12 (   3K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 478,
+      "op": "MUL_MAT",
+      "name": "Vcur-12",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.12.attn_v.weight (  77K) [  CPU         ]         attn_norm-12 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 479,
+      "op": "ADD",
+      "name": "Vcur-12",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-12 (   0K) [  CPU         ]   blk.12.attn_v.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 481,
+      "op": "MUL_MAT",
+      "name": "Kcur-12",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.12.attn_k.weight (  77K) [  CPU         ]         attn_norm-12 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 482,
+      "op": "ADD",
+      "name": "Kcur-12",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-12 (   0K) [  CPU         ]   blk.12.attn_k.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 484,
+      "op": "ROPE",
+      "name": "Kcur-12",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-12 (   0K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 486,
+      "op": "SET_ROWS",
+      "name": "cache_k_l12 (view)",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-12 (view) (   0K) [  CPU         ]      attn_inp_k_idxs (   0K) [  CPU         ]          cache_k_l12 (  64K) [  CPU         ]"
+    },
+    {
+      "index": 490,
+      "op": "SET_ROWS",
+      "name": "cache_v_l12",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-12 (reshaped) ( (   0K) [  CPU         ]      attn_inp_v_idxs (   1K) [  CPU         ] cache_v_l12 (reshape (  64K) [  CPU         ]"
+    },
+    {
+      "index": 497,
+      "op": "MUL_MAT",
+      "name": "kq-12",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_k_l12 (view) ( (  64K) [  CPU         ] Qcur-12 (view) (perm (   3K) [  CPU         ]"
+    },
+    {
+      "index": 498,
+      "op": "SOFT_MAX",
+      "name": "kq_soft_max-12",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kq-12 (  14K) [  CPU         ]     attn_inp_kq_mask (   1K) [  CPU         ]"
+    },
+    {
+      "index": 499,
+      "op": "MUL_MAT",
+      "name": "kqv-12",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_v_l12 (view) ( (  64K) [  CPU         ]       kq_soft_max-12 (  14K) [  CPU         ]"
+    },
+    {
+      "index": 501,
+      "op": "CONT",
+      "name": "kqv_out-12",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kqv-12 (permuted) (   3K) [  CPU         ]"
+    },
+    {
+      "index": 502,
+      "op": "MUL_MAT",
+      "name": "node_502",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.12.attn_output.w ( 539K) [  CPU         ]           kqv_out-12 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 503,
+      "op": "ADD",
+      "name": "ffn_inp-12",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "node_502 (   3K) [  CPU         ]             l_out-11 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 504,
+      "op": "RMS_NORM",
+      "name": "norm-12",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_inp-12 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 505,
+      "op": "MUL",
+      "name": "ffn_norm-12",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-12 (   3K) [  CPU         ] blk.12.ffn_norm.weig (   3K) [  CPU         ]"
+    },
+    {
+      "index": 506,
+      "op": "MUL_MAT",
+      "name": "ffn_gate-12",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.12.ffn_gate.weig (   2M) [  CPU         ]          ffn_norm-12 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 507,
+      "op": "MUL_MAT",
+      "name": "ffn_up-12",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.12.ffn_up.weight (   2M) [  CPU         ]          ffn_norm-12 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 508,
+      "op": "SWIGLU",
+      "name": "ffn_swiglu-12",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_gate-12 (  19K) [  CPU         ]            ffn_up-12 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 509,
+      "op": "MUL_MAT",
+      "name": "ffn_out-12",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.12.ffn_down.weig (   2M) [  CPU         ]        ffn_swiglu-12 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 510,
+      "op": "ADD",
+      "name": "l_out-12",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_out-12 (   3K) [  CPU         ]           ffn_inp-12 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 511,
+      "op": "RMS_NORM",
+      "name": "norm-13",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "l_out-12 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 512,
+      "op": "MUL",
+      "name": "attn_norm-13",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-13 (   3K) [  CPU         ] blk.13.attn_norm.wei (   3K) [  CPU         ]"
+    },
+    {
+      "index": 513,
+      "op": "MUL_MAT",
+      "name": "Qcur-13",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.13.attn_q.weight ( 539K) [  CPU         ]         attn_norm-13 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 514,
+      "op": "ADD",
+      "name": "Qcur-13",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-13 (   3K) [  CPU         ]   blk.13.attn_q.bias (   3K) [  CPU         ]"
+    },
+    {
+      "index": 516,
+      "op": "ROPE",
+      "name": "Qcur-13",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-13 (   3K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 517,
+      "op": "MUL_MAT",
+      "name": "Vcur-13",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.13.attn_v.weight ( 119K) [  CPU         ]         attn_norm-13 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 518,
+      "op": "ADD",
+      "name": "Vcur-13",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-13 (   0K) [  CPU         ]   blk.13.attn_v.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 520,
+      "op": "MUL_MAT",
+      "name": "Kcur-13",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.13.attn_k.weight (  77K) [  CPU         ]         attn_norm-13 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 521,
+      "op": "ADD",
+      "name": "Kcur-13",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-13 (   0K) [  CPU         ]   blk.13.attn_k.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 523,
+      "op": "ROPE",
+      "name": "Kcur-13",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-13 (   0K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 525,
+      "op": "SET_ROWS",
+      "name": "cache_k_l13 (view)",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-13 (view) (   0K) [  CPU         ]      attn_inp_k_idxs (   0K) [  CPU         ]          cache_k_l13 (  64K) [  CPU         ]"
+    },
+    {
+      "index": 529,
+      "op": "SET_ROWS",
+      "name": "cache_v_l13",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-13 (reshaped) ( (   0K) [  CPU         ]      attn_inp_v_idxs (   1K) [  CPU         ] cache_v_l13 (reshape (  64K) [  CPU         ]"
+    },
+    {
+      "index": 536,
+      "op": "MUL_MAT",
+      "name": "kq-13",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_k_l13 (view) ( (  64K) [  CPU         ] Qcur-13 (view) (perm (   3K) [  CPU         ]"
+    },
+    {
+      "index": 537,
+      "op": "SOFT_MAX",
+      "name": "kq_soft_max-13",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kq-13 (  14K) [  CPU         ]     attn_inp_kq_mask (   1K) [  CPU         ]"
+    },
+    {
+      "index": 538,
+      "op": "MUL_MAT",
+      "name": "kqv-13",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_v_l13 (view) ( (  64K) [  CPU         ]       kq_soft_max-13 (  14K) [  CPU         ]"
+    },
+    {
+      "index": 540,
+      "op": "CONT",
+      "name": "kqv_out-13",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kqv-13 (permuted) (   3K) [  CPU         ]"
+    },
+    {
+      "index": 541,
+      "op": "MUL_MAT",
+      "name": "node_541",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.13.attn_output.w ( 539K) [  CPU         ]           kqv_out-13 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 542,
+      "op": "ADD",
+      "name": "ffn_inp-13",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "node_541 (   3K) [  CPU         ]             l_out-12 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 543,
+      "op": "RMS_NORM",
+      "name": "norm-13",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_inp-13 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 544,
+      "op": "MUL",
+      "name": "ffn_norm-13",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-13 (   3K) [  CPU         ] blk.13.ffn_norm.weig (   3K) [  CPU         ]"
+    },
+    {
+      "index": 545,
+      "op": "MUL_MAT",
+      "name": "ffn_gate-13",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.13.ffn_gate.weig (   2M) [  CPU         ]          ffn_norm-13 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 546,
+      "op": "MUL_MAT",
+      "name": "ffn_up-13",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.13.ffn_up.weight (   2M) [  CPU         ]          ffn_norm-13 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 547,
+      "op": "SWIGLU",
+      "name": "ffn_swiglu-13",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_gate-13 (  19K) [  CPU         ]            ffn_up-13 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 548,
+      "op": "MUL_MAT",
+      "name": "ffn_out-13",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.13.ffn_down.weig (   3M) [  CPU         ]        ffn_swiglu-13 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 549,
+      "op": "ADD",
+      "name": "l_out-13",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_out-13 (   3K) [  CPU         ]           ffn_inp-13 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 550,
+      "op": "RMS_NORM",
+      "name": "norm-14",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "l_out-13 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 551,
+      "op": "MUL",
+      "name": "attn_norm-14",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-14 (   3K) [  CPU         ] blk.14.attn_norm.wei (   3K) [  CPU         ]"
+    },
+    {
+      "index": 552,
+      "op": "MUL_MAT",
+      "name": "Qcur-14",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.14.attn_q.weight ( 539K) [  CPU         ]         attn_norm-14 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 553,
+      "op": "ADD",
+      "name": "Qcur-14",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-14 (   3K) [  CPU         ]   blk.14.attn_q.bias (   3K) [  CPU         ]"
+    },
+    {
+      "index": 555,
+      "op": "ROPE",
+      "name": "Qcur-14",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-14 (   3K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 556,
+      "op": "MUL_MAT",
+      "name": "Vcur-14",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.14.attn_v.weight (  77K) [  CPU         ]         attn_norm-14 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 557,
+      "op": "ADD",
+      "name": "Vcur-14",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-14 (   0K) [  CPU         ]   blk.14.attn_v.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 559,
+      "op": "MUL_MAT",
+      "name": "Kcur-14",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.14.attn_k.weight (  77K) [  CPU         ]         attn_norm-14 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 560,
+      "op": "ADD",
+      "name": "Kcur-14",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-14 (   0K) [  CPU         ]   blk.14.attn_k.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 562,
+      "op": "ROPE",
+      "name": "Kcur-14",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-14 (   0K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 564,
+      "op": "SET_ROWS",
+      "name": "cache_k_l14 (view)",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-14 (view) (   0K) [  CPU         ]      attn_inp_k_idxs (   0K) [  CPU         ]          cache_k_l14 (  64K) [  CPU         ]"
+    },
+    {
+      "index": 568,
+      "op": "SET_ROWS",
+      "name": "cache_v_l14",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-14 (reshaped) ( (   0K) [  CPU         ]      attn_inp_v_idxs (   1K) [  CPU         ] cache_v_l14 (reshape (  64K) [  CPU         ]"
+    },
+    {
+      "index": 575,
+      "op": "MUL_MAT",
+      "name": "kq-14",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_k_l14 (view) ( (  64K) [  CPU         ] Qcur-14 (view) (perm (   3K) [  CPU         ]"
+    },
+    {
+      "index": 576,
+      "op": "SOFT_MAX",
+      "name": "kq_soft_max-14",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kq-14 (  14K) [  CPU         ]     attn_inp_kq_mask (   1K) [  CPU         ]"
+    },
+    {
+      "index": 577,
+      "op": "MUL_MAT",
+      "name": "kqv-14",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_v_l14 (view) ( (  64K) [  CPU         ]       kq_soft_max-14 (  14K) [  CPU         ]"
+    },
+    {
+      "index": 579,
+      "op": "CONT",
+      "name": "kqv_out-14",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kqv-14 (permuted) (   3K) [  CPU         ]"
+    },
+    {
+      "index": 580,
+      "op": "MUL_MAT",
+      "name": "node_580",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.14.attn_output.w ( 539K) [  CPU         ]           kqv_out-14 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 581,
+      "op": "ADD",
+      "name": "ffn_inp-14",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "node_580 (   3K) [  CPU         ]             l_out-13 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 582,
+      "op": "RMS_NORM",
+      "name": "norm-14",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_inp-14 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 583,
+      "op": "MUL",
+      "name": "ffn_norm-14",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-14 (   3K) [  CPU         ] blk.14.ffn_norm.weig (   3K) [  CPU         ]"
+    },
+    {
+      "index": 584,
+      "op": "MUL_MAT",
+      "name": "ffn_gate-14",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.14.ffn_gate.weig (   2M) [  CPU         ]          ffn_norm-14 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 585,
+      "op": "MUL_MAT",
+      "name": "ffn_up-14",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.14.ffn_up.weight (   2M) [  CPU         ]          ffn_norm-14 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 586,
+      "op": "SWIGLU",
+      "name": "ffn_swiglu-14",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_gate-14 (  19K) [  CPU         ]            ffn_up-14 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 587,
+      "op": "MUL_MAT",
+      "name": "ffn_out-14",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.14.ffn_down.weig (   2M) [  CPU         ]        ffn_swiglu-14 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 588,
+      "op": "ADD",
+      "name": "l_out-14",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_out-14 (   3K) [  CPU         ]           ffn_inp-14 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 589,
+      "op": "RMS_NORM",
+      "name": "norm-15",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "l_out-14 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 590,
+      "op": "MUL",
+      "name": "attn_norm-15",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-15 (   3K) [  CPU         ] blk.15.attn_norm.wei (   3K) [  CPU         ]"
+    },
+    {
+      "index": 591,
+      "op": "MUL_MAT",
+      "name": "Qcur-15",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.15.attn_q.weight ( 539K) [  CPU         ]         attn_norm-15 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 592,
+      "op": "ADD",
+      "name": "Qcur-15",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-15 (   3K) [  CPU         ]   blk.15.attn_q.bias (   3K) [  CPU         ]"
+    },
+    {
+      "index": 594,
+      "op": "ROPE",
+      "name": "Qcur-15",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-15 (   3K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 595,
+      "op": "MUL_MAT",
+      "name": "Vcur-15",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.15.attn_v.weight (  77K) [  CPU         ]         attn_norm-15 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 596,
+      "op": "ADD",
+      "name": "Vcur-15",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-15 (   0K) [  CPU         ]   blk.15.attn_v.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 598,
+      "op": "MUL_MAT",
+      "name": "Kcur-15",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.15.attn_k.weight (  77K) [  CPU         ]         attn_norm-15 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 599,
+      "op": "ADD",
+      "name": "Kcur-15",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-15 (   0K) [  CPU         ]   blk.15.attn_k.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 601,
+      "op": "ROPE",
+      "name": "Kcur-15",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-15 (   0K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 603,
+      "op": "SET_ROWS",
+      "name": "cache_k_l15 (view)",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-15 (view) (   0K) [  CPU         ]      attn_inp_k_idxs (   0K) [  CPU         ]          cache_k_l15 (  64K) [  CPU         ]"
+    },
+    {
+      "index": 607,
+      "op": "SET_ROWS",
+      "name": "cache_v_l15",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-15 (reshaped) ( (   0K) [  CPU         ]      attn_inp_v_idxs (   1K) [  CPU         ] cache_v_l15 (reshape (  64K) [  CPU         ]"
+    },
+    {
+      "index": 614,
+      "op": "MUL_MAT",
+      "name": "kq-15",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_k_l15 (view) ( (  64K) [  CPU         ] Qcur-15 (view) (perm (   3K) [  CPU         ]"
+    },
+    {
+      "index": 615,
+      "op": "SOFT_MAX",
+      "name": "kq_soft_max-15",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kq-15 (  14K) [  CPU         ]     attn_inp_kq_mask (   1K) [  CPU         ]"
+    },
+    {
+      "index": 616,
+      "op": "MUL_MAT",
+      "name": "kqv-15",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_v_l15 (view) ( (  64K) [  CPU         ]       kq_soft_max-15 (  14K) [  CPU         ]"
+    },
+    {
+      "index": 618,
+      "op": "CONT",
+      "name": "kqv_out-15",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kqv-15 (permuted) (   3K) [  CPU         ]"
+    },
+    {
+      "index": 619,
+      "op": "MUL_MAT",
+      "name": "node_619",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.15.attn_output.w ( 539K) [  CPU         ]           kqv_out-15 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 620,
+      "op": "ADD",
+      "name": "ffn_inp-15",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "node_619 (   3K) [  CPU         ]             l_out-14 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 621,
+      "op": "RMS_NORM",
+      "name": "norm-15",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_inp-15 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 622,
+      "op": "MUL",
+      "name": "ffn_norm-15",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-15 (   3K) [  CPU         ] blk.15.ffn_norm.weig (   3K) [  CPU         ]"
+    },
+    {
+      "index": 623,
+      "op": "MUL_MAT",
+      "name": "ffn_gate-15",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.15.ffn_gate.weig (   2M) [  CPU         ]          ffn_norm-15 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 624,
+      "op": "MUL_MAT",
+      "name": "ffn_up-15",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.15.ffn_up.weight (   2M) [  CPU         ]          ffn_norm-15 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 625,
+      "op": "SWIGLU",
+      "name": "ffn_swiglu-15",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_gate-15 (  19K) [  CPU         ]            ffn_up-15 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 626,
+      "op": "MUL_MAT",
+      "name": "ffn_out-15",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.15.ffn_down.weig (   2M) [  CPU         ]        ffn_swiglu-15 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 627,
+      "op": "ADD",
+      "name": "l_out-15",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_out-15 (   3K) [  CPU         ]           ffn_inp-15 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 628,
+      "op": "RMS_NORM",
+      "name": "norm-16",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "l_out-15 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 629,
+      "op": "MUL",
+      "name": "attn_norm-16",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-16 (   3K) [  CPU         ] blk.16.attn_norm.wei (   3K) [  CPU         ]"
+    },
+    {
+      "index": 630,
+      "op": "MUL_MAT",
+      "name": "Qcur-16",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.16.attn_q.weight ( 539K) [  CPU         ]         attn_norm-16 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 631,
+      "op": "ADD",
+      "name": "Qcur-16",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-16 (   3K) [  CPU         ]   blk.16.attn_q.bias (   3K) [  CPU         ]"
+    },
+    {
+      "index": 633,
+      "op": "ROPE",
+      "name": "Qcur-16",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-16 (   3K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 634,
+      "op": "MUL_MAT",
+      "name": "Vcur-16",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.16.attn_v.weight ( 119K) [  CPU         ]         attn_norm-16 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 635,
+      "op": "ADD",
+      "name": "Vcur-16",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-16 (   0K) [  CPU         ]   blk.16.attn_v.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 637,
+      "op": "MUL_MAT",
+      "name": "Kcur-16",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.16.attn_k.weight (  77K) [  CPU         ]         attn_norm-16 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 638,
+      "op": "ADD",
+      "name": "Kcur-16",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-16 (   0K) [  CPU         ]   blk.16.attn_k.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 640,
+      "op": "ROPE",
+      "name": "Kcur-16",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-16 (   0K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 642,
+      "op": "SET_ROWS",
+      "name": "cache_k_l16 (view)",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-16 (view) (   0K) [  CPU         ]      attn_inp_k_idxs (   0K) [  CPU         ]          cache_k_l16 (  64K) [  CPU         ]"
+    },
+    {
+      "index": 646,
+      "op": "SET_ROWS",
+      "name": "cache_v_l16",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-16 (reshaped) ( (   0K) [  CPU         ]      attn_inp_v_idxs (   1K) [  CPU         ] cache_v_l16 (reshape (  64K) [  CPU         ]"
+    },
+    {
+      "index": 653,
+      "op": "MUL_MAT",
+      "name": "kq-16",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_k_l16 (view) ( (  64K) [  CPU         ] Qcur-16 (view) (perm (   3K) [  CPU         ]"
+    },
+    {
+      "index": 654,
+      "op": "SOFT_MAX",
+      "name": "kq_soft_max-16",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kq-16 (  14K) [  CPU         ]     attn_inp_kq_mask (   1K) [  CPU         ]"
+    },
+    {
+      "index": 655,
+      "op": "MUL_MAT",
+      "name": "kqv-16",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_v_l16 (view) ( (  64K) [  CPU         ]       kq_soft_max-16 (  14K) [  CPU         ]"
+    },
+    {
+      "index": 657,
+      "op": "CONT",
+      "name": "kqv_out-16",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kqv-16 (permuted) (   3K) [  CPU         ]"
+    },
+    {
+      "index": 658,
+      "op": "MUL_MAT",
+      "name": "node_658",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.16.attn_output.w ( 539K) [  CPU         ]           kqv_out-16 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 659,
+      "op": "ADD",
+      "name": "ffn_inp-16",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "node_658 (   3K) [  CPU         ]             l_out-15 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 660,
+      "op": "RMS_NORM",
+      "name": "norm-16",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_inp-16 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 661,
+      "op": "MUL",
+      "name": "ffn_norm-16",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-16 (   3K) [  CPU         ] blk.16.ffn_norm.weig (   3K) [  CPU         ]"
+    },
+    {
+      "index": 662,
+      "op": "MUL_MAT",
+      "name": "ffn_gate-16",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.16.ffn_gate.weig (   2M) [  CPU         ]          ffn_norm-16 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 663,
+      "op": "MUL_MAT",
+      "name": "ffn_up-16",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.16.ffn_up.weight (   2M) [  CPU         ]          ffn_norm-16 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 664,
+      "op": "SWIGLU",
+      "name": "ffn_swiglu-16",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_gate-16 (  19K) [  CPU         ]            ffn_up-16 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 665,
+      "op": "MUL_MAT",
+      "name": "ffn_out-16",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.16.ffn_down.weig (   3M) [  CPU         ]        ffn_swiglu-16 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 666,
+      "op": "ADD",
+      "name": "l_out-16",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_out-16 (   3K) [  CPU         ]           ffn_inp-16 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 667,
+      "op": "RMS_NORM",
+      "name": "norm-17",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "l_out-16 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 668,
+      "op": "MUL",
+      "name": "attn_norm-17",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-17 (   3K) [  CPU         ] blk.17.attn_norm.wei (   3K) [  CPU         ]"
+    },
+    {
+      "index": 669,
+      "op": "MUL_MAT",
+      "name": "Qcur-17",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.17.attn_q.weight ( 539K) [  CPU         ]         attn_norm-17 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 670,
+      "op": "ADD",
+      "name": "Qcur-17",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-17 (   3K) [  CPU         ]   blk.17.attn_q.bias (   3K) [  CPU         ]"
+    },
+    {
+      "index": 672,
+      "op": "ROPE",
+      "name": "Qcur-17",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-17 (   3K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 673,
+      "op": "MUL_MAT",
+      "name": "Vcur-17",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.17.attn_v.weight (  77K) [  CPU         ]         attn_norm-17 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 674,
+      "op": "ADD",
+      "name": "Vcur-17",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-17 (   0K) [  CPU         ]   blk.17.attn_v.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 676,
+      "op": "MUL_MAT",
+      "name": "Kcur-17",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.17.attn_k.weight (  77K) [  CPU         ]         attn_norm-17 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 677,
+      "op": "ADD",
+      "name": "Kcur-17",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-17 (   0K) [  CPU         ]   blk.17.attn_k.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 679,
+      "op": "ROPE",
+      "name": "Kcur-17",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-17 (   0K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 681,
+      "op": "SET_ROWS",
+      "name": "cache_k_l17 (view)",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-17 (view) (   0K) [  CPU         ]      attn_inp_k_idxs (   0K) [  CPU         ]          cache_k_l17 (  64K) [  CPU         ]"
+    },
+    {
+      "index": 685,
+      "op": "SET_ROWS",
+      "name": "cache_v_l17",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-17 (reshaped) ( (   0K) [  CPU         ]      attn_inp_v_idxs (   1K) [  CPU         ] cache_v_l17 (reshape (  64K) [  CPU         ]"
+    },
+    {
+      "index": 692,
+      "op": "MUL_MAT",
+      "name": "kq-17",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_k_l17 (view) ( (  64K) [  CPU         ] Qcur-17 (view) (perm (   3K) [  CPU         ]"
+    },
+    {
+      "index": 693,
+      "op": "SOFT_MAX",
+      "name": "kq_soft_max-17",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kq-17 (  14K) [  CPU         ]     attn_inp_kq_mask (   1K) [  CPU         ]"
+    },
+    {
+      "index": 694,
+      "op": "MUL_MAT",
+      "name": "kqv-17",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_v_l17 (view) ( (  64K) [  CPU         ]       kq_soft_max-17 (  14K) [  CPU         ]"
+    },
+    {
+      "index": 696,
+      "op": "CONT",
+      "name": "kqv_out-17",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kqv-17 (permuted) (   3K) [  CPU         ]"
+    },
+    {
+      "index": 697,
+      "op": "MUL_MAT",
+      "name": "node_697",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.17.attn_output.w ( 539K) [  CPU         ]           kqv_out-17 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 698,
+      "op": "ADD",
+      "name": "ffn_inp-17",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "node_697 (   3K) [  CPU         ]             l_out-16 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 699,
+      "op": "RMS_NORM",
+      "name": "norm-17",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_inp-17 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 700,
+      "op": "MUL",
+      "name": "ffn_norm-17",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-17 (   3K) [  CPU         ] blk.17.ffn_norm.weig (   3K) [  CPU         ]"
+    },
+    {
+      "index": 701,
+      "op": "MUL_MAT",
+      "name": "ffn_gate-17",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.17.ffn_gate.weig (   2M) [  CPU         ]          ffn_norm-17 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 702,
+      "op": "MUL_MAT",
+      "name": "ffn_up-17",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.17.ffn_up.weight (   2M) [  CPU         ]          ffn_norm-17 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 703,
+      "op": "SWIGLU",
+      "name": "ffn_swiglu-17",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_gate-17 (  19K) [  CPU         ]            ffn_up-17 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 704,
+      "op": "MUL_MAT",
+      "name": "ffn_out-17",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.17.ffn_down.weig (   2M) [  CPU         ]        ffn_swiglu-17 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 705,
+      "op": "ADD",
+      "name": "l_out-17",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_out-17 (   3K) [  CPU         ]           ffn_inp-17 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 706,
+      "op": "RMS_NORM",
+      "name": "norm-18",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "l_out-17 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 707,
+      "op": "MUL",
+      "name": "attn_norm-18",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-18 (   3K) [  CPU         ] blk.18.attn_norm.wei (   3K) [  CPU         ]"
+    },
+    {
+      "index": 708,
+      "op": "MUL_MAT",
+      "name": "Qcur-18",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.18.attn_q.weight ( 539K) [  CPU         ]         attn_norm-18 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 709,
+      "op": "ADD",
+      "name": "Qcur-18",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-18 (   3K) [  CPU         ]   blk.18.attn_q.bias (   3K) [  CPU         ]"
+    },
+    {
+      "index": 711,
+      "op": "ROPE",
+      "name": "Qcur-18",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-18 (   3K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 712,
+      "op": "MUL_MAT",
+      "name": "Vcur-18",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.18.attn_v.weight (  77K) [  CPU         ]         attn_norm-18 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 713,
+      "op": "ADD",
+      "name": "Vcur-18",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-18 (   0K) [  CPU         ]   blk.18.attn_v.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 715,
+      "op": "MUL_MAT",
+      "name": "Kcur-18",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.18.attn_k.weight (  77K) [  CPU         ]         attn_norm-18 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 716,
+      "op": "ADD",
+      "name": "Kcur-18",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-18 (   0K) [  CPU         ]   blk.18.attn_k.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 718,
+      "op": "ROPE",
+      "name": "Kcur-18",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-18 (   0K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 720,
+      "op": "SET_ROWS",
+      "name": "cache_k_l18 (view)",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-18 (view) (   0K) [  CPU         ]      attn_inp_k_idxs (   0K) [  CPU         ]          cache_k_l18 (  64K) [  CPU         ]"
+    },
+    {
+      "index": 724,
+      "op": "SET_ROWS",
+      "name": "cache_v_l18",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-18 (reshaped) ( (   0K) [  CPU         ]      attn_inp_v_idxs (   1K) [  CPU         ] cache_v_l18 (reshape (  64K) [  CPU         ]"
+    },
+    {
+      "index": 731,
+      "op": "MUL_MAT",
+      "name": "kq-18",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_k_l18 (view) ( (  64K) [  CPU         ] Qcur-18 (view) (perm (   3K) [  CPU         ]"
+    },
+    {
+      "index": 732,
+      "op": "SOFT_MAX",
+      "name": "kq_soft_max-18",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kq-18 (  14K) [  CPU         ]     attn_inp_kq_mask (   1K) [  CPU         ]"
+    },
+    {
+      "index": 733,
+      "op": "MUL_MAT",
+      "name": "kqv-18",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_v_l18 (view) ( (  64K) [  CPU         ]       kq_soft_max-18 (  14K) [  CPU         ]"
+    },
+    {
+      "index": 735,
+      "op": "CONT",
+      "name": "kqv_out-18",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kqv-18 (permuted) (   3K) [  CPU         ]"
+    },
+    {
+      "index": 736,
+      "op": "MUL_MAT",
+      "name": "node_736",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.18.attn_output.w ( 539K) [  CPU         ]           kqv_out-18 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 737,
+      "op": "ADD",
+      "name": "ffn_inp-18",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "node_736 (   3K) [  CPU         ]             l_out-17 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 738,
+      "op": "RMS_NORM",
+      "name": "norm-18",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_inp-18 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 739,
+      "op": "MUL",
+      "name": "ffn_norm-18",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-18 (   3K) [  CPU         ] blk.18.ffn_norm.weig (   3K) [  CPU         ]"
+    },
+    {
+      "index": 740,
+      "op": "MUL_MAT",
+      "name": "ffn_gate-18",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.18.ffn_gate.weig (   2M) [  CPU         ]          ffn_norm-18 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 741,
+      "op": "MUL_MAT",
+      "name": "ffn_up-18",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.18.ffn_up.weight (   2M) [  CPU         ]          ffn_norm-18 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 742,
+      "op": "SWIGLU",
+      "name": "ffn_swiglu-18",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_gate-18 (  19K) [  CPU         ]            ffn_up-18 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 743,
+      "op": "MUL_MAT",
+      "name": "ffn_out-18",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.18.ffn_down.weig (   2M) [  CPU         ]        ffn_swiglu-18 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 744,
+      "op": "ADD",
+      "name": "l_out-18",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_out-18 (   3K) [  CPU         ]           ffn_inp-18 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 745,
+      "op": "RMS_NORM",
+      "name": "norm-19",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "l_out-18 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 746,
+      "op": "MUL",
+      "name": "attn_norm-19",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-19 (   3K) [  CPU         ] blk.19.attn_norm.wei (   3K) [  CPU         ]"
+    },
+    {
+      "index": 747,
+      "op": "MUL_MAT",
+      "name": "Qcur-19",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.19.attn_q.weight ( 539K) [  CPU         ]         attn_norm-19 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 748,
+      "op": "ADD",
+      "name": "Qcur-19",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-19 (   3K) [  CPU         ]   blk.19.attn_q.bias (   3K) [  CPU         ]"
+    },
+    {
+      "index": 750,
+      "op": "ROPE",
+      "name": "Qcur-19",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-19 (   3K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 751,
+      "op": "MUL_MAT",
+      "name": "Vcur-19",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.19.attn_v.weight ( 119K) [  CPU         ]         attn_norm-19 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 752,
+      "op": "ADD",
+      "name": "Vcur-19",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-19 (   0K) [  CPU         ]   blk.19.attn_v.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 754,
+      "op": "MUL_MAT",
+      "name": "Kcur-19",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.19.attn_k.weight (  77K) [  CPU         ]         attn_norm-19 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 755,
+      "op": "ADD",
+      "name": "Kcur-19",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-19 (   0K) [  CPU         ]   blk.19.attn_k.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 757,
+      "op": "ROPE",
+      "name": "Kcur-19",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-19 (   0K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 759,
+      "op": "SET_ROWS",
+      "name": "cache_k_l19 (view)",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-19 (view) (   0K) [  CPU         ]      attn_inp_k_idxs (   0K) [  CPU         ]          cache_k_l19 (  64K) [  CPU         ]"
+    },
+    {
+      "index": 763,
+      "op": "SET_ROWS",
+      "name": "cache_v_l19",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-19 (reshaped) ( (   0K) [  CPU         ]      attn_inp_v_idxs (   1K) [  CPU         ] cache_v_l19 (reshape (  64K) [  CPU         ]"
+    },
+    {
+      "index": 770,
+      "op": "MUL_MAT",
+      "name": "kq-19",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_k_l19 (view) ( (  64K) [  CPU         ] Qcur-19 (view) (perm (   3K) [  CPU         ]"
+    },
+    {
+      "index": 771,
+      "op": "SOFT_MAX",
+      "name": "kq_soft_max-19",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kq-19 (  14K) [  CPU         ]     attn_inp_kq_mask (   1K) [  CPU         ]"
+    },
+    {
+      "index": 772,
+      "op": "MUL_MAT",
+      "name": "kqv-19",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_v_l19 (view) ( (  64K) [  CPU         ]       kq_soft_max-19 (  14K) [  CPU         ]"
+    },
+    {
+      "index": 774,
+      "op": "CONT",
+      "name": "kqv_out-19",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kqv-19 (permuted) (   3K) [  CPU         ]"
+    },
+    {
+      "index": 775,
+      "op": "MUL_MAT",
+      "name": "node_775",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.19.attn_output.w ( 539K) [  CPU         ]           kqv_out-19 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 776,
+      "op": "ADD",
+      "name": "ffn_inp-19",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "node_775 (   3K) [  CPU         ]             l_out-18 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 777,
+      "op": "RMS_NORM",
+      "name": "norm-19",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_inp-19 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 778,
+      "op": "MUL",
+      "name": "ffn_norm-19",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-19 (   3K) [  CPU         ] blk.19.ffn_norm.weig (   3K) [  CPU         ]"
+    },
+    {
+      "index": 779,
+      "op": "MUL_MAT",
+      "name": "ffn_gate-19",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.19.ffn_gate.weig (   2M) [  CPU         ]          ffn_norm-19 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 780,
+      "op": "MUL_MAT",
+      "name": "ffn_up-19",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.19.ffn_up.weight (   2M) [  CPU         ]          ffn_norm-19 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 781,
+      "op": "SWIGLU",
+      "name": "ffn_swiglu-19",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_gate-19 (  19K) [  CPU         ]            ffn_up-19 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 782,
+      "op": "MUL_MAT",
+      "name": "ffn_out-19",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.19.ffn_down.weig (   3M) [  CPU         ]        ffn_swiglu-19 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 783,
+      "op": "ADD",
+      "name": "l_out-19",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_out-19 (   3K) [  CPU         ]           ffn_inp-19 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 784,
+      "op": "RMS_NORM",
+      "name": "norm-20",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "l_out-19 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 785,
+      "op": "MUL",
+      "name": "attn_norm-20",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-20 (   3K) [  CPU         ] blk.20.attn_norm.wei (   3K) [  CPU         ]"
+    },
+    {
+      "index": 786,
+      "op": "MUL_MAT",
+      "name": "Qcur-20",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.20.attn_q.weight ( 539K) [  CPU         ]         attn_norm-20 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 787,
+      "op": "ADD",
+      "name": "Qcur-20",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-20 (   3K) [  CPU         ]   blk.20.attn_q.bias (   3K) [  CPU         ]"
+    },
+    {
+      "index": 789,
+      "op": "ROPE",
+      "name": "Qcur-20",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-20 (   3K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 790,
+      "op": "MUL_MAT",
+      "name": "Vcur-20",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.20.attn_v.weight (  77K) [  CPU         ]         attn_norm-20 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 791,
+      "op": "ADD",
+      "name": "Vcur-20",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-20 (   0K) [  CPU         ]   blk.20.attn_v.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 793,
+      "op": "MUL_MAT",
+      "name": "Kcur-20",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.20.attn_k.weight (  77K) [  CPU         ]         attn_norm-20 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 794,
+      "op": "ADD",
+      "name": "Kcur-20",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-20 (   0K) [  CPU         ]   blk.20.attn_k.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 796,
+      "op": "ROPE",
+      "name": "Kcur-20",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-20 (   0K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 798,
+      "op": "SET_ROWS",
+      "name": "cache_k_l20 (view)",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-20 (view) (   0K) [  CPU         ]      attn_inp_k_idxs (   0K) [  CPU         ]          cache_k_l20 (  64K) [  CPU         ]"
+    },
+    {
+      "index": 802,
+      "op": "SET_ROWS",
+      "name": "cache_v_l20",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-20 (reshaped) ( (   0K) [  CPU         ]      attn_inp_v_idxs (   1K) [  CPU         ] cache_v_l20 (reshape (  64K) [  CPU         ]"
+    },
+    {
+      "index": 809,
+      "op": "MUL_MAT",
+      "name": "kq-20",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_k_l20 (view) ( (  64K) [  CPU         ] Qcur-20 (view) (perm (   3K) [  CPU         ]"
+    },
+    {
+      "index": 810,
+      "op": "SOFT_MAX",
+      "name": "kq_soft_max-20",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kq-20 (  14K) [  CPU         ]     attn_inp_kq_mask (   1K) [  CPU         ]"
+    },
+    {
+      "index": 811,
+      "op": "MUL_MAT",
+      "name": "kqv-20",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_v_l20 (view) ( (  64K) [  CPU         ]       kq_soft_max-20 (  14K) [  CPU         ]"
+    },
+    {
+      "index": 813,
+      "op": "CONT",
+      "name": "kqv_out-20",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kqv-20 (permuted) (   3K) [  CPU         ]"
+    },
+    {
+      "index": 814,
+      "op": "MUL_MAT",
+      "name": "node_814",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.20.attn_output.w ( 539K) [  CPU         ]           kqv_out-20 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 815,
+      "op": "ADD",
+      "name": "ffn_inp-20",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "node_814 (   3K) [  CPU         ]             l_out-19 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 816,
+      "op": "RMS_NORM",
+      "name": "norm-20",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_inp-20 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 817,
+      "op": "MUL",
+      "name": "ffn_norm-20",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-20 (   3K) [  CPU         ] blk.20.ffn_norm.weig (   3K) [  CPU         ]"
+    },
+    {
+      "index": 818,
+      "op": "MUL_MAT",
+      "name": "ffn_gate-20",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.20.ffn_gate.weig (   2M) [  CPU         ]          ffn_norm-20 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 819,
+      "op": "MUL_MAT",
+      "name": "ffn_up-20",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.20.ffn_up.weight (   2M) [  CPU         ]          ffn_norm-20 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 820,
+      "op": "SWIGLU",
+      "name": "ffn_swiglu-20",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_gate-20 (  19K) [  CPU         ]            ffn_up-20 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 821,
+      "op": "MUL_MAT",
+      "name": "ffn_out-20",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.20.ffn_down.weig (   2M) [  CPU         ]        ffn_swiglu-20 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 822,
+      "op": "ADD",
+      "name": "l_out-20",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_out-20 (   3K) [  CPU         ]           ffn_inp-20 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 823,
+      "op": "RMS_NORM",
+      "name": "norm-21",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "l_out-20 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 824,
+      "op": "MUL",
+      "name": "attn_norm-21",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-21 (   3K) [  CPU         ] blk.21.attn_norm.wei (   3K) [  CPU         ]"
+    },
+    {
+      "index": 825,
+      "op": "MUL_MAT",
+      "name": "Qcur-21",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.21.attn_q.weight ( 539K) [  CPU         ]         attn_norm-21 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 826,
+      "op": "ADD",
+      "name": "Qcur-21",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-21 (   3K) [  CPU         ]   blk.21.attn_q.bias (   3K) [  CPU         ]"
+    },
+    {
+      "index": 828,
+      "op": "ROPE",
+      "name": "Qcur-21",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-21 (   3K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 829,
+      "op": "MUL_MAT",
+      "name": "Vcur-21",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.21.attn_v.weight ( 119K) [  CPU         ]         attn_norm-21 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 830,
+      "op": "ADD",
+      "name": "Vcur-21",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-21 (   0K) [  CPU         ]   blk.21.attn_v.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 832,
+      "op": "MUL_MAT",
+      "name": "Kcur-21",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.21.attn_k.weight (  77K) [  CPU         ]         attn_norm-21 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 833,
+      "op": "ADD",
+      "name": "Kcur-21",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-21 (   0K) [  CPU         ]   blk.21.attn_k.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 835,
+      "op": "ROPE",
+      "name": "Kcur-21",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-21 (   0K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 837,
+      "op": "SET_ROWS",
+      "name": "cache_k_l21 (view)",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-21 (view) (   0K) [  CPU         ]      attn_inp_k_idxs (   0K) [  CPU         ]          cache_k_l21 (  64K) [  CPU         ]"
+    },
+    {
+      "index": 841,
+      "op": "SET_ROWS",
+      "name": "cache_v_l21",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-21 (reshaped) ( (   0K) [  CPU         ]      attn_inp_v_idxs (   1K) [  CPU         ] cache_v_l21 (reshape (  64K) [  CPU         ]"
+    },
+    {
+      "index": 848,
+      "op": "MUL_MAT",
+      "name": "kq-21",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_k_l21 (view) ( (  64K) [  CPU         ] Qcur-21 (view) (perm (   3K) [  CPU         ]"
+    },
+    {
+      "index": 849,
+      "op": "SOFT_MAX",
+      "name": "kq_soft_max-21",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kq-21 (  14K) [  CPU         ]     attn_inp_kq_mask (   1K) [  CPU         ]"
+    },
+    {
+      "index": 850,
+      "op": "MUL_MAT",
+      "name": "kqv-21",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_v_l21 (view) ( (  64K) [  CPU         ]       kq_soft_max-21 (  14K) [  CPU         ]"
+    },
+    {
+      "index": 852,
+      "op": "CONT",
+      "name": "kqv_out-21",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kqv-21 (permuted) (   3K) [  CPU         ]"
+    },
+    {
+      "index": 853,
+      "op": "MUL_MAT",
+      "name": "node_853",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.21.attn_output.w ( 539K) [  CPU         ]           kqv_out-21 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 854,
+      "op": "ADD",
+      "name": "ffn_inp-21",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "node_853 (   3K) [  CPU         ]             l_out-20 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 855,
+      "op": "RMS_NORM",
+      "name": "norm-21",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_inp-21 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 856,
+      "op": "MUL",
+      "name": "ffn_norm-21",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-21 (   3K) [  CPU         ] blk.21.ffn_norm.weig (   3K) [  CPU         ]"
+    },
+    {
+      "index": 857,
+      "op": "MUL_MAT",
+      "name": "ffn_gate-21",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.21.ffn_gate.weig (   2M) [  CPU         ]          ffn_norm-21 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 858,
+      "op": "MUL_MAT",
+      "name": "ffn_up-21",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.21.ffn_up.weight (   2M) [  CPU         ]          ffn_norm-21 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 859,
+      "op": "SWIGLU",
+      "name": "ffn_swiglu-21",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_gate-21 (  19K) [  CPU         ]            ffn_up-21 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 860,
+      "op": "MUL_MAT",
+      "name": "ffn_out-21",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.21.ffn_down.weig (   3M) [  CPU         ]        ffn_swiglu-21 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 861,
+      "op": "ADD",
+      "name": "l_out-21",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_out-21 (   3K) [  CPU         ]           ffn_inp-21 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 862,
+      "op": "RMS_NORM",
+      "name": "norm-22",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "l_out-21 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 863,
+      "op": "MUL",
+      "name": "attn_norm-22",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-22 (   3K) [  CPU         ] blk.22.attn_norm.wei (   3K) [  CPU         ]"
+    },
+    {
+      "index": 864,
+      "op": "MUL_MAT",
+      "name": "Qcur-22",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.22.attn_q.weight ( 539K) [  CPU         ]         attn_norm-22 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 865,
+      "op": "ADD",
+      "name": "Qcur-22",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-22 (   3K) [  CPU         ]   blk.22.attn_q.bias (   3K) [  CPU         ]"
+    },
+    {
+      "index": 867,
+      "op": "ROPE",
+      "name": "Qcur-22",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-22 (   3K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 868,
+      "op": "MUL_MAT",
+      "name": "Vcur-22",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.22.attn_v.weight (  77K) [  CPU         ]         attn_norm-22 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 869,
+      "op": "ADD",
+      "name": "Vcur-22",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-22 (   0K) [  CPU         ]   blk.22.attn_v.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 871,
+      "op": "MUL_MAT",
+      "name": "Kcur-22",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.22.attn_k.weight (  77K) [  CPU         ]         attn_norm-22 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 872,
+      "op": "ADD",
+      "name": "Kcur-22",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-22 (   0K) [  CPU         ]   blk.22.attn_k.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 874,
+      "op": "ROPE",
+      "name": "Kcur-22",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-22 (   0K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 876,
+      "op": "SET_ROWS",
+      "name": "cache_k_l22 (view)",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-22 (view) (   0K) [  CPU         ]      attn_inp_k_idxs (   0K) [  CPU         ]          cache_k_l22 (  64K) [  CPU         ]"
+    },
+    {
+      "index": 880,
+      "op": "SET_ROWS",
+      "name": "cache_v_l22",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-22 (reshaped) ( (   0K) [  CPU         ]      attn_inp_v_idxs (   1K) [  CPU         ] cache_v_l22 (reshape (  64K) [  CPU         ]"
+    },
+    {
+      "index": 887,
+      "op": "MUL_MAT",
+      "name": "kq-22",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_k_l22 (view) ( (  64K) [  CPU         ] Qcur-22 (view) (perm (   3K) [  CPU         ]"
+    },
+    {
+      "index": 888,
+      "op": "SOFT_MAX",
+      "name": "kq_soft_max-22",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kq-22 (  14K) [  CPU         ]     attn_inp_kq_mask (   1K) [  CPU         ]"
+    },
+    {
+      "index": 889,
+      "op": "MUL_MAT",
+      "name": "kqv-22",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_v_l22 (view) ( (  64K) [  CPU         ]       kq_soft_max-22 (  14K) [  CPU         ]"
+    },
+    {
+      "index": 891,
+      "op": "CONT",
+      "name": "kqv_out-22",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kqv-22 (permuted) (   3K) [  CPU         ]"
+    },
+    {
+      "index": 892,
+      "op": "MUL_MAT",
+      "name": "node_892",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.22.attn_output.w ( 539K) [  CPU         ]           kqv_out-22 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 893,
+      "op": "ADD",
+      "name": "ffn_inp-22",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "node_892 (   3K) [  CPU         ]             l_out-21 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 894,
+      "op": "RMS_NORM",
+      "name": "norm-22",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_inp-22 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 895,
+      "op": "MUL",
+      "name": "ffn_norm-22",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-22 (   3K) [  CPU         ] blk.22.ffn_norm.weig (   3K) [  CPU         ]"
+    },
+    {
+      "index": 896,
+      "op": "MUL_MAT",
+      "name": "ffn_gate-22",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.22.ffn_gate.weig (   2M) [  CPU         ]          ffn_norm-22 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 897,
+      "op": "MUL_MAT",
+      "name": "ffn_up-22",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.22.ffn_up.weight (   2M) [  CPU         ]          ffn_norm-22 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 898,
+      "op": "SWIGLU",
+      "name": "ffn_swiglu-22",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_gate-22 (  19K) [  CPU         ]            ffn_up-22 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 899,
+      "op": "MUL_MAT",
+      "name": "ffn_out-22",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.22.ffn_down.weig (   2M) [  CPU         ]        ffn_swiglu-22 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 900,
+      "op": "ADD",
+      "name": "l_out-22",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_out-22 (   3K) [  CPU         ]           ffn_inp-22 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 901,
+      "op": "RMS_NORM",
+      "name": "norm-23",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "l_out-22 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 902,
+      "op": "MUL",
+      "name": "attn_norm-23",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-23 (   3K) [  CPU         ] blk.23.attn_norm.wei (   3K) [  CPU         ]"
+    },
+    {
+      "index": 903,
+      "op": "MUL_MAT",
+      "name": "Qcur-23",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.23.attn_q.weight ( 539K) [  CPU         ]         attn_norm-23 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 904,
+      "op": "ADD",
+      "name": "Qcur-23",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-23 (   3K) [  CPU         ]   blk.23.attn_q.bias (   3K) [  CPU         ]"
+    },
+    {
+      "index": 906,
+      "op": "ROPE",
+      "name": "Qcur-23",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Qcur-23 (   3K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 907,
+      "op": "MUL_MAT",
+      "name": "Vcur-23",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.23.attn_v.weight (  77K) [  CPU         ]         attn_norm-23 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 908,
+      "op": "ADD",
+      "name": "Vcur-23",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-23 (   0K) [  CPU         ]   blk.23.attn_v.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 910,
+      "op": "MUL_MAT",
+      "name": "Kcur-23",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.23.attn_k.weight (  77K) [  CPU         ]         attn_norm-23 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 911,
+      "op": "ADD",
+      "name": "Kcur-23",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-23 (   0K) [  CPU         ]   blk.23.attn_k.bias (   0K) [  CPU         ]"
+    },
+    {
+      "index": 913,
+      "op": "ROPE",
+      "name": "Kcur-23",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-23 (   0K) [  CPU         ]              inp_pos (   0K) [  CPU         ]"
+    },
+    {
+      "index": 915,
+      "op": "SET_ROWS",
+      "name": "cache_k_l23 (view)",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Kcur-23 (view) (   0K) [  CPU         ]      attn_inp_k_idxs (   0K) [  CPU         ]          cache_k_l23 (  64K) [  CPU         ]"
+    },
+    {
+      "index": 919,
+      "op": "SET_ROWS",
+      "name": "cache_v_l23",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "Vcur-23 (reshaped) ( (   0K) [  CPU         ]      attn_inp_v_idxs (   1K) [  CPU         ] cache_v_l23 (reshape (  64K) [  CPU         ]"
+    },
+    {
+      "index": 926,
+      "op": "MUL_MAT",
+      "name": "kq-23",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_k_l23 (view) ( (  64K) [  CPU         ] Qcur-23 (view) (perm (   3K) [  CPU         ]"
+    },
+    {
+      "index": 927,
+      "op": "SOFT_MAX",
+      "name": "kq_soft_max-23",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kq-23 (  14K) [  CPU         ]     attn_inp_kq_mask (   1K) [  CPU         ]"
+    },
+    {
+      "index": 928,
+      "op": "MUL_MAT",
+      "name": "kqv-23",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "cache_v_l23 (view) ( (  64K) [  CPU         ]       kq_soft_max-23 (  14K) [  CPU         ]"
+    },
+    {
+      "index": 930,
+      "op": "CONT",
+      "name": "kqv_out-23",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "kqv-23 (permuted) (   3K) [  CPU         ]"
+    },
+    {
+      "index": 931,
+      "op": "MUL_MAT",
+      "name": "node_931",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.23.attn_output.w ( 539K) [  CPU         ]           kqv_out-23 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 932,
+      "op": "GET_ROWS",
+      "name": "node_932",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "node_931 (   3K) [  CPU         ]              out_ids (   0K) [  CPU         ]"
+    },
+    {
+      "index": 933,
+      "op": "GET_ROWS",
+      "name": "node_933",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "l_out-22 (   3K) [  CPU         ]              out_ids (   0K) [  CPU         ]"
+    },
+    {
+      "index": 934,
+      "op": "ADD",
+      "name": "ffn_inp-23",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "node_932 (   3K) [  CPU         ]             node_933 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 935,
+      "op": "RMS_NORM",
+      "name": "norm-23",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_inp-23 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 936,
+      "op": "MUL",
+      "name": "ffn_norm-23",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "norm-23 (   3K) [  CPU         ] blk.23.ffn_norm.weig (   3K) [  CPU         ]"
+    },
+    {
+      "index": 937,
+      "op": "MUL_MAT",
+      "name": "ffn_gate-23",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.23.ffn_gate.weig (   2M) [  CPU         ]          ffn_norm-23 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 938,
+      "op": "MUL_MAT",
+      "name": "ffn_up-23",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.23.ffn_up.weight (   2M) [  CPU         ]          ffn_norm-23 (   3K) [  CPU         ]"
+    },
+    {
+      "index": 939,
+      "op": "SWIGLU",
+      "name": "ffn_swiglu-23",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "ffn_gate-23 (  19K) [  CPU         ]            ffn_up-23 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 940,
+      "op": "MUL_MAT",
+      "name": "ffn_out-23",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "blk.23.ffn_down.weig (   2M) [  CPU         ]        ffn_swiglu-23 (  19K) [  CPU         ]"
+    },
+    {
+      "index": 944,
+      "op": "MUL_MAT",
+      "name": "result_output",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 2,
+      "sources": "output.weight ( 137M) [  CPU         ]    CPU#result_norm#0 (   3K) [ NULL         ]"
+    }
+  ],
+  "output_nodes": [
+    {
+      "index": 944,
+      "op": "MUL_MAT",
+      "name": "result_output",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 2,
+      "sources": "output.weight ( 137M) [  CPU         ]    CPU#result_norm#0 (   3K) [ NULL         ]"
+    }
+  ],
+  "rejected_weights": [
+    {
+      "tensor": "output.weight",
+      "type": "q8_0",
+      "preferred_buffer": "Vulkan0",
+      "selected_buffer": "CPU",
+      "log_line": "done_getting_tensors: tensor 'output.weight' (q8_0) (and 0 others) cannot be used with preferred buffer type Vulkan0, using CPU instead"
+    }
+  ],
+  "sha256": {
+    "scheduler.log": "6f4e1df494fd372990c4f93fda95dd77eeb15dbf957a2de34e44bde660f1fcf0",
+    "scheduler-bench.json": "2608bb75c92c2104234f66b3ff2b0748c104a05b943974d1d2a33878b1750e3a"
+  }
+}

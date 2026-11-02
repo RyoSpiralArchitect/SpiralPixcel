@@ -1,0 +1,55 @@
+{
+  "status": "pass",
+  "seconds": 60.0,
+  "command": [
+    "/bin/sh",
+    "-c",
+    "cp -R /home/droid/.cache/spiralpixcel-large-kit/session-snapshot/. . && python3 experiment.py doctor && cp result/result.json result/doctor.json && python3 inference.py --runtime /home/droid/.local/share/SpiralPixcel/large-study/runtime-completion-wait --model /home/droid/.local/share/spiral-pixel/models/qwen2.5-0.5b-q4_k_m.gguf --gpu-layers 1 --sync-transfers --repetitions 3 --timeout 40"
+  ],
+  "require_unlocked": false,
+  "auto_reboot": false,
+  "before": {
+    "wakefulness": "Dreaming",
+    "powered": true,
+    "stay_on_effective": false,
+    "admin_max_screen_off_ms": 60000,
+    "locked": true,
+    "frame": {
+      "width": 1080,
+      "height": 2410,
+      "bytes": 60543,
+      "sha256": "c1ecac3e4b83f1d57167e0cf3a1f186d17cf6070d5a2f208fe4e95f901f11496",
+      "content_assessed": false
+    },
+    "scope": "ADB and frame-capture responsiveness; not visual correctness or GPU recovery guarantee"
+  },
+  "supervisor_sha256": "81e549c13232825647546b245c733c884963d4c14ab34e961dc4953104363603",
+  "ssh_exit_code": 0,
+  "after": {
+    "wakefulness": "Dreaming",
+    "powered": true,
+    "stay_on_effective": false,
+    "admin_max_screen_off_ms": 60000,
+    "locked": true,
+    "frame": {
+      "width": 1080,
+      "height": 2410,
+      "bytes": 39664,
+      "sha256": "f73515597bc8c8c5e35edd1f04f2b8c51202c61948fac555c0c59344daa2efba",
+      "content_assessed": false
+    },
+    "scope": "ADB and frame-capture responsiveness; not visual correctness or GPU recovery guarantee"
+  },
+  "guest": {
+    "status": "pass",
+    "command": [
+      "/bin/sh",
+      "-c",
+      "cp -R /home/droid/.cache/spiralpixcel-large-kit/session-snapshot/. . && python3 experiment.py doctor && cp result/result.json result/doctor.json && python3 inference.py --runtime /home/droid/.local/share/SpiralPixcel/large-study/runtime-completion-wait --model /home/droid/.local/share/spiral-pixel/models/qwen2.5-0.5b-q4_k_m.gguf --gpu-layers 1 --sync-transfers --repetitions 3 --timeout 40"
+    ],
+    "deadline_seconds": 60.0,
+    "exit_code": 0,
+    "stop_reason": null,
+    "wall_seconds": 18.005
+  }
+}

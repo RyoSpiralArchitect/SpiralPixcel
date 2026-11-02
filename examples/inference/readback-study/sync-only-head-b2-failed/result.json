@@ -1,0 +1,61 @@
+{
+  "experiment": "inference",
+  "status": "fail",
+  "guest_arch": "aarch64",
+  "kernel": "6.12.93-android16-6-g3a7d1771d492-ab16496487-4k",
+  "started_utc": "2026-11-02T18:26:57.871938+00:00",
+  "vulkan": {
+    "device": "unverified"
+  },
+  "runtime": "/home/droid/.local/share/SpiralPixcel/large-study/runtime-output-matched",
+  "model": "/home/droid/.local/share/spiral-pixel/models/qwen2.5-0.5b-q4_k_m.gguf",
+  "profile": "baseline",
+  "command": [
+    "/home/droid/.local/share/SpiralPixcel/large-study/runtime-output-matched/llama-bench",
+    "-m",
+    "/home/droid/.local/share/spiral-pixel/models/qwen2.5-0.5b-q4_k_m.gguf",
+    "-p",
+    "64",
+    "-n",
+    "32",
+    "-b",
+    "16",
+    "-ub",
+    "16",
+    "-t",
+    "4",
+    "-fa",
+    "off",
+    "-ngl",
+    "1",
+    "-dev",
+    "Vulkan0",
+    "-r",
+    "3",
+    "--repack",
+    "1",
+    "--no-warmup",
+    "-o",
+    "json"
+  ],
+  "environment": {
+    "GGML_VK_MEMORY_LOGGER": "1",
+    "GGML_VK_SPLIT_OUTPUT": "1",
+    "GGML_VK_DISABLE_ASYNC": "1",
+    "LD_LIBRARY_PATH": "/home/droid/.local/share/SpiralPixcel/large-study/runtime-output-matched"
+  },
+  "core_library_manifest_verified": true,
+  "runtime_manifest_verified": true,
+  "readback_check": {
+    "status": "pass",
+    "cases": 27,
+    "failed": 0,
+    "transfer_only": true,
+    "max_payload_bytes": 1048576,
+    "host_buffer_requested": "Vulkan host type (allocation may fall back)",
+    "split_output_env": "1",
+    "disable_async_env": true
+  },
+  "error": "Command '['/home/droid/.local/share/SpiralPixcel/large-study/runtime-output-matched/check-mmv', '/home/droid/.local/share/SpiralPixcel/large-study/runtime-output-matched']' returned non-zero exit status 1.",
+  "finished_utc": "2026-11-02T18:27:03.051280+00:00"
+}

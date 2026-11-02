@@ -1,0 +1,23 @@
+--- a/ggml/src/ggml-vulkan/ggml-vulkan-buffers.cpp
++++ b/ggml/src/ggml-vulkan/ggml-vulkan-buffers.cpp
+@@ -613,7 +613,19 @@
+ 
+ void ggml_vk_buffer_write(vk_buffer& dst, size_t offset, const void * src, size_t size) {
+     VK_LOG_DEBUG("ggml_vk_buffer_write(" << size << ")");
+-    ggml_vk_buffer_write_2d(dst, offset, src, size, size, size, 1);
++    const char * split_output = getenv("GGML_VK_SPLIT_OUTPUT");
++    constexpr size_t upload_chunk = 16u * 1024u * 1024u;
++    if (!split_output || strcmp(split_output, "1") != 0 || size <= upload_chunk) {
++        ggml_vk_buffer_write_2d(dst, offset, src, size, size, size, 1);
++        return;
++    }
++    // Keep a large model weight from requiring one equally large coherent host
++    // staging allocation. Each synchronous copy finishes before reusing staging.
++    for (size_t copied = 0; copied < size; copied += upload_chunk) {
++        const size_t count = std::min(upload_chunk, size - copied);
++        ggml_vk_buffer_write_2d(dst, offset + copied,
++            static_cast<const uint8_t *>(src) + copied, count, count, count, 1);
++    }
+ }
+ 
+ bool ggml_vk_buffer_read_2d_async(vk_context subctx, vk_buffer& src, size_t offset, void * dst, size_t spitch, size_t dpitch, size_t width, size_t height, bool sync_staging) {

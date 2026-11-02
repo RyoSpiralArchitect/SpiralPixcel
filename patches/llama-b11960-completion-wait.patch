@@ -1,0 +1,21 @@
+--- a/ggml/src/ggml-vulkan/ggml-vulkan.cpp
++++ b/ggml/src/ggml-vulkan/ggml-vulkan.cpp
+@@ -13616,6 +13616,18 @@
+             ctx->device->compute_queue->handle->submit({}, ctx->fence);
+         }
+         if (!ctx->device->serialize_submissions) {
++            // Opt-in completion wait for the Pixel study. Keep batching graph
++            // operations, but complete the queue before host reads and reuse.
++            const char * wait_idle = getenv("GGML_VK_WAIT_IDLE");
++            if (wait_idle && strcmp(wait_idle, "1") == 0) {
++                auto & handle = *ctx->device->compute_queue->handle;
++                std::unique_lock<std::mutex> device_guard;
++                if (handle.device_submit_mutex) {
++                    device_guard = std::unique_lock<std::mutex>(*handle.device_submit_mutex);
++                }
++                std::lock_guard<vk_queue_handle> queue_guard(handle);
++                handle.queue.waitIdle();
++            }
+             ggml_vk_wait_for_fence(ctx);
+         }
+         ctx->submit_pending = false;

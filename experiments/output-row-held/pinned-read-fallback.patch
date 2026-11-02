@@ -1,0 +1,31 @@
+--- a/ggml/src/ggml-vulkan/ggml-vulkan-buffers.cpp
++++ b/ggml/src/ggml-vulkan/ggml-vulkan-buffers.cpp
+@@ -644,7 +644,11 @@
+         }
+     }
+ 
+-    if (buf != nullptr) {
++    // The split-output experiment routes pinned destinations through the same
++    // explicitly invalidated staging readback as ordinary host destinations.
++    const char * split_output = getenv("GGML_VK_SPLIT_OUTPUT");
++    const bool force_staging_read = split_output && strcmp(split_output, "1") == 0;
++    if (buf != nullptr && !force_staging_read) {
+         // Memory is pinned, use as staging buffer
+         ggml_vk_sync_buffers(nullptr, subctx);
+         subctx->s->buffer->buf.copyBuffer(src->buffer, buf->buffer, slices);
+--- a/ggml/src/ggml-vulkan/ggml-vulkan.cpp
++++ b/ggml/src/ggml-vulkan/ggml-vulkan.cpp
+@@ -13427,7 +13427,12 @@
+     vk_buffer buf = buf_ctx->dev_buffer;
+ 
+     auto src_offset = vk_tensor_offset(tensor) + tensor->view_offs + offset;
+-    bool ret = ggml_vk_buffer_read_2d_async(compute_ctx, buf, src_offset, data, stride_tensor, stride_data, size, n_copies);
++    const char * split_output = getenv("GGML_VK_SPLIT_OUTPUT");
++    const bool force_staging_read = split_output && strcmp(split_output, "1") == 0;
++    bool ret = false;
++    if (!force_staging_read) {
++        ret = ggml_vk_buffer_read_2d_async(compute_ctx, buf, src_offset, data, stride_tensor, stride_data, size, n_copies);
++    }
+ 
+     if (!ret) {
+         const size_t staging_size = size * n_copies;

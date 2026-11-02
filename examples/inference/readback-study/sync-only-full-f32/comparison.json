@@ -1,0 +1,16 @@
+{
+  "status": "fail",
+  "technical_validation_only": true,
+  "prompt_sha256": "3ae35bc99e935fea913bbae40ac007931405b8242c50f63bd06b32aac923a762",
+  "prompt_tokens": 33,
+  "logit_count": 151936,
+  "nmse": 1.3378938693205586,
+  "nmse_limit": 0.005,
+  "max_abs_error": 20.95505404472351,
+  "top1_equal": false,
+  "reference_top1_token": 44,
+  "candidate_top1_token": 311,
+  "batch_tokens": 16,
+  "run_id": "session-20261102T175640Z-a710e924",
+  "reference_batch_tokens": 16
+}

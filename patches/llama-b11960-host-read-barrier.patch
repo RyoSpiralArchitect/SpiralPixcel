@@ -1,0 +1,37 @@
+--- a/ggml/src/ggml-vulkan/ggml-vulkan-buffers.cpp
++++ b/ggml/src/ggml-vulkan/ggml-vulkan-buffers.cpp
+@@ -648,6 +648,10 @@
+         // Memory is pinned, use as staging buffer
+         ggml_vk_sync_buffers(nullptr, subctx);
+         subctx->s->buffer->buf.copyBuffer(src->buffer, buf->buffer, slices);
++        // Make the transfer result visible to host reads after the fence wait.
++        subctx->s->buffer->buf.pipelineBarrier(
++            vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eHost, {},
++            { { vk::AccessFlagBits::eTransferWrite, vk::AccessFlagBits::eHostRead } }, {}, {});
+ 
+         return true;
+     }
+@@ -680,6 +684,10 @@
+ 
+     ggml_vk_sync_buffers(nullptr, subctx);
+     subctx->s->buffer->buf.copyBuffer(src->buffer, staging_buffer->buffer, staging_slices);
++    // Make the transfer result visible to host reads after the fence wait.
++    subctx->s->buffer->buf.pipelineBarrier(
++        vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eHost, {},
++        { { vk::AccessFlagBits::eTransferWrite, vk::AccessFlagBits::eHostRead } }, {}, {});
+ 
+     if (width == dpitch) {
+         deferred_memcpy(dst, staging_buffer->ptr, staging_size, &subctx->out_memcpys);
+--- a/ggml/src/ggml-vulkan/ggml-vulkan.cpp
++++ b/ggml/src/ggml-vulkan/ggml-vulkan.cpp
+@@ -13452,6 +13452,10 @@
+         }
+ 
+         compute_ctx->s->buffer->buf.copyBuffer(buf->buffer, ctx->sync_staging->buffer, slices);
++        // Make the transfer result visible to host reads after the fence wait.
++        compute_ctx->s->buffer->buf.pipelineBarrier(
++            vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eHost, {},
++            { { vk::AccessFlagBits::eTransferWrite, vk::AccessFlagBits::eHostRead } }, {}, {});
+ 
+         if (size == stride_data) {
+             deferred_memcpy(data, ctx->sync_staging->ptr, staging_size, &compute_ctx->out_memcpys);

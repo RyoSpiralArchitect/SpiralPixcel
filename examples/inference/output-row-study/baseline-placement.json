@@ -1,0 +1,61 @@
+{
+  "placement_scope": "last graph placement dump in scheduler.log",
+  "logged_graphs": 7,
+  "final_logged_node_count": 609,
+  "nodes_per_backend": {
+    "CPU": 3,
+    "Vulkan0": 606
+  },
+  "cpu_nodes": [
+    {
+      "index": 0,
+      "op": "GET_ROWS",
+      "name": "embd",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "token_embd.weight (  89M) [  CPU         ]           inp_tokens (   0K) [  CPU         ]"
+    },
+    {
+      "index": 1,
+      "op": "GET_ROWS",
+      "name": "node_1",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "token_embd.weight (  89M) [  CPU         ]     inp_mixed_tokens (   0K) [  CPU         ]"
+    },
+    {
+      "index": 944,
+      "op": "MUL_MAT",
+      "name": "result_output",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 2,
+      "sources": "output.weight ( 137M) [  CPU         ]    CPU#result_norm#0 (   3K) [ NULL         ]"
+    }
+  ],
+  "output_nodes": [
+    {
+      "index": 944,
+      "op": "MUL_MAT",
+      "name": "result_output",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 2,
+      "sources": "output.weight ( 137M) [  CPU         ]    CPU#result_norm#0 (   3K) [ NULL         ]"
+    }
+  ],
+  "rejected_weights": [
+    {
+      "tensor": "output.weight",
+      "type": "q8_0",
+      "preferred_buffer": "Vulkan0",
+      "selected_buffer": "CPU_REPACK",
+      "log_line": "done_getting_tensors: tensor 'output.weight' (q8_0) (and 0 others) cannot be used with preferred buffer type Vulkan0, using CPU_REPACK instead"
+    }
+  ],
+  "diagnostic_only": true,
+  "source_log": "baseline-scheduler.log",
+  "source_sha256": "750e825dbfe1e91330cb0bed730daec0515be6df9fec079f974be81a6b10297c"
+}

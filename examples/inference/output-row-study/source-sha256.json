@@ -1,0 +1,7 @@
+{
+  "ggml/src/ggml-vulkan/ggml-vulkan.cpp": "c4f85d23870665991f3d4376a0030b1f0db69bc6a4255aa6282bb5c04f98aea9",
+  "ggml/src/ggml-vulkan/ggml-vulkan-buffers.cpp": "cb8dd42d8f646996c404553c4260acefcdcb26366b479529cbf01d61c58eac13",
+  "src/llama-model-loader.cpp": "8f681c58ea9fe8e296b790c7e1f434895d604f880acd126275aecb87df9d3f27",
+  "src/models/qwen2.cpp": "9ab4f38fe9d9be36b174419990bbf72aa751f47be7352c0a372e07507407d8b0",
+  "src/llama-vulkan-split.h": "14025e8f1e9f50082319c59241d7dff1f898b09d6186c54cb24a5e56b933da19"
+}
