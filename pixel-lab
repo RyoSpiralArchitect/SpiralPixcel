@@ -199,6 +199,20 @@ def main():
     commands.add_parser("draw", help="draw on the Pixel and compare two GPU replays")
     commands.add_parser("doctor", help="double integers on the Vulkan device and verify every value")
     commands.add_parser("collect", help="recover results from an earlier run").add_argument("run_id")
+    session = commands.add_parser("session", help="optional display setup, recovery and bounded guest jobs")
+    sessions = session.add_subparsers(dest="session_action", required=True)
+    sessions.add_parser("status", help="read effective power and keyguard state")
+    sessions.add_parser("prepare", help="save settings; request AC/USB stay-awake and a 30-minute timeout")
+    sessions.add_parser("restore", help="restore the saved display settings on the same device")
+    screen_check = sessions.add_parser("check", help="check Android frame-capture responsiveness")
+    screen_check.add_argument("--require-unlocked", action="store_true")
+    recovery = sessions.add_parser("recover", help="wake/home; optionally stop Terminal or reboot normally")
+    recovery.add_argument("--stop-vm", action="store_true", help="force-stop Terminal and its VM")
+    recovery.add_argument("--reboot", action="store_true", help="request normal Android reboot")
+    bounded = sessions.add_parser("run", help="run one guest command with a guest-owned deadline")
+    bounded.add_argument("--seconds", type=float, default=20)
+    bounded.add_argument("--require-unlocked", action="store_true")
+    bounded.add_argument("guest_command", nargs=argparse.REMAINDER)
     run = commands.add_parser("run", help="run a field experiment")
     experiments = run.add_subparsers(dest="experiment", required=True)
     diffusion = experiments.add_parser("diffusion", help="compare a 128x128 GPU field against a CPU reference")
@@ -237,6 +251,23 @@ def main():
     elif args.command == "collect":
         if not collect(ssh_command(), args.run_id):
             sys.exit(1)
+    elif args.command == "session":
+        import lab_session
+        device = lab_session.Device()
+        if args.session_action == "run":
+            command = args.guest_command[1:] if args.guest_command[:1] == ["--"] else args.guest_command
+            sys.exit(lab_session.run_bounded(device, ssh_command(), ROOT, command, args.seconds, args.require_unlocked))
+        if args.session_action == "status":
+            result = device.state()
+        elif args.session_action == "prepare":
+            result = lab_session.prepare(device, STATE)
+        elif args.session_action == "restore":
+            result = lab_session.restore(device, STATE)
+        elif args.session_action == "check":
+            result = lab_session.check(device, args.require_unlocked)
+        else:
+            result = lab_session.recover(device, args.stop_vm, args.reboot)
+        print(json.dumps(result, indent=2))
     else:
         execute(ssh_command(), args)
 

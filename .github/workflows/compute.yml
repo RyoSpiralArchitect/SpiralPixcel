@@ -9,6 +9,8 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - run: sudo apt-get update -qq && sudo apt-get install -y glslc libvulkan-dev mesa-vulkan-drivers
       - run: ./pixel-lab --help
+      - name: Display settings and guest deadlines
+        run: python3 tests/test_session.py
       - name: Integer dispatch on Mesa software Vulkan
         working-directory: guest
         run: python3 experiment.py doctor --allow-software

@@ -1,0 +1,57 @@
+{
+  "status": "pass",
+  "seconds": 3.0,
+  "command": [
+    "/usr/bin/python3",
+    "-IS",
+    "-c",
+    "print(\"session smoke\")"
+  ],
+  "require_unlocked": false,
+  "auto_reboot": false,
+  "before": {
+    "wakefulness": "Awake",
+    "powered": true,
+    "stay_on_effective": false,
+    "admin_max_screen_off_ms": 60000,
+    "locked": false,
+    "frame": {
+      "width": 1080,
+      "height": 2410,
+      "bytes": 139631,
+      "sha256": "9d3b84274b0346a0eaf04bdbc4f2f70ca5ebd310be041dbc0e6e396a88c21cc2",
+      "content_assessed": false
+    },
+    "scope": "ADB and frame-capture responsiveness; not visual correctness or GPU recovery guarantee"
+  },
+  "supervisor_sha256": "81e549c13232825647546b245c733c884963d4c14ab34e961dc4953104363603",
+  "ssh_exit_code": 0,
+  "after": {
+    "wakefulness": "Awake",
+    "powered": true,
+    "stay_on_effective": false,
+    "admin_max_screen_off_ms": 60000,
+    "locked": false,
+    "frame": {
+      "width": 1080,
+      "height": 2410,
+      "bytes": 139631,
+      "sha256": "9d3b84274b0346a0eaf04bdbc4f2f70ca5ebd310be041dbc0e6e396a88c21cc2",
+      "content_assessed": false
+    },
+    "scope": "ADB and frame-capture responsiveness; not visual correctness or GPU recovery guarantee"
+  },
+  "guest": {
+    "status": "pass",
+    "command": [
+      "/usr/bin/python3",
+      "-IS",
+      "-c",
+      "print(\"session smoke\")"
+    ],
+    "deadline_seconds": 3.0,
+    "exit_code": 0,
+    "stop_reason": null,
+    "wall_seconds": 0.053
+  }
+}
