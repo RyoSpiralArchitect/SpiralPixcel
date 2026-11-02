@@ -51,9 +51,14 @@ def doctor(software):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("experiment", choices=["doctor"])
+    parser.add_argument("experiment", choices=["doctor", "diffusion"])
     parser.add_argument("--allow-software", action="store_true", help="explicit software Vulkan for CI")
+    parser.add_argument("--steps", type=int, default=96)
+    parser.add_argument("--rate", type=float, default=0.18)
+    parser.add_argument("--decay", type=float, default=0.995)
     args = parser.parse_args()
+    if not (1 <= args.steps <= 1024 and 0 <= args.rate <= 0.25 and 0 <= args.decay <= 1):
+        parser.error("steps: 1..1024, rate: 0..0.25, decay: 0..1")
     if sys.byteorder != "little":
         parser.error("this experiment expects a little-endian host")
     OUT.mkdir(exist_ok=True)
@@ -61,10 +66,14 @@ def main():
     subprocess.run(["c++", "-std=c++17", "-O2", "-Wall", "-Wextra", "-Wno-missing-field-initializers",
                     "compute.cpp", "-lvulkan", "-o", "compute"], check=True)
     subprocess.run(["glslc", "--target-env=vulkan1.0", str(shader), "-o", OUT / "shader.spv"], check=True)
-    result = doctor(args.allow_software)
+    if args.experiment == "doctor":
+        result = doctor(args.allow_software)
+    else:
+        import diffusion
+        result = diffusion.run(OUT, dispatch, args)
     result.update(experiment=args.experiment, guest_arch=platform.machine(), kernel=platform.release(),
                   compiler=version(["c++", "--version"]), glslc=version(["glslc", "--version"]),
-                  sha256={str(p): digest(p) for p in ["compute.cpp", "experiment.py", shader, OUT / "shader.spv", OUT / "input.bin", OUT / "gpu.bin"]})
+                  sha256={str(p): digest(p) for p in ["compute.cpp", *sorted(Path(".").glob("*.py")), shader, OUT / "shader.spv", *sorted(OUT.glob("*.bin")), *sorted(OUT.glob("*.png"))]})
     tmp = OUT / "receipt.tmp"
     tmp.write_text(json.dumps(result, indent=2, allow_nan=False) + "\n")
     tmp.replace(OUT / "result.json")

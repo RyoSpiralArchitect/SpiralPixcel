@@ -12,3 +12,6 @@ jobs:
       - name: Integer dispatch on Mesa software Vulkan
         working-directory: guest
         run: python3 experiment.py doctor --allow-software
+      - name: Diffusion and CPU reference on Mesa software Vulkan
+        working-directory: guest
+        run: python3 experiment.py diffusion --steps 17 --allow-software

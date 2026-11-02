@@ -23,3 +23,25 @@ Macでこのリポジトリを開き、USB接続中に専用鍵を登録する�
 37×7個の32ビット整数をGPUで2倍し、259個すべてを期待値と照合する。GPU名、API、公開拡張、キュー、時間、入力・出力・シェーダーのハッシュを記録する。CPU型Vulkanデバイスでの実行は実機用コマンドでは失敗として扱う。CIは明示的にソフトウェアVulkanを許可する。
 
 各実行の結果はMacのカレントディレクトリの `runs/<ID>/`、ソースと結果の控えはVMの `~/.local/share/SpiralPixcel/runs/<ID>/` に残る。回収だけやり直すには `./pixel-lab collect <ID>`。失敗時は `build-run.log` を見る。
+
+## 2次元拡散で遊ぶ
+
+Macで拡散係数を変え、同じ点刺激がどこまで広がるかを比べる。各回、MacのソースをPixelへ送り、VM内でシェーダーをコンパイルする。GLSLを編集した場合も同じコマンドで試せる。
+
+    ./pixel-lab run diffusion
+    ./pixel-lab run diffusion --rate 0.08
+    ./pixel-lab run diffusion --steps 160 --rate 0.20 --decay 0.998
+
+| 拡散係数 0.08 | 拡散係数 0.18 |
+| --- | --- |
+| ![係数0.08のPixel Vulkan出力](examples/pixel-11-pro/diffusion-008.png) | ![係数0.18のPixel Vulkan出力](examples/pixel-11-pro/diffusion-018.png) |
+
+どちらもPixel 11 Proの標準Debian VM、128×128、中心に強さ1、96ステップ、各ステップの減衰係数0.995。同じ対数色スケールでGPU出力を表示した。拡散を強めると中央のピークは0.00644から0.00284に下がった。
+
+- [整数の実機記録](examples/pixel-11-pro/doctor.json)
+- [拡散係数0.08の実機記録](examples/pixel-11-pro/diffusion-008.json) と [係数0.18の実機記録](examples/pixel-11-pro/diffusion-018.json)
+- [計算シェーダー](guest/shaders/diffusion.comp) と [CPU参照・画像出力](guest/diffusion.py)
+
+拡散係数は0〜0.25、減衰係数は0〜1、ステップ数は1〜1024。端では最寄りのセルを使う。GPUで初期状態から1・中間・最終ステップまで個別に計算し、各時点の全セルを独立のCPU計算と比較する。最大絶対誤差2e-7以内で合格。更新則を変えるときはCPU参照も合わせる。
+
+`field.png` がGPUの最終画像。`input.bin`・`gpu.bin`・`cpu.bin` は行優先・リトルエンディアンのfloat32で、途中の格子にはステップ数が付く。`gpu_ms` は各チェックポイントで初期値から計測したキュー上の区間、`submit_wait_ms` はVMからの投入・完了待ち、`host.json` はアップロードから回収までの時間。GPUのタイムスタンプが使えない場合は `gpu_ms: null` と記録する。
