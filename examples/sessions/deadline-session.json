@@ -1,0 +1,58 @@
+{
+  "status": "fail",
+  "seconds": 0.5,
+  "command": [
+    "/usr/bin/python3",
+    "-IS",
+    "-c",
+    "import time; time.sleep(5)"
+  ],
+  "require_unlocked": false,
+  "auto_reboot": false,
+  "before": {
+    "wakefulness": "Awake",
+    "powered": true,
+    "stay_on_effective": false,
+    "admin_max_screen_off_ms": 60000,
+    "locked": false,
+    "frame": {
+      "width": 1080,
+      "height": 2410,
+      "bytes": 3024605,
+      "sha256": "f9767f0352da763c907e222d4f519d81c962205b2270198f813f59a49f71e4fe",
+      "content_assessed": false
+    },
+    "scope": "ADB and frame-capture responsiveness; not visual correctness or GPU recovery guarantee"
+  },
+  "supervisor_sha256": "81e549c13232825647546b245c733c884963d4c14ab34e961dc4953104363603",
+  "ssh_exit_code": 1,
+  "after": {
+    "wakefulness": "Awake",
+    "powered": true,
+    "stay_on_effective": false,
+    "admin_max_screen_off_ms": 60000,
+    "locked": false,
+    "frame": {
+      "width": 1080,
+      "height": 2410,
+      "bytes": 3145561,
+      "sha256": "dd15fab69b658998d00ac73630b05e422ed03a84da4ea520061f5b25e9c81915",
+      "content_assessed": false
+    },
+    "scope": "ADB and frame-capture responsiveness; not visual correctness or GPU recovery guarantee"
+  },
+  "error": "bounded guest job failed; inspect job.json and stderr.log",
+  "guest": {
+    "status": "fail",
+    "command": [
+      "/usr/bin/python3",
+      "-IS",
+      "-c",
+      "import time; time.sleep(5)"
+    ],
+    "deadline_seconds": 0.5,
+    "exit_code": -15,
+    "stop_reason": "deadline",
+    "wall_seconds": 0.718
+  }
+}
