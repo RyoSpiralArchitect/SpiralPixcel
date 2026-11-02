@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="ja">
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0a101e" /><title>SpiralPixcel</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0a101e;
+      --ink: #f4f5ef;
+      --muted: #9baec2;
+      --aqua: #24ebd2;
+      --edge: #7190b7;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font:
+        16px/1.5 system-ui,
+        sans-serif;
+    }
+    main {
+      width: min(100%, 480px);
+      margin: 0 auto;
+      padding: 16px 18px 36px;
+    }
+    h1 {
+      font:
+        650 30px/1.1 ui-monospace,
+        monospace;
+      letter-spacing: -0.03em;
+      margin: 0;
+    }
+    p {
+      color: var(--muted);
+      margin: 7px 0 16px;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      aspect-ratio: 1;
+      height: auto;
+      touch-action: none;
+      user-select: none;
+      border: 1.5px solid var(--edge);
+      border-radius: 12px;
+      background-color: #0c1527;
+      background-image: radial-gradient(#465d7b 0.7px, transparent 0.9px);
+      background-size: 16px 16px;
+      background-position: 5px 4px;
+    }
+    .meta {
+      display: flex;
+      justify-content: space-between;
+      font:
+        16px/1.4 ui-monospace,
+        monospace;
+      color: var(--muted);
+      margin: 9px 0 18px;
+    }
+    output {
+      color: var(--aqua);
+    }
+    .actions,
+    .results {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    button {
+      font:
+        650 19px/1.35 system-ui,
+        sans-serif;
+      min-height: 54px;
+      border-radius: 10px;
+      border: 2px solid var(--aqua);
+      background: transparent;
+      color: var(--ink);
+      cursor: pointer;
+    }
+    button.primary {
+      color: #07141d;
+      background: var(--aqua);
+    }
+    button:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+    button:focus-visible {
+      outline: 3px solid white;
+      outline-offset: 3px;
+    }
+    .results[hidden],
+    canvas[hidden] {
+      display: none;
+    }
+    .results {
+      margin: 12px 0;
+    }
+    .results img {
+      display: block;
+      width: 100%;
+      border-radius: 8px;
+    }
+    .results figure {
+      margin: 0;
+    }
+    .results figcaption {
+      text-align: center;
+      color: var(--muted);
+      margin: 0.3em 0;
+      font:
+        14px ui-monospace,
+        monospace;
+    }
+    #status:empty {
+      display: none;
+    }
+    #status {
+      margin: 14px 0;
+      color: var(--ink);
+      font-size: 14px;
+    }
+  </style>
+  <main>
+    <h1>SpiralPixcel</h1>
+    <p>10秒まで、指で軌跡を描けます。</p>
+    <canvas id="pad" width="768" height="768" aria-label="軌跡を描く面"></canvas>
+    <div id="results" class="results" hidden></div>
+    <div class="meta"><output id="clock">00.0 s</output><span>128 × 128</span></div>
+    <div class="actions">
+      <button id="clear">描き直す</button
+      ><button id="save" class="primary" disabled>保存して比較</button>
+    </div>
+    <p id="status" role="status"></p>
+  </main>
+  <script>
+    "use strict";
+    const pad = document.querySelector("#pad"),
+      ctx = pad.getContext("2d"),
+      clock = document.querySelector("#clock");
+    const clear = document.querySelector("#clear"),
+      save = document.querySelector("#save"),
+      statusText = document.querySelector("#status"),
+      results = document.querySelector("#results");
+    let strokes = [],
+      count = 0,
+      start = null,
+      pointer = null,
+      deadline = 0,
+      sealed = false,
+      busy = false;
+    function timeLabel(ms) {
+      clock.value = (ms / 1000).toFixed(1).padStart(4, "0") + " s";
+    }
+    function mark(t, x, y) {
+      if (count >= 4096) return;
+      const stroke = strokes[strokes.length - 1],
+        prev = stroke[stroke.length - 1];
+      if (prev && prev[0] === t && prev[1] === x && prev[2] === y) return;
+      stroke.push([t, x, y]);
+      count++;
+      const px = (x + 0.5) * 6,
+        py = (y + 0.5) * 6;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = ctx.fillStyle = "#24ebd2";
+      ctx.lineWidth = 4;
+      if (prev) {
+        ctx.beginPath();
+        ctx.moveTo((prev[1] + 0.5) * 6, (prev[2] + 0.5) * 6);
+        ctx.lineTo(px, py);
+        ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.arc(px, py, 2, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+      timeLabel(t);
+    }
+    function point(e) {
+      const box = pad.getBoundingClientRect(),
+        cell = (v) => Math.max(0, Math.min(127, Math.floor(v * 128)));
+      const stroke = strokes[strokes.length - 1],
+        prev = stroke[stroke.length - 1];
+      const last = prev ? prev[0] : strokes.length > 1 ? strokes[strokes.length - 2].at(-1)[0] : 0;
+      const t = Math.min(10000, Math.max(last, Math.round(e.timeStamp - start)));
+      mark(t, cell((e.clientX - box.left) / box.width), cell((e.clientY - box.top) / box.height));
+    }
+    function finish() {
+      if (pointer !== null && pad.hasPointerCapture(pointer)) pad.releasePointerCapture(pointer);
+      pointer = null;
+      save.disabled = !count || busy;
+    }
+    function seal() {
+      if (pointer !== null && count < 4096) {
+        const last = strokes[strokes.length - 1].at(-1);
+        if (last) mark(10000, last[1], last[2]);
+      }
+      sealed = true;
+      finish();
+    }
+    pad.onpointerdown = (e) => {
+      if (busy || sealed || pointer !== null || (e.pointerType === "mouse" && e.button !== 0)) return;
+      if (start !== null && e.timeStamp - start >= 10000) {
+        seal();
+        return;
+      }
+      if (start === null) {
+        start = e.timeStamp;
+        deadline = setTimeout(seal, 10000);
+      }
+      pointer = e.pointerId;
+      pad.setPointerCapture(pointer);
+      strokes.push([]);
+      save.disabled = true;
+      point(e);
+    };
+    pad.onpointermove = (e) => {
+      if (e.pointerId !== pointer) return;
+      for (const sample of e.getCoalescedEvents?.() || []) point(sample);
+      point(e);
+      if (e.timeStamp - start >= 10000 || count >= 4096) {
+        sealed = true;
+        finish();
+      }
+    };
+    pad.onpointerup = (e) => {
+      if (e.pointerId === pointer) {
+        point(e);
+        finish();
+        if (count >= 4096) sealed = true;
+      }
+    };
+    pad.onpointercancel = pad.onlostpointercapture = (e) => {
+      if (e.pointerId === pointer) finish();
+    };
+    function reset() {
+      clearTimeout(deadline);
+      finish();
+      strokes = [];
+      count = 0;
+      start = null;
+      sealed = false;
+      save.disabled = true;
+      ctx.clearRect(0, 0, pad.width, pad.height);
+      pad.hidden = false;
+      results.hidden = true;
+      results.replaceChildren();
+      statusText.textContent = "";
+      timeLabel(0);
+    }
+    clear.onclick = reset;
+    save.onclick = async () => {
+      if (busy || !count || pointer !== null) return;
+      busy = sealed = true;
+      clearTimeout(deadline);
+      save.disabled = clear.disabled = true;
+      statusText.textContent = "Pixelで同じ軌跡を2回計算しています…";
+      try {
+        const res = await fetch("trace", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ format: "SpiralPixcel.touch.v1", strokes }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        for (const frame of data.images) {
+          const fig = document.createElement("figure"),
+            img = document.createElement("img"),
+            caption = document.createElement("figcaption");
+          img.src = "data:image/png;base64," + frame.png;
+          img.alt = "拡散係数 " + frame.rate + " のGPU出力";
+          caption.textContent = "係数 " + frame.rate;
+          fig.append(img, caption);
+          results.append(fig);
+        }
+        pad.hidden = true;
+        results.hidden = false;
+        statusText.textContent = "2枚ともCPU照合を通過しました。軌跡はMacに保存済みです。";
+      } catch (err) {
+        statusText.textContent = err.message;
+        save.disabled = false;
+      } finally {
+        busy = false;
+        clear.disabled = false;
+      }
+    };
+  </script>
+</html>

@@ -2,7 +2,15 @@
 layout(local_size_x = 8, local_size_y = 8) in;
 layout(set = 0, binding = 0, std430) readonly buffer Input { float x[]; };
 layout(set = 0, binding = 1, std430) writeonly buffer Output { float y[]; };
-layout(push_constant) uniform Params { uint width, height; float rate, decay; } p;
+layout(push_constant) uniform Params {
+    uint width, height; float rate, decay;
+#ifdef TIMED_TOUCH
+    uint tick, drive_ticks;
+#endif
+} p;
+#ifdef TIMED_TOUCH
+layout(set = 0, binding = 2, std430) readonly buffer Touch { uint words[]; };
+#endif
 
 float sample_cell(ivec2 pos) {
     ivec2 edge = ivec2(p.width, p.height) - 1;
@@ -17,5 +25,13 @@ void main() {
     precise float near_sum = sample_cell(pos + ivec2(-1, 0)) + sample_cell(pos + ivec2(1, 0))
                            + sample_cell(pos + ivec2(0, -1)) + sample_cell(pos + ivec2(0, 1));
     precise float next = p.decay * (c + p.rate * (near_sum - 4.0 * c));
-    y[pos.y * int(p.width) + pos.x] = next;
+    uint cell = uint(pos.y) * p.width + uint(pos.x);
+#ifdef TIMED_TOUCH
+    if (p.tick < p.drive_ticks) {
+        uint stride = (p.width*p.height + 31u) / 32u;
+        uint mask = words[p.tick*stride + cell/32u];
+        if ((mask & (1u << (cell % 32u))) != 0u) next = 1.0;
+    }
+#endif
+    y[cell] = next;
 }

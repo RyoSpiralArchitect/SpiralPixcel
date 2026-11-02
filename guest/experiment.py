@@ -19,10 +19,10 @@ def version(cmd):
     return subprocess.check_output(cmd, text=True).splitlines()[0]
 
 
-def dispatch(width, height, steps, rate, decay, software, output):
+def dispatch(width, height, steps, rate, decay, software, output, mask=None):
     raw = subprocess.check_output(["./compute", str(OUT / "shader.spv"), str(OUT / "input.bin"),
                                    str(output), *map(str, (width, height, steps, rate, decay)),
-                                   "allow-software" if software else "hardware"], text=True)
+                                   "allow-software" if software else "hardware", *([str(mask)] if mask else [])], text=True)
     fields, extensions = {}, []
     for line in raw.splitlines():
         key, value = line.split("\t", 1)
@@ -56,7 +56,10 @@ def main():
     parser.add_argument("--steps", type=int, default=96)
     parser.add_argument("--rate", type=float, default=0.18)
     parser.add_argument("--decay", type=float, default=0.995)
+    parser.add_argument("--trace", type=Path, help="touch/v1 recording (diffusion only)")
     args = parser.parse_args()
+    if args.trace and args.experiment != "diffusion":
+        parser.error("--trace requires diffusion")
     if not (1 <= args.steps <= 1024 and 0 <= args.rate <= 0.25 and 0 <= args.decay <= 1):
         parser.error("steps: 1..1024, rate: 0..0.25, decay: 0..1")
     if sys.byteorder != "little":
@@ -65,7 +68,7 @@ def main():
     shader = Path("shaders") / (args.experiment + ".comp")
     subprocess.run(["c++", "-std=c++17", "-O2", "-Wall", "-Wextra", "-Wno-missing-field-initializers",
                     "compute.cpp", "-lvulkan", "-o", "compute"], check=True)
-    subprocess.run(["glslc", "--target-env=vulkan1.0", str(shader), "-o", OUT / "shader.spv"], check=True)
+    subprocess.run(["glslc", "--target-env=vulkan1.0", *(["-DTIMED_TOUCH=1"] if args.trace else []), str(shader), "-o", OUT / "shader.spv"], check=True)
     if args.experiment == "doctor":
         result = doctor(args.allow_software)
     else:

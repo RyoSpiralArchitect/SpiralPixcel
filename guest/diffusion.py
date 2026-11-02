@@ -1,6 +1,8 @@
 """CPU reference, checkpoint comparison and a fixed-scale PNG for a 128x128 impulse."""
 from array import array
+import hashlib
 import math
+import touch
 import struct
 import zlib
 
@@ -43,19 +45,38 @@ def write_png(dest, values):
 
 def run(out, dispatch, args):
     cells = array("f", [0]) * (SIZE*SIZE)
-    cells[(SIZE//2)*SIZE + SIZE//2] = 1.
+    ticks = []
+    mask = None
+    trace_info = {}
+    if args.trace:
+        raw = args.trace.read_bytes()
+        strokes = touch.decode(raw)
+        ticks = touch.schedule(strokes)
+        mask = out / "touch-mask.bin"
+        mask.write_bytes(touch.pack_ticks(ticks))
+        (out / "trace.json").write_bytes(raw)
+        trace_info = {"trace_sha256": hashlib.sha256(raw).hexdigest(), "tick_ms": touch.TICK_MS,
+                      "contact_ticks_span": len(ticks), "strokes": len(strokes), "tail_steps": args.steps}
+    else:
+        cells[(SIZE//2)*SIZE + SIZE//2] = 1.
+    total_steps = len(ticks) + args.steps
     (out / "input.bin").write_bytes(cells.tobytes())
-    checkpoints = sorted({1, max(1, args.steps//2), args.steps})
+    checkpoints = {1, max(1, total_steps//2), total_steps}
+    if ticks:
+        checkpoints.add(len(ticks))
     # Push constants are binary32. Round the parameters once for the reference too.
     rate, decay = array("f", [args.rate, args.decay])
     results = []
-    for step in range(1, args.steps+1):
+    for step in range(1, total_steps+1):
         cells = cpu_step(cells, rate, decay)
+        if step <= len(ticks):
+            for cell in ticks[step-1]:
+                cells[cell] = 1.
         if step not in checkpoints:
             continue
-        suffix = "" if step == args.steps else f"-{step}"
+        suffix = "" if step == total_steps else f"-{step}"
         path = out / f"gpu{suffix}.bin"
-        vk = dispatch(SIZE, SIZE, step, rate, decay, args.allow_software, path)
+        vk = dispatch(SIZE, SIZE, step, rate, decay, args.allow_software, path, mask)
         actual = array("f")
         actual.frombytes(path.read_bytes())
         if len(actual) != len(cells) or not all(map(math.isfinite, actual)):
@@ -66,6 +87,6 @@ def run(out, dispatch, args):
                         "gpu_ms": vk["gpu_ms"], "submit_wait_ms": vk["submit_wait_ms"],
                         "gpu_sum": math.fsum(actual), "gpu_peak": max(actual)})
     write_png(out / "field.png", actual)
-    return {"vulkan": vk, "grid": [SIZE, SIZE], "initial": "unit impulse at (64,64)", "boundary": "clamp",
-            "steps": args.steps, "rate": args.rate, "decay": args.decay, "absolute_tolerance": ABS_TOL,
+    return {"vulkan": vk, "grid": [SIZE, SIZE], "initial": "zero field" if ticks else "unit impulse at (64,64)", "boundary": "clamp",
+            "steps": total_steps, **trace_info, "rate": args.rate, "decay": args.decay, "absolute_tolerance": ABS_TOL,
             "checkpoints": results, "status": "pass" if all(r["pass"] for r in results) else "fail"}

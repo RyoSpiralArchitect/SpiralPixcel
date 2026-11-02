@@ -19,6 +19,9 @@ from datetime import datetime, timezone
 
 ROOT = Path(__file__).resolve().parent
 STATE = Path(os.environ.get("SPIRALPIXCEL_STATE", Path.home() / "Library/Application Support/SpiralPixcel"))
+# The executable runs in isolated Python mode; import only our bundled modules.
+sys.path.insert(0, str(ROOT / "guest"))
+sys.path.insert(0, str(ROOT / "host"))
 KEY = STATE / "id_ed25519"
 KNOWN = STATE / "known_hosts"
 SHARE = "/sdcard/Download/SpiralPixcel"
@@ -130,6 +133,14 @@ def execute(ssh, args):
     print(f"Run {run_id}", flush=True)
     blob = io.BytesIO()
     with tarfile.open(fileobj=blob, mode="w:gz") as tar:
+        if getattr(args, "trace", None):
+            with args.trace.open("rb") as f:
+                raw = f.read(128*1024 + 1)
+            from touch import decode
+            decode(raw)
+            entry = tarfile.TarInfo("replay.json")
+            entry.size = len(raw)
+            tar.addfile(entry, io.BytesIO(raw))
         for p in sorted((ROOT / "guest").rglob("*")):
             if p.is_file() and p.suffix in (".comp", ".cpp", ".py"):
                 tar.add(p, arcname=str(p.relative_to(ROOT / "guest")), recursive=False)
@@ -139,6 +150,8 @@ def execute(ssh, args):
     guest_args = [args.command]
     if args.command == "run":
         guest_args = ["diffusion", "--steps", str(args.steps), "--rate", str(args.rate), "--decay", str(args.decay)]
+        if args.trace:
+            guest_args += ["--trace", "replay.json"]
     cmd = f"cd {base} && python3 experiment.py {shlex.join(guest_args)} >result/build-run.log 2>&1"
     completed = sp.run(ssh + [cmd])
     success = collect(ssh, run_id)
@@ -147,6 +160,7 @@ def execute(ssh, args):
     (Path("runs") / run_id / "host.json").write_text(json.dumps({
         "transport": "SSH via USB ADB", "run_id": run_id, "source_archive_sha256": hashlib.sha256(blob.getvalue()).hexdigest(),
         "upload_run_collect_seconds": round(time.monotonic() - start, 3)}, indent=2) + "\n")
+    return Path("runs") / run_id
 
 
 def main():
@@ -154,6 +168,7 @@ def main():
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("pair", help="enroll a dedicated Mac key in the Debian VM")
     commands.add_parser("trust", help="pin the fingerprint displayed on the Pixel").add_argument("fingerprint")
+    commands.add_parser("draw", help="draw on the Pixel and compare two GPU replays")
     commands.add_parser("doctor", help="double integers on the Vulkan device and verify every value")
     commands.add_parser("collect", help="recover results from an earlier run").add_argument("run_id")
     run = commands.add_parser("run", help="run a field experiment")
@@ -162,6 +177,7 @@ def main():
     diffusion.add_argument("--steps", type=int, default=96)
     diffusion.add_argument("--rate", type=float, default=0.18)
     diffusion.add_argument("--decay", type=float, default=0.995)
+    diffusion.add_argument("--trace", type=Path, help="replay touch/v1 JSON before the requested free diffusion steps")
     args = parser.parse_args()
     if args.command == "run" and not (1 <= args.steps <= 1024 and 0 <= args.rate <= 0.25 and 0 <= args.decay <= 1):
         parser.error("steps: 1..1024, rate: 0..0.25, decay: 0..1")
@@ -169,6 +185,9 @@ def main():
         pair()
     elif args.command == "trust":
         trust(args.fingerprint)
+    elif args.command == "draw":
+        from draw import serve
+        serve(adb, ssh_command, execute)
     elif args.command == "collect":
         if not collect(ssh_command(), args.run_id):
             sys.exit(1)
