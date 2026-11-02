@@ -1,0 +1,43 @@
+--- a/ggml/src/ggml-vulkan/ggml-vulkan.cpp
++++ b/ggml/src/ggml-vulkan/ggml-vulkan.cpp
+@@ -2891,7 +2891,20 @@
+     };
+     uint32_t rm_iq = 2 * rm_kq;
+ 
+-    const bool use_subgroups = device->subgroup_arithmetic;
++    // Opt-in PowerVR experiment: smaller MMV workgroups with the shared-memory
++    // reduction. Keep the native subgroup requirements off for these variants.
++    const bool is_imagination = device->driver_id == vk::DriverId::eImaginationProprietary;
++    uint32_t powervr_mmv_wg = 0;
++    if (is_imagination) {
++        if (const char * value = getenv("GGML_VK_PWR_MMV_WG")) {
++            const uint32_t requested = (uint32_t) std::stoul(value);
++            if (requested != 32 && requested != 64 && requested != 128) {
++                throw std::runtime_error("GGML_VK_PWR_MMV_WG must be 32, 64, or 128");
++            }
++            powervr_mmv_wg = requested;
++        }
++    }
++    const bool use_subgroups = device->subgroup_arithmetic && powervr_mmv_wg == 0;
+     // The Imagination proprietary compiler rejects the subgroup-only dequant mul_mat_vec
+     // shaders that require a subgroup size >= 16; fall back to shared-memory reduction.
+     const bool is_imagination_proprietary =
+@@ -2900,7 +2913,8 @@
+     const bool use_subgroups16 = use_subgroups && subgroup_min_size_16 && !is_imagination_proprietary;
+ 
+     const uint32_t subgroup_size = (device->vendor_id == VK_VENDOR_ID_INTEL && device->subgroup_size_control && device->subgroup_min_size <= 16 && device->subgroup_max_size >= 16) ? 16 : device->subgroup_size;
+-    const uint32_t subgroup_size16 = std::max(subgroup_size, 16u);
++    const uint32_t mmv_workgroup = powervr_mmv_wg ? powervr_mmv_wg : subgroup_size;
++    const uint32_t subgroup_size16 = std::max(mmv_workgroup, 16u);
+ 
+     const uint32_t force_subgroup_size = use_subgroups ? subgroup_size : 0;
+     const uint32_t force_subgroup_size16 = use_subgroups16 ? subgroup_size16 : 0;
+@@ -2916,7 +2930,7 @@
+ #endif
+ 
+     for (uint32_t w = 0; w < DMMV_WG_SIZE_COUNT; ++w) {
+-        const uint32_t wg_size_subgroup   = (w == DMMV_WG_SIZE_SUBGROUP) ? subgroup_size : (subgroup_size * 4);
++        const uint32_t wg_size_subgroup   = (w == DMMV_WG_SIZE_SUBGROUP) ? mmv_workgroup : (mmv_workgroup * 4);
+         const uint32_t wg_size_subgroup16 = (w == DMMV_WG_SIZE_SUBGROUP) ? subgroup_size16 : (subgroup_size16 * 4);
+ 
+         const shader_reduction_mode reduc = (use_subgroups && w == DMMV_WG_SIZE_SUBGROUP) ? SHADER_REDUCTION_MODE_SUBGROUP :

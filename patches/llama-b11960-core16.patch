@@ -1,0 +1,20 @@
+--- a/ggml/src/ggml-vulkan/ggml-vulkan.cpp
++++ b/ggml/src/ggml-vulkan/ggml-vulkan.cpp
+@@ -4661,12 +4661,15 @@
+ #endif
+         }
+ 
+-        if (!vk11_features.storageBuffer16BitAccess) {
++        if (!vk11_features.storageBuffer16BitAccess || (!fp16_storage && device->properties.apiVersion < VK_API_VERSION_1_1)) {
+             std::cerr << "ggml_vulkan: device " << GGML_VK_NAME << idx << " does not support 16-bit storage." << std::endl;
+             throw std::runtime_error("Unsupported device");
+         }
+ 
+-        device_extensions.push_back("VK_KHR_16bit_storage");
++        // Vulkan 1.1 made 16-bit storage core. Its extension name may be absent.
++        if (fp16_storage) {
++            device_extensions.push_back("VK_KHR_16bit_storage");
++        }
+ 
+ #ifdef GGML_VULKAN_VALIDATE
+         device_extensions.push_back("VK_KHR_shader_non_semantic_info");

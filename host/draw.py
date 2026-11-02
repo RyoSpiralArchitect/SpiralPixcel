@@ -68,7 +68,7 @@ def serve(adb, connect, execute):
                 ssh = connect()
                 images, ids = [], []
                 for rate in (0.08, 0.18):
-                    args = argparse.Namespace(command="run", steps=24, decay=0.995, rate=rate, trace=trace)
+                    args = argparse.Namespace(command="run", experiment="diffusion", steps=24, decay=0.995, rate=rate, trace=trace)
                     run = execute(ssh, args)
                     ids.append(run.name)
                     (dest / "comparison.json").write_text(json.dumps({"runs": ids, "trace": trace.name}) + "\n")
