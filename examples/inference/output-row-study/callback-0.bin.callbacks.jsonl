@@ -1,0 +1,6 @@
+{"name":"result_norm","op":"MUL","elements":0,"ne":[896,0,1,1],"nonzero":0,"nonfinite":0,"max_abs":0}
+{"name":"result_output","op":"MUL_MAT","elements":0,"ne":[151936,0,1,1],"nonzero":0,"nonfinite":0,"max_abs":0}
+{"name":"result_norm","op":"MUL","elements":0,"ne":[896,0,1,1],"nonzero":0,"nonfinite":0,"max_abs":0}
+{"name":"result_output","op":"MUL_MAT","elements":0,"ne":[151936,0,1,1],"nonzero":0,"nonfinite":0,"max_abs":0}
+{"name":"result_norm","op":"MUL","elements":896,"ne":[896,1,1,1],"nonzero":896,"nonfinite":0,"max_abs":95.1949921}
+{"name":"result_output","op":"MUL_MAT","elements":151936,"ne":[151936,1,1,1],"nonzero":151936,"nonfinite":0,"max_abs":18.2066669}

@@ -1,0 +1,23 @@
+load_backend: loaded RPC backend from /home/droid/.local/share/SpiralPixcel/large-study/runtime-output-split/libggml-rpc.so
+ggml_vulkan: Found 1 Vulkan devices:
+ggml_vulkan: 0 = PowerVR C-Series CXTP-48-1536 MC1 (PowerVR C-Series Vulkan Driver) | uma: 1 | fp16: 1 | bf16: 0 | fp4: 0 | warp size: 128 | shared memory: 32768 | int dot: 0 | matrix cores: none
+load_backend: loaded Vulkan backend from /home/droid/.local/share/SpiralPixcel/large-study/runtime-output-split/libggml-vulkan.so
+load_backend: loaded CPU backend from /home/droid/.local/share/SpiralPixcel/large-study/runtime-output-split/libggml-cpu-armv8.6_2.so
+ggml_vulkan memory: ggml_backend_vk_buffer_type_alloc_buffer(146387392)
+MESA: error: Failed to allocate coherent memory: failed to allocate on the host: -1.
+ggml_vulkan memory: Vulkan0: +139.61 MiB device at 0xaaab05046af0. Total device: 139.61 MiB, total host: 0 B
+ggml_vulkan memory: ggml_vk_ensure_sync_staging_buffer(16777216)
+ggml_vulkan memory: Vulkan0: +16.00 MiB device at 0xaaab050e66f0. Total device: 155.61 MiB, total host: 0 B
+ggml_vulkan memory: ggml_vk_preallocate_buffers(x_size: 0)
+ggml_vulkan memory: ggml_vk_preallocate_buffers(y_size: 0)
+ggml_vulkan memory: ggml_vk_preallocate_buffers(split_k_size: 0)
+ggml_vulkan memory: ggml_vk_preallocate_buffers(add_partials_size: 0)
+ggml_vulkan memory: Vulkan0: +1.00 KiB device at 0xaaab050e5780. Total device: 155.61 MiB, total host: 0 B
+ggml_vulkan memory: ggml_backend_vk_buffer_free_buffer()
+ggml_vulkan memory: Vulkan0: -139.61 MiB device at 0xaaab05046af0. Total device: 16.00 MiB, total host: 0 B
+ggml_vulkan memory: ggml_backend_vk_buffer_type_alloc_buffer(172537912)
+MESA: error: Failed to allocate coherent memory: failed to allocate on the host: -1.
+ggml_vulkan memory: Vulkan0: +164.54 MiB device at 0xaaab05156f50. Total device: 180.55 MiB, total host: 0 B
+ggml_vulkan memory: ggml_backend_vk_buffer_free_buffer()
+ggml_vulkan memory: Vulkan0: -164.54 MiB device at 0xaaab05156f50. Total device: 16.00 MiB, total host: 0 B
+ggml_vulkan memory: Vulkan0: -1.00 KiB device at 0xaaab050e5780. Total device: 16.00 MiB, total host: 0 B

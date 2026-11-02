@@ -1,0 +1,29 @@
+--- a/ggml/src/ggml-vulkan/ggml-vulkan-buffers.cpp
++++ b/ggml/src/ggml-vulkan/ggml-vulkan-buffers.cpp
+@@ -745,6 +745,11 @@
+         src->device->device.resetFences({ src->device->fence });
+         ggml_vk_queue_command_pools_cleanup(src->device);
+ 
++        const char * split_output = getenv("GGML_VK_SPLIT_OUTPUT");
++        if (split_output && strcmp(split_output, "1") == 0 && src->device->sync_staging) {
++            src->device->device.invalidateMappedMemoryRanges(
++                vk::MappedMemoryRange{src->device->sync_staging->device_memory, 0, VK_WHOLE_SIZE});
++        }
+         for (auto& cpy : subctx->out_memcpys) {
+             memcpy(cpy.dst, cpy.src, cpy.n);
+         }
+--- a/ggml/src/ggml-vulkan/ggml-vulkan.cpp
++++ b/ggml/src/ggml-vulkan/ggml-vulkan.cpp
+@@ -13604,6 +13604,12 @@
+     }
+ 
+     if (do_transfer) {
++        const char * split_output = getenv("GGML_VK_SPLIT_OUTPUT");
++        if (split_output && strcmp(split_output, "1") == 0 &&
++            !compute_ctx->out_memcpys.empty() && ctx->sync_staging) {
++            ctx->device->device.invalidateMappedMemoryRanges(
++                vk::MappedMemoryRange{ctx->sync_staging->device_memory, 0, VK_WHOLE_SIZE});
++        }
+         for (auto& cpy : compute_ctx->out_memcpys) {
+             memcpy(cpy.dst, cpy.src, cpy.n);
+         }

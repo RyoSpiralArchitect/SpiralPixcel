@@ -1,0 +1,12 @@
+# Output-row study — held
+
+These are diagnostic artifacts from 2026-11-03 on the Pixel Debian VM. The candidate is **not adopted**. Neither a decode speedup nor a larger supported model has been established. See [the study and recovery notes](../../../docs/large-output.md).
+
+- `baseline-scheduler.log` / `candidate-scheduler.log` are raw logs; `*-placement.json` parses their final graph. Placement is not model correctness or a timing comparison.
+- `large-final-{1,2}.jsonl` passed a separate-weight-buffer Q8_0 basis-vector test. The earlier `large-after.jsonl` and `large-barrier.jsonl` failed; their logs are retained. The earlier dense-input `small.jsonl` used a different CPU quantized-activation reference, so its strict per-element failures cannot be silently relabelled as passes.
+- `logits-{0,1}.*` use the partially rebuilt runtime; `matched-{0,1}.*` use tools/core/CPU built from one source. `0` disables row splitting; `1` enables it. Each `.bin` contains 151936 little-endian float32 values. **Both split vectors are entirely zero.** The flag-off vectors are diagnostic GPU-decoder runs, not qualified CPU references, and their values changed between runs.
+- The old dumper's `status: pass` checked finite values and completion only. It erroneously accepted zero vectors. Original receipts are preserved. `summary.json` reports the independently counted zero values and held status. The new `check-model` rejects this case.
+- `callback-1.json` is intentionally empty: the callback probe never completed. Its log and the events already captured are retained. A black GUI and Android watchdog traces were observed; the cause is unresolved. Normal ADB reboot restored the device, and the collaborator confirmed the lock screen and unlock. No further experimental GPU runs were started.
+- `runtime-sha256.json` inventories the preserved study runtimes after recovery. `source-sha256.json` covers the five modified source files: they match a fresh pinned source with the published patch stack applied. `sha256.json` hashes the exported files. This is a historical snapshot, not a claim that a later build reproduces identical binaries.
+
+The new full-model gate and matched-runtime builder were integrated after recovery and host-tested. They have not been run on the recovered Pixel. The draft remains held until a small readback reproducer, dense inputs, full-model agreement, and then controlled timing succeed.

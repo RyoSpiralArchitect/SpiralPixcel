@@ -53,3 +53,5 @@ Macで拡散係数を変え、同じ点刺激がどこまで広がるかを比�
 ## モデルのdecodeとメモリを測る
 
 `./pixel-lab run inference` でdoctorを通してから、既存モデルの速度・メモリ・モデルとランタイムのハッシュを記録する。[比較手順とPowerVR用の実験パッチ](docs/inference.md)
+
+`--schedule-report` を付けると、速度測定とは別にCPU/GPUの演算配置を保存する。[128 MiB超の出力行列を分割する実験](docs/large-output.md)は、実モデルのゼロ出力と画面停止を観測したため採用保留。通常の推論とは分けて管理している。

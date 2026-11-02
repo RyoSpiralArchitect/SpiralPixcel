@@ -1,0 +1,2 @@
+{"name":"result_norm","op":"MUL","elements":0,"ne":[896,0,1,1],"nonzero":0,"nonfinite":0,"max_abs":0}
+{"name":"result_output","op":"CONCAT","elements":0,"ne":[151936,0,1,1],"nonzero":0,"nonfinite":0,"max_abs":0}

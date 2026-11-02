@@ -1,0 +1,3 @@
+{"op":"SPLIT_MUL_MAT_CONCAT","type":"q8_0","k":896,"m":151937,"n":1,"weight_bytes":144644024,"chunk_rows":65536,"max_abs_error":77.0396,"nmse":1,"nmse_limit":0.0005,"absolute_tolerance":0.001,"relative_tolerance":0.001,"mismatched_elements":151937,"boundary_elements":9,"boundary_max_abs_error":5.53028,"finite":true,"status":"fail"}
+{"op":"SPLIT_MUL_MAT_CONCAT","type":"q8_0","k":896,"m":151937,"n":16,"weight_bytes":144644024,"chunk_rows":65536,"max_abs_error":77.0396,"nmse":1,"nmse_limit":0.0005,"absolute_tolerance":0.001,"relative_tolerance":0.001,"mismatched_elements":2430992,"boundary_elements":144,"boundary_max_abs_error":8.03133,"finite":true,"status":"fail"}
+{"status":"fail","cases":2,"failed":2}

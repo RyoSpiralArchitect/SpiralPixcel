@@ -1,0 +1,115 @@
+--- a/src/llama-model-loader.cpp
++++ b/src/llama-model-loader.cpp
+@@ -1,4 +1,5 @@
+ #include "llama-model-loader.h"
++#include "llama-vulkan-split.h"
+ 
+ #include "ggml-alloc.h"
+ #include "ggml.h"
+@@ -1270,7 +1271,20 @@
+         }
+ 
+         if (!buft) {
+-            buft = select_weight_buft(hparams, t_meta, op, buft_list);
++            // The Qwen2 graph uses bounded row views for the opted-in output head.
++            // Probe that same operation so its parent allocation can stay on GPU.
++            const int64_t split_rows = get_arch() == LLM_ARCH_QWEN2 &&
++                info.layer == LLM_TENSOR_LAYER_OUTPUT && op == GGML_OP_MUL_MAT ?
++                llama_vk_split_output_rows(t_meta) : 0;
++            if (split_rows) {
++                ggml_tensor chunk = *t_meta;
++                chunk.ne[1] = std::min<int64_t>(split_rows, t_meta->ne[1]);
++                chunk.nb[2] = chunk.nb[1] * chunk.ne[1];
++                chunk.nb[3] = chunk.nb[2];
++                buft = select_weight_buft(hparams, &chunk, op, buft_list);
++            } else {
++                buft = select_weight_buft(hparams, t_meta, op, buft_list);
++            }
+             if (!buft) {
+                 throw std::runtime_error(format("failed to find a compatible buffer type for tensor %s", tn.str().c_str()));
+             }
+--- a/src/models/qwen2.cpp
++++ b/src/models/qwen2.cpp
+@@ -1,4 +1,5 @@
+ #include "models.h"
++#include "llama-vulkan-split.h"
+ 
+ void llama_model_qwen2::load_arch_hparams(llama_model_loader & ml) {
+     ml.get_key(LLM_KV_ATTENTION_LAYERNORM_RMS_EPS, hparams.f_norm_rms_eps);
+@@ -142,7 +143,38 @@
+     res->t_embd = cur;
+ 
+     // lm_head
+-    cur = build_lora_mm(model.output, cur, model.output_s);
++    const bool output_on_vulkan = model.output->buffer &&
++        !ggml_backend_buffer_is_host(model.output->buffer) &&
++        std::strncmp(ggml_backend_buffer_name(model.output->buffer), "Vulkan", 6) == 0;
++    const int64_t split_rows = output_on_vulkan ? llama_vk_split_output_rows(model.output) : 0;
++    if (split_rows) {
++        // LoRA deltas are keyed to the original weight and cannot be applied to
++        // independently named slices. Refuse this experimental combination.
++        if (!loras->empty()) {
++            throw std::runtime_error("GGML_VK_SPLIT_OUTPUT requires an output head without LoRA adapters");
++        }
++        ggml_tensor * input = build_hadamard_input(model.output, cur);
++        ggml_tensor * joined = nullptr;
++        for (int64_t first = 0; first < model.output->ne[1]; first += split_rows) {
++            const int64_t count = std::min<int64_t>(split_rows, model.output->ne[1] - first);
++            ggml_tensor * weight = ggml_view_2d(ctx0, model.output,
++                    model.output->ne[0], count, model.output->nb[1], first * model.output->nb[1]);
++            // Precision policy matches the original output weight's name.
++            ggml_set_name(weight, ggml_get_name(model.output));
++            ggml_tensor * part = ggml_mul_mat(ctx0, weight, input);
++            if (prec_policy) {
++                prec_policy->apply(part);
++            }
++            ggml_format_name(part, "output_mm.chunk.%lld", (long long) first);
++            joined = joined ? ggml_concat(ctx0, joined, part, 0) : part;
++        }
++        cur = joined;
++        if (model.output_s) {
++            cur = ggml_mul(ctx0, cur, model.output_s);
++        }
++    } else {
++        cur = build_lora_mm(model.output, cur, model.output_s);
++    }
+ 
+     if (model.output_b != nullptr) {
+         cur = ggml_add(ctx0, cur, model.output_b);
+--- a/src/llama-vulkan-split.h
++++ b/src/llama-vulkan-split.h
+@@ -0,0 +1,34 @@
++#pragma once
++
++#include "ggml.h"
++
++#include <algorithm>
++#include <cstdlib>
++#include <cstring>
++#include <stdexcept>
++
++// Opt-in Qwen2 output-head experiment for devices with a 128 MiB storage range.
++// Chunk boundaries use 256 rows, so each byte offset is 256-byte aligned for any
++// integral row size. Both the weight and the loader's 512-token result probe fit.
++inline int64_t llama_vk_split_output_rows(const ggml_tensor * weight) {
++    const char * value = std::getenv("GGML_VK_SPLIT_OUTPUT");
++    if (!value || std::strcmp(value, "0") == 0) {
++        return 0;
++    }
++    if (std::strcmp(value, "1") != 0) {
++        throw std::runtime_error("GGML_VK_SPLIT_OUTPUT must be 0 or 1");
++    }
++    constexpr size_t range = 128u * 1024u * 1024u;
++    if (ggml_nbytes(weight) <= range || weight->ne[2] != 1 || weight->ne[3] != 1 ||
++        !ggml_is_contiguous(weight) || weight->type == GGML_TYPE_NVFP4) {
++        return 0;
++    }
++    const size_t row_bytes = ggml_row_size(weight->type, weight->ne[0]);
++    constexpr size_t chunk_bytes = 64u * 1024u * 1024u;
++    int64_t rows = std::min<int64_t>(65536, chunk_bytes / row_bytes);
++    rows -= rows % 256;
++    if (rows == 0) {
++        throw std::runtime_error("output head row exceeds the split experiment's 64 MiB budget");
++    }
++    return rows;
++}

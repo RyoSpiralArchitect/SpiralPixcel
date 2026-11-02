@@ -1,0 +1,71 @@
+{
+  "placement_scope": "last graph placement dump in scheduler.log",
+  "logged_graphs": 7,
+  "final_logged_node_count": 613,
+  "nodes_per_backend": {
+    "CPU": 2,
+    "Vulkan0": 611
+  },
+  "cpu_nodes": [
+    {
+      "index": 0,
+      "op": "GET_ROWS",
+      "name": "embd",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "token_embd.weight (  89M) [  CPU         ]           inp_tokens (   0K) [  CPU         ]"
+    },
+    {
+      "index": 1,
+      "op": "GET_ROWS",
+      "name": "node_1",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "token_embd.weight (  89M) [  CPU         ]     inp_mixed_tokens (   0K) [  CPU         ]"
+    }
+  ],
+  "output_nodes": [
+    {
+      "index": 945,
+      "op": "MUL_MAT",
+      "name": "output_mm.chunk.0",
+      "backend": "Vulkan0",
+      "buffer_label": "Vulka",
+      "split": 1,
+      "sources": "output.weight (  59M) [Vulka         ]          result_norm (   3K) [Vulka         ]"
+    },
+    {
+      "index": 947,
+      "op": "MUL_MAT",
+      "name": "output_mm.chunk.6553",
+      "backend": "Vulkan0",
+      "buffer_label": "Vulka",
+      "split": 1,
+      "sources": "output.weight (  59M) [Vulka         ]          result_norm (   3K) [Vulka         ]"
+    },
+    {
+      "index": 950,
+      "op": "MUL_MAT",
+      "name": "output_mm.chunk.1310",
+      "backend": "Vulkan0",
+      "buffer_label": "Vulka",
+      "split": 1,
+      "sources": "output.weight (  18M) [Vulka         ]          result_norm (   3K) [Vulka         ]"
+    },
+    {
+      "index": 951,
+      "op": "CONCAT",
+      "name": "result_output",
+      "backend": "Vulkan0",
+      "buffer_label": "Vulka",
+      "split": 1,
+      "sources": "node_948 ( 512K) [Vulka         ] output_mm.chunk.1310 (  81K) [Vulka         ]"
+    }
+  ],
+  "rejected_weights": [],
+  "diagnostic_only": true,
+  "source_log": "candidate-scheduler.log",
+  "source_sha256": "eacbab88175d607616ede47bd43f4f54369fc1bd577225b85353dfb971e27525"
+}

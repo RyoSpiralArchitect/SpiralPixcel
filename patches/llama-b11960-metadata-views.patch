@@ -1,0 +1,25 @@
+--- a/ggml/src/ggml-vulkan/ggml-vulkan.cpp
++++ b/ggml/src/ggml-vulkan/ggml-vulkan.cpp
+@@ -15512,13 +15512,21 @@
+     const bool uses_bda = (op->op == GGML_OP_IM2COL || op->op == GGML_OP_IM2COL_3D) &&
+                           device->shader_int64 && device->buffer_device_address;
+ 
++    const char * split_output = getenv("GGML_VK_SPLIT_OUTPUT");
++    const bool metadata_only = op->op == GGML_OP_NONE || op->op == GGML_OP_VIEW ||
++                               op->op == GGML_OP_RESHAPE || op->op == GGML_OP_PERMUTE ||
++                               op->op == GGML_OP_TRANSPOSE;
++    // A bounded row view may refer to a parent allocation larger than one storage
++    // descriptor range. These operations do not bind or read the parent in a shader.
++    const bool metadata_range_exempt = metadata_only && split_output && strcmp(split_output, "1") == 0;
++
+     auto const & tensor_size_supported = [&](size_t tensor_size) {
+         if (tensor_size > device->max_buffer_size) {
+             return false;
+         }
+         // For im2col shaders using BDA, maxStorageBufferRange limit doesn't apply.
+         // If shader64BitIndexing is enabled, maxStorageBufferRange limit doesn't apply.
+-        if (!uses_bda && !device->shader_64b_indexing) {
++        if (!uses_bda && !device->shader_64b_indexing && !metadata_range_exempt) {
+             if (tensor_size > device->properties.limits.maxStorageBufferRange) {
+                 return false;
+             }

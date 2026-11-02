@@ -1,0 +1,59 @@
+{
+  "date_local": "2026-11-03",
+  "timezone": "Asia/Tokyo",
+  "status": "held",
+  "default_adopted": false,
+  "speedup_established": false,
+  "capacity_increase_established": false,
+  "source_commit": "8642541b255bfb5dc39cd351a178be09013a55d6",
+  "model_sha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+  "max_storage_buffer_range_bytes": 134217728,
+  "baseline_observation": "output.weight Q8_0 (137.94 MiB) fell back to CPU_REPACK; final result_output MUL_MAT ran on CPU",
+  "candidate_observation": "three bounded output-head MUL_MAT nodes and CONCAT were placed on Vulkan; placement did not establish valid model output",
+  "logit_observations": {
+    "logits-0": {
+      "elements": 151936,
+      "nonzero_count": 151936,
+      "nonfinite_count": 0,
+      "max_abs": 17.121570587158203,
+      "sha256": "95f760b15347c05cbc31155f91ad13a27d6e065080f62b4907bd3ee6792088e0"
+    },
+    "logits-1": {
+      "elements": 151936,
+      "nonzero_count": 0,
+      "nonfinite_count": 0,
+      "max_abs": 0.0,
+      "sha256": "a467d23d2c28f5d4c1cec6e14eb4a58719945188b9820d5aea90bdabaff3b425"
+    },
+    "matched-0": {
+      "elements": 151936,
+      "nonzero_count": 151936,
+      "nonfinite_count": 0,
+      "max_abs": 15.420879364013672,
+      "sha256": "d0dff47c7d21c0f044b9f28d9060b47392eeb556d5fde985483581a641ae4afa"
+    },
+    "matched-1": {
+      "elements": 151936,
+      "nonzero_count": 0,
+      "nonfinite_count": 0,
+      "max_abs": 0.0,
+      "sha256": "a467d23d2c28f5d4c1cec6e14eb4a58719945188b9820d5aea90bdabaff3b425"
+    }
+  },
+  "legacy_receipt_warning": "Original dump tool marked finite all-zero outputs pass. Original JSON preserved; actual model validation failed.",
+  "matched_stack_notes": "Matched tools/core/CPU were built from one source; split still returned zero. Nonzero flag-off vectors were not qualified CPU references and changed between diagnostics.",
+  "interrupted_callback": {
+    "completed": false,
+    "candidate_json_bytes": 0,
+    "observed_gui": "black; Android watchdog traces seen",
+    "root_cause": "unresolved"
+  },
+  "recovery": {
+    "method": "normal adb reboot",
+    "boot_completed_verified": true,
+    "human_confirmed_lock_screen_and_unlock": true,
+    "experimental_gpu_runs_resumed": false
+  },
+  "new_integrated_model_gate": "implemented and host-tested after recovery; not executed on Pixel",
+  "basis_test_limit": "separate weight buffer, basis inputs, transfer/index/concat coverage; does not establish dense reduction correctness"
+}

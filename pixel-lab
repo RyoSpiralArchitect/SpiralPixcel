@@ -165,6 +165,10 @@ def execute(ssh, args):
             value = getattr(args, flag)
             if value:
                 inference_args += ["--" + flag, value]
+        if args.split_output:
+            inference_args += ["--split-output"]
+        if args.schedule_report:
+            inference_args += ["--schedule-report"]
         if args.disable_fp16:
             inference_args += ["--disable-fp16"]
         if args.workgroup:
@@ -207,6 +211,8 @@ def main():
     inference.add_argument("--gpu-layers", type=int, default=99, choices=range(1000), metavar="N")
     inference.add_argument("--repetitions", type=int, default=3, choices=range(1, 21), metavar="N")
     inference.add_argument("--repack", type=int, choices=(0, 1), default=1)
+    inference.add_argument("--split-output", action="store_true", help="held Qwen2 row-split experiment; full-model gate required")
+    inference.add_argument("--schedule-report", action="store_true", help="record graph placement separately from timing")
     inference.add_argument("--disable-fp16", action="store_true", help="FP32 control using the same runtime")
     inference.add_argument("--workgroup", type=int, choices=(32, 64, 128), help="patched PowerVR MMV workgroup")
     inference.add_argument("--flash-attn", choices=("off", "on"), default="off")
@@ -214,6 +220,11 @@ def main():
     inference.add_argument("--profile", choices=("baseline", "host-memory", "mmvq"), default="baseline")
     diffusion.add_argument("--trace", type=Path, help="replay touch/v1 JSON before the requested free diffusion steps")
     args = parser.parse_args()
+    if args.command == "run" and args.experiment == "inference" and args.split_output:
+        if not args.gpu_layers:
+            parser.error("--split-output requires GPU layers")
+        if args.flash_attn != "off":
+            parser.error("--split-output currently requires --flash-attn off")
     if args.command == "run" and args.experiment == "diffusion" and not (1 <= args.steps <= 1024 and 0 <= args.rate <= 0.25 and 0 <= args.decay <= 1):
         parser.error("steps: 1..1024, rate: 0..0.25, decay: 0..1")
     if args.command == "pair":
