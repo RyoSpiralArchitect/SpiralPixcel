@@ -4,6 +4,8 @@ SpiralRealityのPixel実験ノートと、標準ターミナルのDebian VMでVu
 
 [端末設定と再開手順](docs/device.md) · [MITライセンス](LICENSE)
 
+[任意の実験用セットアップ](docs/lab-session.md)：画面設定の保存・復元、Google同期の調整手順、描画応答チェック、VM側で期限を持つ短い実行と復旧コマンド。
+
 ## Pixelに指で描く
 
 USB接続とペアリングが済んだMacで `pixel-lab draw`（リポジトリからは `./pixel-lab draw`）。Pixelの画面に好きな線を描き「保存して比較」を押すと、同じ軌跡を2つの係数で計算したGPU画像がPixelに戻る。[使い方・再現コマンド・実機画像](docs/touch.md)

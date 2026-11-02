@@ -1,0 +1,16 @@
+{
+  "date_local": "2026-11-03",
+  "timezone": "Asia/Tokyo",
+  "display_request_verified": true,
+  "display_restore_verified": true,
+  "effective_admin_max_screen_off_ms": 60000,
+  "effective_stay_on": false,
+  "personal_master_sync_before": true,
+  "personal_master_sync_after": false,
+  "work_master_sync_after": true,
+  "sync_readback_source": "dumpsys content, parsed booleans only; raw account data not retained",
+  "gpu_hang_intentionally_triggered": false,
+  "normal_command_passed": true,
+  "deadline_job_correctly_failed": true,
+  "settings_optional": true
+}

@@ -1,0 +1,13 @@
+{
+  "status": "fail",
+  "command": [
+    "/usr/bin/python3",
+    "-IS",
+    "-c",
+    "import time; time.sleep(5)"
+  ],
+  "deadline_seconds": 0.5,
+  "exit_code": -15,
+  "stop_reason": "deadline",
+  "wall_seconds": 0.718
+}

@@ -10,6 +10,8 @@ MacにAndroid SDK Platform-Toolsを入れ、開発者向けオプションでUSB
 
 ## 作業中の画面
 
+設定を保存して戻すコマンド、管理ポリシーの制限、任意の同期停止、期限付き実験と黒画面の復旧は[実験用セットアップ](lab-session.md)を参照。
+
 元の値を控えてから、ACまたはUSBでの給電中に画面を維持する設定を入れる。
 
     adb -d shell settings get global stay_on_while_plugged_in
