@@ -23,7 +23,7 @@ All six candidate vectors are byte-identical (`13197ed7…`, in `vectors/`), as 
 
 The kernel-check and model-candidate logs of every run record `mul_mat_vecq_u8 selected for` q4_K, q5_0, q6_K and q8_0. Those of the decode runs also record `mul_mat_vec_p021_pvr selected`. llama-bench drops library logs without `-v`, so `bench.log` has none.
 
-r6 differs from the r5 build only by the decode patch's new hunk. Apart from `libggml-vulkan.so`, every library and tool of r6 is byte-identical to r5's once the build directory name (`r6-src`, compiled in through `__FILE__`) is replaced and the `.note.gnu.build-id` section is removed.
+r6 differs from the r5 build only by the decode patch's new hunk. Apart from `libggml-vulkan.so`, every library and tool of r6 is byte-identical to r5's once the build directory name (`r6-src`, compiled in through `__FILE__`) is replaced and the `.note.gnu.build-id` section is removed (`runtime/r6/r5r6-compare.json`, written by `runtime/r6/r5r6-compare.sh`).
 
 ## Before the readback fix (`same-binary-r4/`)
 
@@ -40,7 +40,7 @@ Runtime `runtimes/llama-b11960-pvr-decode-r4` (receipt in `runtime/r4/`), decode
 
 Mean tg32 18.70 → 27.39 tok/s (1.46), steady 19.75 → 29.11 (1.47); per pair 1.50, 1.60, 1.31. pp64 41.9 → 44.4 (1.06). The third decode run was slower throughout, which these short runs cannot separate from thermal or background variation. All six runs passed every gate and produced the same candidate vector as r6. Sampled RSS was 223,296–226,412 KiB.
 
-The r5 rebuild (r4's patches, with the review fixes to the checkers and scripts) then failed its transfer gate in one decode run of the same A/B: two 64-byte reads into pinned host memory came back still holding the zeros written before them. Repeating the transfer check showed the failure only with device-local buffers, and the fix in r6 removed it; the failed run and all repetitions are in [`../../kernels/decode-20261104/readback/`](../../kernels/decode-20261104/readback/). The other five r5 runs passed and are not exported here, since r6 supersedes them. r4's transfer gates passing does not show that its reads were unaffected: the failure was intermittent.
+The r5 rebuild (r4's patches, with the review fixes to the checkers and scripts) then failed its transfer gate in one decode run of the same A/B: two 64-byte reads into pinned host memory came back still holding the zeros written before them. Repeating the transfer check showed the failure only with device-local buffers, and the fix in r6 removed it; the failed run and all repetitions are in [`../../kernels/decode-20261104/readback/`](../../kernels/decode-20261104/readback/). With host-visible buffers the checker's writes and reads are CPU copies that never involve the GPU, so those arms say nothing about reads of GPU-written host-visible memory. The other five r5 runs passed and are not exported here, since r6 supersedes them. r4's transfer gates passing does not show that its reads were unaffected: the failure was intermittent.
 
 These are short timings on one prompt and the default context. They do not establish sustained performance, answer quality, other models, or behaviour at longer contexts. A separate, ungated `llama-bench` run with a 1024-token context on r4 is in [`../../kernels/decode-20261104/depth/`](../../kernels/decode-20261104/depth/). The CPU-majority control in `../readback-study/` (35.5 tok/s) remains faster.
 
