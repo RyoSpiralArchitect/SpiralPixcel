@@ -1,0 +1,164 @@
+diff --git a/ggml/src/ggml-vulkan/ggml-vulkan.cpp b/ggml/src/ggml-vulkan/ggml-vulkan.cpp
+index d4d7198..fa5cef5 100644
+--- a/ggml/src/ggml-vulkan/ggml-vulkan.cpp
++++ b/ggml/src/ggml-vulkan/ggml-vulkan.cpp
+@@ -2959,10 +2959,11 @@ void ggml_vk_load_shaders(vk_device& device, vk_pipeline requested) {
+ #if defined(GGML_VULKAN_INTEGER_DOT_GLSLC_SUPPORT)
+     if (device->pvr_u8_mmvq) {
+         // One 128-wide subgroup per workgroup: four invocations per row (32 rows) for Q5_0/Q8_0,
+-        // 32 per row (4 rows) for Q4_K; see mul_mat_vecq_u8.comp.
++        // 32 per row (4 rows) for Q4_K and Q6_K; see mul_mat_vecq_u8.comp.
+         ggml_vk_create_pipeline(device, device->pipeline_mul_mat_vecq_u8_f32[GGML_TYPE_Q5_0], "mul_mat_vecq_u8_q5_0_f32", mul_mat_vecq_u8_q5_0_f32_len, mul_mat_vecq_u8_q5_0_f32_data, "main", mul_mat_vec_num_bindings, sizeof(vk_mat_vec_push_constants), {32, 1, 1}, {128, 32, 1}, 1, true, true, 128);
+         ggml_vk_create_pipeline(device, device->pipeline_mul_mat_vecq_u8_f32[GGML_TYPE_Q8_0], "mul_mat_vecq_u8_q8_0_f32", mul_mat_vecq_u8_q8_0_f32_len, mul_mat_vecq_u8_q8_0_f32_data, "main", mul_mat_vec_num_bindings, sizeof(vk_mat_vec_push_constants), {32, 1, 1}, {128, 32, 1}, 1, true, true, 128);
+         ggml_vk_create_pipeline(device, device->pipeline_mul_mat_vecq_u8_f32[GGML_TYPE_Q4_K], "mul_mat_vecq_u8_q4_k_f32", mul_mat_vecq_u8_q4_k_f32_len, mul_mat_vecq_u8_q4_k_f32_data, "main", mul_mat_vec_num_bindings, sizeof(vk_mat_vec_push_constants), {4, 1, 1}, {128, 4, 1}, 1, true, true, 128);
++        ggml_vk_create_pipeline(device, device->pipeline_mul_mat_vecq_u8_f32[GGML_TYPE_Q6_K], "mul_mat_vecq_u8_q6_k_f32", mul_mat_vecq_u8_q6_k_f32_len, mul_mat_vecq_u8_q6_k_f32_data, "main", mul_mat_vec_num_bindings, sizeof(vk_mat_vec_push_constants), {4, 1, 1}, {128, 4, 1}, 1, true, true, 128);
+     }
+ #endif
+ 
+@@ -6912,10 +6913,12 @@ static void ggml_vk_mul_mat_vec_q_f16(ggml_backend_vk_context * ctx, vk_context&
+     }
+ 
+     // PowerVR accelerates only unsigned 4x8 dots, so the signed MMVQ path stays off there;
+-    // single-column Q5_0/Q8_0/Q4_K products use the unsigned kernel on Q8_1 activations instead.
++    // single-column Q5_0/Q8_0/Q4_K/Q6_K products use the unsigned kernel on Q8_1 activations instead.
++    // Q6_K superblocks are 210 bytes; the kernel reads d through whole words, so the tensor must end on one.
+     vk_pipeline dmmv_u8 = nullptr;
+     if (ctx->device->pvr_u8_mmvq && !swap_inputs && ne11 == 1 && ne12 * ne13 == 1 && ne00 % 64 == 0 &&
+-        (src0->type == GGML_TYPE_Q5_0 || src0->type == GGML_TYPE_Q8_0 || src0->type == GGML_TYPE_Q4_K) &&
++        (src0->type == GGML_TYPE_Q5_0 || src0->type == GGML_TYPE_Q8_0 || src0->type == GGML_TYPE_Q4_K ||
++         (src0->type == GGML_TYPE_Q6_K && ggml_nbytes(src0) % 4 == 0)) &&
+         src1->type == GGML_TYPE_F32 && ggml_is_contiguous(src1) && !x_non_contig && !y_non_contig &&
+         ggml_nbytes(src0) <= ctx->device->properties.limits.maxStorageBufferRange && ggml_vk_src1_prec_allows_q8(dst)) {
+         dmmv_u8 = ctx->device->pipeline_mul_mat_vecq_u8_f32[src0->type];
+diff --git a/ggml/src/ggml-vulkan/vulkan-shaders/mul_mat_vecq_u8.comp b/ggml/src/ggml-vulkan/vulkan-shaders/mul_mat_vecq_u8.comp
+index 797dd92..3aeea09 100644
+--- a/ggml/src/ggml-vulkan/vulkan-shaders/mul_mat_vecq_u8.comp
++++ b/ggml/src/ggml-vulkan/vulkan-shaders/mul_mat_vecq_u8.comp
+@@ -1,5 +1,5 @@
+ #version 450
+-// Single-column mat-vec for Q5_0, Q8_0 or Q4_K weights against Q8_1 activations, built on the
++// Single-column mat-vec for Q5_0, Q8_0, Q4_K or Q6_K weights against Q8_1 activations, built on the
+ // unsigned 4x8 dot product, which the PowerVR C-Series accelerates (its signed and
+ // mixed-sign dots are not). Weights and activations are biased to unsigned bytes and
+ // exact integer corrections restore the signed sums.
+@@ -21,7 +21,7 @@ layout(constant_id = 2) const uint NUM_COLS = 1;
+ #ifndef TPR
+ // Invocations per row: a power of two, fixed at compile time for the clustered add. The host
+ // sets NUM_ROWS to match.
+-#if defined(DATA_A_Q4_K)
++#if defined(DATA_A_Q4_K) || defined(DATA_A_Q6_K)
+ #define TPR 32
+ #else
+ #define TPR 4
+@@ -56,6 +56,8 @@ layout(push_constant) uniform parameter {
+ #ifndef UNIT_VALUES
+ #define UNIT_VALUES 64  // one of the four 64-value groups of a superblock
+ #endif
++#elif defined(DATA_A_Q6_K)
++#define UNIT_VALUES 64  // two 32-value groups of a superblock half that share their low nibbles
+ #else
+ #error "unsupported weight type"
+ #endif
+@@ -195,6 +197,71 @@ float superblock_dot(const uint sb, const uint act0, const uint first_group, con
+ }
+ #endif
+ 
++#if defined(DATA_A_Q6_K)
++// Superblocks of 210 bytes: 128 bytes of low nibbles, 64 bytes of high bit pairs, 16 signed
++// scales (one per 16 values), then d. Every other superblock starts two bytes past a word
++// boundary; eight words are rebuilt from nine aligned loads, which stay inside the superblock
++// for the nibble and bit-pair regions.
++void load8(const uint byte, out uint w[8]) {
++    const uint base = byte >> 2;
++    const bool odd = (byte & 2u) != 0;
++    uint prev = data_a[base];
++    [[unroll]] for (uint i = 0; i < 8; ++i) {
++        const uint next = data_a[base + i + 1];
++        w[i] = odd ? (prev >> 16) | (next << 16) : prev;
++        prev = next;
++    }
++}
++
++// Unit j of the superblock at byte sb_byte: groups g = j % 2 and g + 2 of half h = j / 2, values
++// 32 * (4h + g) onwards and 32 * (4h + g + 2) onwards. Group g uses the low nibbles of bytes
++// 64h + 32(g % 2) onwards (high nibbles for g >= 2), bit pair g of the bit-pair bytes 32h onwards,
++// and scales 8h + 2g (values 0-15) and 8h + 2g + 1 (values 16-31); see ggml's dequantize_row_q6_K.
++float q6k_unit_dot(const uint sb_byte, const uint j, const uint act0) {
++    const uint h = j / 2, g0 = j % 2;
++    const bool odd = (sb_byte & 2u) != 0;
++    uint ql[8], qh[8];
++    load8(sb_byte + 64 * h + 32 * g0, ql);
++    load8(sb_byte + 128 + 32 * h, qh);
++    // The eight scales of half h as two words (bytes 8h to 8h + 7 of the scale block).
++    const uint sbase = (sb_byte + 192 + 8 * h) >> 2;
++    const uint s0 = data_a[sbase], s1 = data_a[sbase + 1];
++    const uint sc_lo = odd ? (s0 >> 16) | (s1 << 16) : s0;
++    const uint sc_hi = odd ? (s1 >> 16) | (data_a[sbase + 2] << 16) : s1;
++    // d is bytes 208-209: the low half of an aligned word, or the high half of the word before.
++    const float d = odd ? unpackHalf2x16(data_a[(sb_byte + 206) >> 2] >> 16).x
++                        : unpackHalf2x16(data_a[(sb_byte + 208) >> 2]).x;
++    float acc = 0;
++    [[unroll]] for (uint t = 0; t < 2; ++t) {
++        const uint g = g0 + 2 * t;
++        const act_block b = load_act(act0 + 4 * h + g);
++        uint q[8];
++        [[unroll]] for (uint i = 0; i < 8; ++i) {
++            q[i] = ((ql[i] >> (4 * t)) & 0x0F0F0F0Fu) | (((qh[i] >> (2 * g)) & 0x03030303u) << 4);
++        }
++        uint nu_lo = 0, ns_lo = 0, su_lo = 0, nu_hi = 0, ns_hi = 0;
++        [[unroll]] for (uint i = 0; i < 4; ++i) {
++            nu_lo = dotPacked4x8AccSatEXT(q[i], b.lo[i], nu_lo);
++            ns_lo = dotPacked4x8AccSatEXT(q[i], ONES, ns_lo);
++            su_lo = dotPacked4x8AccSatEXT(b.lo[i], ONES, su_lo);
++            nu_hi = dotPacked4x8AccSatEXT(q[i + 4], b.hi[i], nu_hi);
++            ns_hi = dotPacked4x8AccSatEXT(q[i + 4], ONES, ns_hi);
++        }
++        const uint su_hi = b.sum - su_lo;
++        // Scale bytes 2g and 2g + 1 of the half, sign-extended.
++        const uint sw = g < 2 ? sc_lo : sc_hi;
++        const int sa = bitfieldExtract(int(sw), int(16 * (g % 2)), 8);
++        const int sb = bitfieldExtract(int(sw), int(16 * (g % 2) + 8), 8);
++        // value = d * scale * (q - 32) with q in [0,63] and u = y + 128 over 16 values:
++        // sum((q - 32) * y) = sum(q * u) - 128 * sum(q) - 32 * (sum(u) - 2048)
++        const int lo = int(nu_lo) - 128 * int(ns_lo) - 32 * (int(su_lo) - 2048);
++        const int hi = int(nu_hi) - 128 * int(ns_hi) - 32 * (int(su_hi) - 2048);
++        acc += b.d * float(sa * lo + sb * hi);
++    }
++    return d * acc;
++}
++#endif
++
+ void main() {
+     // Clusters are defined over subgroup invocation ids, which Vulkan does not tie to local ids.
+     // The pipeline requires one full 128-wide subgroup per workgroup, so this covers every row.
+@@ -213,7 +280,16 @@ void main() {
+         sum[r] = 0;
+     }
+     for (uint unit = lane; unit < units; unit += TPR) {
+-#if defined(DATA_A_Q4_K)
++#if defined(DATA_A_Q6_K)
++        // Four units per superblock; rows hold whole superblocks.
++        const uint sb = unit / 4;
++        [[unroll]] for (uint r = 0; r < RPS; ++r) {
++            const uint row = first_row + slot + r * slots;
++            if (row < p.stride_d) {
++                sum[r] += q6k_unit_dot(210 * (row * (units / 4) + sb), unit % 4, 8 * sb);
++            }
++        }
++#elif defined(DATA_A_Q4_K)
+         // A unit is a whole superblock or one of its 64-value groups.
+         const uint per_sb = 256 / UNIT_VALUES, sb = unit / per_sb;
+         [[unroll]] for (uint r = 0; r < RPS; ++r) {
+diff --git a/ggml/src/ggml-vulkan/vulkan-shaders/vulkan-shaders-gen.cpp b/ggml/src/ggml-vulkan/vulkan-shaders/vulkan-shaders-gen.cpp
+index db3d76a..6e888c8 100644
+--- a/ggml/src/ggml-vulkan/vulkan-shaders/vulkan-shaders-gen.cpp
++++ b/ggml/src/ggml-vulkan/vulkan-shaders/vulkan-shaders-gen.cpp
+@@ -824,7 +824,7 @@ void process_shaders() {
+             string_to_spv("mul_mat_vec_id_" + tname + "_q8_1_f32_subgroup_no_shmem", "mul_mat_vecq.comp", merge_maps(base_dict, {{"MUL_MAT_ID", "1"}, {data_a_key, "1"}, {"D_TYPE", "float"}, {"FLOAT_TYPE", "float"}, {"FLOAT_TYPEV2", "vec2"}, {"ACC_TYPE", "float"}, {"USE_SUBGROUP_ADD_NO_SHMEM", "1"}}));
+         }
+         // single-column variant for GPUs that accelerate only unsigned 4x8 dots
+-        if (tname == "q5_0" || tname == "q8_0" || tname == "q4_k") {
++        if (tname == "q5_0" || tname == "q8_0" || tname == "q4_k" || tname == "q6_k") {
+             string_to_spv("mul_mat_vecq_u8_" + tname + "_f32", "mul_mat_vecq_u8.comp", {{data_a_key, "1"}});
+         }
+ #endif

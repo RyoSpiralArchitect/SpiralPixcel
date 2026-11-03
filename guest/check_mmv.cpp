@@ -12,7 +12,7 @@
 
 static constexpr double MMV_NMSE_LIMIT = 5e-4;
 static constexpr double RMS_NMSE_LIMIT = 1e-5;
-enum class Operation { MatMul, RmsNorm, RmsNormMul };
+enum class Operation { MatMul, RmsNorm, RmsNormMul, AttentionScores };
 
 static std::vector<float> values(size_t count, uint32_t seed) {
     std::vector<float> out(count);
@@ -45,6 +45,33 @@ struct Graph {
             output = ggml_rms_norm(context, activations, 1e-5f);
             if (operation == Operation::RmsNormMul) output = ggml_mul(context, output, weights);
         }
+        ggml_set_output(output);
+        graph = ggml_new_graph_custom(context, 16, false);
+        ggml_build_forward_expand(graph, output);
+        if (!ggml_backend_supports_op(backend, output)) {
+            ggml_free(context);
+            context = nullptr;
+            throw std::runtime_error("backend does not support requested operation");
+        }
+        buffer = ggml_backend_alloc_ctx_tensors(context, backend);
+        if (!buffer) {
+            ggml_free(context);
+            context = nullptr;
+            throw std::runtime_error("backend tensor allocation failed");
+        }
+    }
+    // Single-token attention scores as llama.cpp builds them without flash attention: an f16 K
+    // cache stored position-major and a query, both permuted (0, 2, 1, 3), with grouped heads.
+    Graph(ggml_backend_t backend, int64_t head_dim, int64_t positions, int64_t kv_heads, int64_t q_heads) {
+        ggml_init_params init{8 * ggml_tensor_overhead() + ggml_graph_overhead_custom(16, false), nullptr, true};
+        context = ggml_init(init);
+        if (!context) throw std::runtime_error("ggml context allocation failed");
+        weights = ggml_new_tensor_3d(context, GGML_TYPE_F16, head_dim, kv_heads, positions);
+        activations = ggml_new_tensor_3d(context, GGML_TYPE_F32, head_dim, q_heads, 1);
+        ggml_set_input(weights);
+        ggml_set_input(activations);
+        output = ggml_mul_mat(context, ggml_permute(context, weights, 0, 2, 1, 3),
+                              ggml_permute(context, activations, 0, 2, 1, 3));
         ggml_set_output(output);
         graph = ggml_new_graph_custom(context, 16, false);
         ggml_build_forward_expand(graph, output);
@@ -133,6 +160,21 @@ static bool check_rms(ggml_backend_t cpu, ggml_backend_t gpu, int64_t width, int
     return report_errors(expected, actual, RMS_NMSE_LIMIT);
 }
 
+static bool check_attention(ggml_backend_t cpu, ggml_backend_t gpu, int64_t head_dim, int64_t positions,
+                            int64_t kv_heads, int64_t gqa) {
+    const auto keys = values(static_cast<size_t>(head_dim*kv_heads*positions), 73);
+    const auto queries = values(static_cast<size_t>(head_dim*kv_heads*gqa), 149);
+    std::vector<uint8_t> halves(keys.size() * sizeof(ggml_fp16_t));
+    ggml_fp32_to_fp16_row(keys.data(), reinterpret_cast<ggml_fp16_t*>(halves.data()), static_cast<int64_t>(keys.size()));
+    Graph reference(cpu, head_dim, positions, kv_heads, kv_heads*gqa);
+    Graph candidate(gpu, head_dim, positions, kv_heads, kv_heads*gqa);
+    const auto expected = compute(reference, cpu, halves, queries);
+    const auto actual = compute(candidate, gpu, halves, queries);
+    std::cout << "{\"op\":\"ATTN_SCORES\",\"type\":\"f16\",\"head_dim\":" << head_dim << ",\"positions\":" << positions
+              << ",\"kv_heads\":" << kv_heads << ",\"gqa\":" << gqa;
+    return report_errors(expected, actual, MMV_NMSE_LIMIT);
+}
+
 int main(int argc, char** argv) {
     ggml_backend_t cpu = nullptr, gpu = nullptr;
     try {
@@ -145,7 +187,7 @@ int main(int argc, char** argv) {
         gpu = ggml_backend_dev_init(gpu_device, nullptr);
         if (!cpu || !gpu) throw std::runtime_error("backend initialization failed");
         int cases = 0, failed = 0;
-        for (auto type : {GGML_TYPE_F32, GGML_TYPE_Q4_K, GGML_TYPE_Q5_0, GGML_TYPE_Q6_K}) {
+        for (auto type : {GGML_TYPE_F32, GGML_TYPE_Q4_K, GGML_TYPE_Q5_0, GGML_TYPE_Q6_K, GGML_TYPE_Q8_0}) {
             for (int64_t k : {768, 896, 1024}) {
                 if (k % ggml_blck_size(type)) continue;
                 for (int64_t m : {128, 896}) {
@@ -155,6 +197,16 @@ int main(int argc, char** argv) {
                     }
                 }
             }
+        }
+        // Decode attention scores: Qwen2.5-0.5B heads (64 wide, 2 K heads, 7 queries each), a
+        // 128-wide grouped case and plain multi-head attention, at short and long contexts. Every
+        // case has more than one K head: with one, the permute is a no-op and ggml takes the
+        // ordinary mat-vec path instead of the permuted one under test.
+        for (const auto& shape : {std::vector<int64_t>{64, 33, 2, 7}, {64, 256, 2, 7}, {64, 1000, 2, 7},
+                                  {128, 256, 4, 2}, {128, 77, 4, 2}, {64, 256, 14, 1}, {64, 100, 2, 8},
+                                  {80, 64, 2, 4}}) {
+            if (!check_attention(cpu, gpu, shape[0], shape[1], shape[2], shape[3])) ++failed;
+            ++cases;
         }
         for (auto operation : {Operation::RmsNorm, Operation::RmsNormMul}) {
             for (int64_t width : {128, 256, 896, 1536}) {

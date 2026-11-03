@@ -1,0 +1,23 @@
+diff --git a/ggml/src/ggml-vulkan/ggml-vulkan-buffers.cpp b/ggml/src/ggml-vulkan/ggml-vulkan-buffers.cpp
+index ac329b0..b214217 100644
+--- a/ggml/src/ggml-vulkan/ggml-vulkan-buffers.cpp
++++ b/ggml/src/ggml-vulkan/ggml-vulkan-buffers.cpp
+@@ -779,6 +779,18 @@ void ggml_vk_buffer_read_2d(vk_buffer& src, size_t offset, void * dst, size_t sp
+             src->device->device.invalidateMappedMemoryRanges(
+                 vk::MappedMemoryRange{src->device->sync_staging->device_memory, 0, VK_WHOLE_SIZE});
+         }
++        // A pinned destination took the copy directly (ggml_vk_buffer_read_2d_async). The VM can
++        // return stale zeros from it unless it is invalidated as well; this path runs only when the
++        // source is not host-visible, as with GGML_VK_PREFER_DEVICE_LOCAL on UMA.
++        if (split_output && strcmp(split_output, "1") == 0) {
++            vk_buffer pinned = nullptr;
++            size_t pinned_offset = 0;
++            ggml_vk_host_get(src->device, dst, pinned, pinned_offset);
++            if (pinned != nullptr) {
++                src->device->device.invalidateMappedMemoryRanges(
++                    vk::MappedMemoryRange{pinned->device_memory, 0, VK_WHOLE_SIZE});
++            }
++        }
+         for (auto& cpy : subctx->out_memcpys) {
+             memcpy(cpy.dst, cpy.src, cpy.n);
+         }

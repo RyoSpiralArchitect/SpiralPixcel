@@ -1,0 +1,78 @@
+#version 450
+// ALU throughput probe: each invocation runs ITER rounds of 8 independent chains of one
+// operation kind, then folds the chains into one store so nothing is eliminated.
+#extension GL_EXT_control_flow_attributes : enable
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#extension GL_EXT_integer_dot_product : require
+
+#ifndef OP
+#define OP 0
+#endif
+#ifndef ITER
+#define ITER 256
+#endif
+
+layout(local_size_x_id = 0) in;
+layout(binding = 2) writeonly buffer D { float data_d[]; };
+
+void main() {
+    const uint seed = gl_GlobalInvocationID.x;
+#if OP == 0  // fp32 fma
+    float a[8];
+    [[unroll]] for (uint i = 0; i < 8; ++i) a[i] = float(seed + i);
+    const float m = 1.0001, c = 0.5;
+    for (uint it = 0; it < ITER; ++it) {
+        [[unroll]] for (uint i = 0; i < 8; ++i) a[i] = fma(a[i], m, c);
+    }
+    float r = 0;
+    [[unroll]] for (uint i = 0; i < 8; ++i) r += a[i];
+#elif OP == 1  // uint shift+and+or (one "op" counts all three)
+    uint a[8];
+    [[unroll]] for (uint i = 0; i < 8; ++i) a[i] = seed * (i + 3);
+    for (uint it = 0; it < ITER; ++it) {
+        [[unroll]] for (uint i = 0; i < 8; ++i) a[i] = ((a[i] >> 3) & 0x0F0F0F0Fu) | (a[i] << 5);
+    }
+    uint u = 0;
+    [[unroll]] for (uint i = 0; i < 8; ++i) u ^= a[i];
+    float r = float(u);
+#elif OP == 2  // unpackUnorm4x8 + dot with a vec4
+    vec4 acc[8];
+    uint q[8];
+    [[unroll]] for (uint i = 0; i < 8; ++i) { acc[i] = vec4(0); q[i] = seed * (i + 7); }
+    const vec4 b = vec4(0.25, 0.5, 0.75, 1.0);
+    for (uint it = 0; it < ITER; ++it) {
+        [[unroll]] for (uint i = 0; i < 8; ++i) { acc[i] += unpackUnorm4x8(q[i]) * b; q[i] += 0x01010101u; }
+    }
+    float r = 0;
+    [[unroll]] for (uint i = 0; i < 8; ++i) r += dot(acc[i], vec4(1));
+#elif OP == 3  // unsigned 4x8 dot product, accumulating in uint
+    uint acc[8], q[8];
+    [[unroll]] for (uint i = 0; i < 8; ++i) { acc[i] = 0; q[i] = seed * (i + 7); }
+    const uint b = 0x01020304u;
+    for (uint it = 0; it < ITER; ++it) {
+        [[unroll]] for (uint i = 0; i < 8; ++i) { acc[i] = dotPacked4x8AccSatEXT(q[i], b, acc[i]); q[i] += 0x01010101u; }
+    }
+    uint u = 0;
+    [[unroll]] for (uint i = 0; i < 8; ++i) u += acc[i];
+    float r = float(u);
+#elif OP == 4  // f16vec2 fma
+    f16vec2 a[8];
+    [[unroll]] for (uint i = 0; i < 8; ++i) a[i] = f16vec2(float16_t(seed & 15u), float16_t(i));
+    const f16vec2 m = f16vec2(1.0001hf), c = f16vec2(0.5hf);
+    for (uint it = 0; it < ITER; ++it) {
+        [[unroll]] for (uint i = 0; i < 8; ++i) a[i] = fma(a[i], m, c);
+    }
+    float r = 0;
+    [[unroll]] for (uint i = 0; i < 8; ++i) r += float(a[i].x + a[i].y);
+#elif OP == 5  // uint to float conversion + fma
+    float acc[8];
+    uint q[8];
+    [[unroll]] for (uint i = 0; i < 8; ++i) { acc[i] = 0; q[i] = seed * (i + 7); }
+    for (uint it = 0; it < ITER; ++it) {
+        [[unroll]] for (uint i = 0; i < 8; ++i) { acc[i] = fma(float(q[i] & 31u), 0.5, acc[i]); q[i] += 7u; }
+    }
+    float r = 0;
+    [[unroll]] for (uint i = 0; i < 8; ++i) r += acc[i];
+#endif
+    if (r == 1234.5678) data_d[0] = r;  // keeps the work observable without a store per lane
+}

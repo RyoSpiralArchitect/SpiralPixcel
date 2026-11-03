@@ -1,0 +1,472 @@
+diff --git a/ggml/src/ggml-vulkan/ggml-vulkan-types.h b/ggml/src/ggml-vulkan/ggml-vulkan-types.h
+index a150555..460e621 100644
+--- a/ggml/src/ggml-vulkan/ggml-vulkan-types.h
++++ b/ggml/src/ggml-vulkan/ggml-vulkan-types.h
+@@ -718,6 +718,9 @@ struct vk_device_struct {
+     bool shader_64b_indexing;
+ 
+     bool integer_dot_product;
++    // PowerVR: single-column Q5_0/Q8_0/Q4_K mat-vec on unsigned 4x8 dots (GGML_VK_PWR_U8_MMVQ=1)
++    bool pvr_u8_mmvq;
++    std::atomic<uint32_t> pvr_u8_mmvq_logged_types {};  // bit per ggml_type, for the one-time log
+     // 0: default, 1: force mmvq, -1: disable mmvq
+     int32_t mmvq_mode;
+ 
+@@ -798,6 +801,7 @@ struct vk_device_struct {
+ 
+     vk_pipeline pipeline_dequant_mul_mat_vec_q8_1_f32[DMMV_WG_SIZE_COUNT][GGML_TYPE_COUNT][mul_mat_vec_max_cols];
+     vk_pipeline pipeline_dequant_mul_mat_vec_id_q8_1_f32[DMMV_WG_SIZE_COUNT][GGML_TYPE_COUNT];
++    vk_pipeline pipeline_mul_mat_vecq_u8_f32[GGML_TYPE_COUNT];
+ 
+     vk_pipeline pipeline_mul_mat_vec_p021_f16_f32[p021_max_gqa_ratio];
+     vk_pipeline pipeline_mul_mat_vec_nc_f16_f32;
+diff --git a/ggml/src/ggml-vulkan/ggml-vulkan.cpp b/ggml/src/ggml-vulkan/ggml-vulkan.cpp
+index 8a711c5..9bcd2b1 100644
+--- a/ggml/src/ggml-vulkan/ggml-vulkan.cpp
++++ b/ggml/src/ggml-vulkan/ggml-vulkan.cpp
+@@ -2921,6 +2921,17 @@ void ggml_vk_load_shaders(vk_device& device, vk_pipeline requested) {
+     static constexpr uint32_t mul_mat_vec_num_bindings = 5;
+     static constexpr uint32_t mul_mat_vec_id_num_bindings = 6;
+ 
++#if defined(GGML_VULKAN_INTEGER_DOT_GLSLC_SUPPORT)
++    if (device->pvr_u8_mmvq) {
++        // One 128-wide subgroup per workgroup: four invocations per row (32 rows) for Q5_0/Q8_0,
++        // 32 per row (4 rows) for Q4_K and Q6_K; see mul_mat_vecq_u8.comp.
++        ggml_vk_create_pipeline(device, device->pipeline_mul_mat_vecq_u8_f32[GGML_TYPE_Q5_0], "mul_mat_vecq_u8_q5_0_f32", mul_mat_vecq_u8_q5_0_f32_len, mul_mat_vecq_u8_q5_0_f32_data, "main", mul_mat_vec_num_bindings, sizeof(vk_mat_vec_push_constants), {32, 1, 1}, {128, 32, 1}, 1, true, true, 128);
++        ggml_vk_create_pipeline(device, device->pipeline_mul_mat_vecq_u8_f32[GGML_TYPE_Q8_0], "mul_mat_vecq_u8_q8_0_f32", mul_mat_vecq_u8_q8_0_f32_len, mul_mat_vecq_u8_q8_0_f32_data, "main", mul_mat_vec_num_bindings, sizeof(vk_mat_vec_push_constants), {32, 1, 1}, {128, 32, 1}, 1, true, true, 128);
++        ggml_vk_create_pipeline(device, device->pipeline_mul_mat_vecq_u8_f32[GGML_TYPE_Q4_K], "mul_mat_vecq_u8_q4_k_f32", mul_mat_vecq_u8_q4_k_f32_len, mul_mat_vecq_u8_q4_k_f32_data, "main", mul_mat_vec_num_bindings, sizeof(vk_mat_vec_push_constants), {4, 1, 1}, {128, 4, 1}, 1, true, true, 128);
++        ggml_vk_create_pipeline(device, device->pipeline_mul_mat_vecq_u8_f32[GGML_TYPE_Q6_K], "mul_mat_vecq_u8_q6_k_f32", mul_mat_vecq_u8_q6_k_f32_len, mul_mat_vecq_u8_q6_k_f32_data, "main", mul_mat_vec_num_bindings, sizeof(vk_mat_vec_push_constants), {4, 1, 1}, {128, 4, 1}, 1, true, true, 128);
++    }
++#endif
++
+ #if defined(GGML_VULKAN_FLOAT_E2M1_GLSLC_SUPPORT) && defined(GGML_VULKAN_FLOAT_E4M3_GLSLC_SUPPORT)
+ #define OCP_DMMV_LEN(NAME, REDUC)  (device->ocp_fp4 ? NAME ## _ocp_len[REDUC]  : NAME ## _len[REDUC])
+ #define OCP_DMMV_DATA(NAME, REDUC) (device->ocp_fp4 ? NAME ## _ocp_data[REDUC] : NAME ## _data[REDUC])
+@@ -4155,6 +4166,14 @@ vk_device ggml_vk_get_device(size_t idx) {
+             }
+         }
+ 
++        // The PowerVR C-Series exposes 4x8 dot products as a Vulkan 1.3 core feature without
++        // listing VK_KHR_shader_integer_dot_product, and accelerates only the unsigned form.
++        // Core 1.3 structures need 1.3 on both sides: the instance asks for the loader's version.
++        const vk::PhysicalDeviceProperties base_props = device->physical_device.getProperties();
++        const bool pvr_u8_candidate = getenv("GGML_VK_PWR_U8_MMVQ") != nullptr && base_props.vendorID == 0x1010 &&
++                                      base_props.apiVersion >= VK_API_VERSION_1_3 &&
++                                      vk::enumerateInstanceVersion() >= VK_API_VERSION_1_3;
++
+         vk::PhysicalDeviceProperties2 props2;
+         vk::PhysicalDeviceMaintenance3Properties props3;
+         vk::PhysicalDeviceMaintenance4Properties props4;
+@@ -4201,7 +4220,7 @@ vk_device ggml_vk_get_device(size_t idx) {
+         }
+ #endif
+ 
+-        if (device->integer_dot_product) {
++        if (device->integer_dot_product || pvr_u8_candidate) {
+             last_struct->pNext = (VkBaseOutStructure *)&shader_integer_dot_product_props;
+             last_struct = (VkBaseOutStructure *)&shader_integer_dot_product_props;
+         }
+@@ -4468,10 +4487,12 @@ vk_device ggml_vk_get_device(size_t idx) {
+ 
+         VkPhysicalDeviceShaderIntegerDotProductFeaturesKHR shader_integer_dot_product_features {};
+         shader_integer_dot_product_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_DOT_PRODUCT_FEATURES_KHR;
+-        if (device->integer_dot_product) {
++        if (device->integer_dot_product || pvr_u8_candidate) {
+             last_struct->pNext = (VkBaseOutStructure *)&shader_integer_dot_product_features;
+             last_struct = (VkBaseOutStructure *)&shader_integer_dot_product_features;
+-            device_extensions.push_back("VK_KHR_shader_integer_dot_product");
++            if (device->integer_dot_product) {
++                device_extensions.push_back("VK_KHR_shader_integer_dot_product");
++            }
+         }
+ 
+         VkPhysicalDeviceShaderMixedFloatDotProductFeaturesVALVE dot2_features {};
+@@ -4570,6 +4591,14 @@ vk_device ggml_vk_get_device(size_t idx) {
+ 
+         device->subgroup_require_full_support = subgroup_size_control_features.computeFullSubgroups;
+ 
++        // The kernel's row reduction is a clustered add inside one 128-wide subgroup.
++        device->pvr_u8_mmvq = pvr_u8_candidate && device->driver_id == vk::DriverId::eImaginationProprietary &&
++                              shader_integer_dot_product_features.shaderIntegerDotProduct &&
++                              shader_integer_dot_product_props.integerDotProduct4x8BitPackedUnsignedAccelerated &&
++                              device->subgroup_arithmetic && device->subgroup_clustered &&
++                              device->subgroup_size_control && device->subgroup_require_full_support &&
++                              device->subgroup_min_size <= 128 && device->subgroup_max_size >= 128;
++
+ #if defined(VK_KHR_cooperative_matrix)
+         device->coopmat_support = device->coopmat_support && coopmat_features.cooperativeMatrix;
+         device->coopmat1_fa_support = device->coopmat_support && device->subgroup_require_full_support;
+@@ -6814,8 +6843,26 @@ static void ggml_vk_mul_mat_vec_q_f16(ggml_backend_vk_context * ctx, vk_context&
+         to_fp16_vk_1 = ggml_vk_get_to_fp16(ctx, src1->type);
+     }
+ 
++    // PowerVR accelerates only unsigned 4x8 dots, so the signed MMVQ path stays off there;
++    // single-column Q5_0/Q8_0/Q4_K/Q6_K products use the unsigned kernel on Q8_1 activations instead.
++    // Q6_K superblocks are 210 bytes; the kernel reads d through whole words, so the tensor must end on one.
++    vk_pipeline dmmv_u8 = nullptr;
++    if (ctx->device->pvr_u8_mmvq && !swap_inputs && ne11 == 1 && ne12 * ne13 == 1 && ne00 % 64 == 0 &&
++        (src0->type == GGML_TYPE_Q5_0 || src0->type == GGML_TYPE_Q8_0 || src0->type == GGML_TYPE_Q4_K ||
++         (src0->type == GGML_TYPE_Q6_K && ggml_nbytes(src0) % 4 == 0)) &&
++        src1->type == GGML_TYPE_F32 && ggml_is_contiguous(src1) && !x_non_contig && !y_non_contig &&
++        ggml_nbytes(src0) <= ctx->device->properties.limits.maxStorageBufferRange && ggml_vk_src1_prec_allows_q8(dst)) {
++        dmmv_u8 = ctx->device->pipeline_mul_mat_vecq_u8_f32[src0->type];
++        quantize_y = dmmv_u8 != nullptr;
++        // Checkers look for this line to confirm the kernel ran rather than a silent fallback.
++        const uint32_t bit = 1u << (src0->type % 32);
++        if (dmmv_u8 && !(ctx->device->pvr_u8_mmvq_logged_types.fetch_or(bit) & bit)) {
++            GGML_LOG_INFO("ggml_vulkan: mul_mat_vecq_u8 selected for %s\n", ggml_type_name(src0->type));
++        }
++    }
++
+     // Check for mmq first
+-    vk_pipeline dmmv = quantize_y ? ggml_vk_get_dequantize_mul_mat_vec(ctx, src0->type, GGML_TYPE_Q8_1, ne11, ne20, ne00) : nullptr;
++    vk_pipeline dmmv = dmmv_u8 ? dmmv_u8 : quantize_y ? ggml_vk_get_dequantize_mul_mat_vec(ctx, src0->type, GGML_TYPE_Q8_1, ne11, ne20, ne00) : nullptr;
+     vk_pipeline to_q8_1 = nullptr;
+ 
+     if (dmmv == nullptr) {
+diff --git a/ggml/src/ggml-vulkan/vulkan-shaders/mul_mat_vecq_u8.comp b/ggml/src/ggml-vulkan/vulkan-shaders/mul_mat_vecq_u8.comp
+new file mode 100644
+index 0000000..3aeea09
+--- /dev/null
++++ b/ggml/src/ggml-vulkan/vulkan-shaders/mul_mat_vecq_u8.comp
+@@ -0,0 +1,325 @@
++#version 450
++// Single-column mat-vec for Q5_0, Q8_0, Q4_K or Q6_K weights against Q8_1 activations, built on the
++// unsigned 4x8 dot product, which the PowerVR C-Series accelerates (its signed and
++// mixed-sign dots are not). Weights and activations are biased to unsigned bytes and
++// exact integer corrections restore the signed sums.
++//
++// Activations use ggml-vulkan's block_q8_1_x4 layout: four f16vec2 (d, d*sum) words, then
++// four blocks of eight int8x4 words, 144 bytes per 128 values. A cluster of TPR invocations
++// shares one weight row and reads whole aligned words: pairs of 32-value blocks, or Q4_K
++// superblocks. One clustered subgroup add finishes the row without shared memory or barriers.
++#extension GL_EXT_control_flow_attributes : enable
++#extension GL_EXT_integer_dot_product : require
++#extension GL_KHR_shader_subgroup_basic : require
++#extension GL_KHR_shader_subgroup_arithmetic : require
++#extension GL_KHR_shader_subgroup_clustered : require
++
++layout(local_size_x_id = 0, local_size_y = 1, local_size_z = 1) in;
++layout(constant_id = 0) const uint BLOCK_SIZE = 128;  // equals the required subgroup size
++layout(constant_id = 1) const uint NUM_ROWS = 32;     // rows per workgroup: BLOCK_SIZE / TPR * RPS
++layout(constant_id = 2) const uint NUM_COLS = 1;
++#ifndef TPR
++// Invocations per row: a power of two, fixed at compile time for the clustered add. The host
++// sets NUM_ROWS to match.
++#if defined(DATA_A_Q4_K) || defined(DATA_A_Q6_K)
++#define TPR 32
++#else
++#define TPR 4
++#endif
++#endif
++#ifndef RPS
++#define RPS 1  // rows per group of TPR invocations; activations are reused across them
++#endif
++
++#define MAT_VEC_FUSION_FLAGS_BIAS0 0x1
++#define MAT_VEC_FUSION_FLAGS_BIAS1 0x2
++
++layout(binding = 0) readonly buffer A { uint data_a[]; };
++layout(binding = 1) readonly buffer B { uvec4 data_b[]; };
++layout(binding = 2) writeonly buffer D { float data_d[]; };
++layout(binding = 3) readonly buffer Fuse0 { float data_fuse0[]; };
++layout(binding = 4) readonly buffer Fuse1 { float data_fuse1[]; };
++
++layout(push_constant) uniform parameter {
++    uint ncols, stride_a, stride_b, stride_d, batch_stride_a, batch_stride_b, batch_stride_d;
++    uint fusion_flags, base_work_group_y, ne02, ne12, broadcast2, broadcast3;
++} p;
++
++// A unit is the run of weights one invocation reads at a time.
++#if defined(DATA_A_Q5_0)
++#define BLOCK_BYTES 22
++#define UNIT_VALUES 64
++#elif defined(DATA_A_Q8_0)
++#define BLOCK_BYTES 34
++#define UNIT_VALUES 64
++#elif defined(DATA_A_Q4_K)
++#ifndef UNIT_VALUES
++#define UNIT_VALUES 64  // one of the four 64-value groups of a superblock
++#endif
++#elif defined(DATA_A_Q6_K)
++#define UNIT_VALUES 64  // two 32-value groups of a superblock half that share their low nibbles
++#else
++#error "unsupported weight type"
++#endif
++
++const uint ONES = 0x01010101u;
++
++struct act_block {
++    uvec4 lo, hi;  // u = y + 128 for values 0-15 and 16-31
++    float d;
++    uint sum;      // sum(u)
++};
++
++act_block load_act(const uint blk) {
++    const uint x4 = blk / 4, inner = blk % 4;
++    act_block a;
++    a.lo = data_b[9 * x4 + 1 + 2 * inner] ^ 0x80808080u;
++    a.hi = data_b[9 * x4 + 2 + 2 * inner] ^ 0x80808080u;
++    a.d = unpackHalf2x16(data_b[9 * x4][inner]).x;
++    a.sum = 0;
++    [[unroll]] for (uint w = 0; w < 4; ++w) {
++        a.sum = dotPacked4x8AccSatEXT(a.lo[w], ONES, a.sum);
++        a.sum = dotPacked4x8AccSatEXT(a.hi[w], ONES, a.sum);
++    }
++    return a;
++}
++
++#if defined(DATA_A_Q5_0)
++// Spread the low four bits of b to bit 4 of each byte.
++uint spread4(const uint b) {
++    return (((b & 0xFu) * 0x00204081u) & 0x01010101u) << 4;
++}
++
++// One 22-byte block (d at bytes 0-1, qh at 2-5, qs at 6-21); w0 holds bytes 0-3. Scalars
++// rather than arrays: the PowerVR compiler keeps them in registers and runs ~20% faster.
++float block_dot(const uint w0, const uint w1, const uint w2, const uint w3, const uint w4, const uint w5,
++                const act_block b) {
++    const float d = unpackHalf2x16(w0).x;
++    const uint qh = (w0 >> 16) | (w1 << 16);
++    const uint qs[4] = uint[4]((w1 >> 16) | (w2 << 16), (w2 >> 16) | (w3 << 16),
++                               (w3 >> 16) | (w4 << 16), (w4 >> 16) | (w5 << 16));
++    uint xu = 0, xs = 0;
++    [[unroll]] for (uint i = 0; i < 4; ++i) {
++        const uint x_lo = (qs[i] & 0x0F0F0F0Fu) | spread4(qh >> (4 * i));
++        const uint x_hi = ((qs[i] >> 4) & 0x0F0F0F0Fu) | spread4(qh >> (4 * i + 16));
++        xu = dotPacked4x8AccSatEXT(x_lo, b.lo[i], xu);
++        xu = dotPacked4x8AccSatEXT(x_hi, b.hi[i], xu);
++        xs = dotPacked4x8AccSatEXT(x_lo, ONES, xs);
++        xs = dotPacked4x8AccSatEXT(x_hi, ONES, xs);
++    }
++    // x in [0,31] stores x - 16 and u = y + 128:
++    // sum((x - 16) * y) = sum(x * u) - 128 * sum(x) - 16 * (sum(u) - 4096)
++    return d * b.d * float(int(xu) - 128 * int(xs) - 16 * (int(b.sum) - 4096));
++}
++
++// An aligned pair of blocks is eleven words.
++float pair_dot(const uint base, const act_block b0, const act_block b1) {
++    const uint p0 = data_a[base], p1 = data_a[base + 1], p2 = data_a[base + 2], p3 = data_a[base + 3];
++    const uint p4 = data_a[base + 4], p5 = data_a[base + 5], p6 = data_a[base + 6], p7 = data_a[base + 7];
++    const uint p8 = data_a[base + 8], p9 = data_a[base + 9], p10 = data_a[base + 10];
++    // The odd block starts at byte 22: realign by one half-word.
++    return block_dot(p0, p1, p2, p3, p4, p5, b0) +
++           block_dot((p5 >> 16) | (p6 << 16), (p6 >> 16) | (p7 << 16), (p7 >> 16) | (p8 << 16),
++                     (p8 >> 16) | (p9 << 16), (p9 >> 16) | (p10 << 16), p10 >> 16, b1);
++}
++#else
++// One 34-byte block: d, then 32 int8 values, given as the scale and eight aligned words.
++float block_dot(const float d, const uint qs[8], const act_block b) {
++    uint xu = 0, xs = 0;
++    [[unroll]] for (uint i = 0; i < 4; ++i) {
++        const uint x_lo = qs[i] ^ 0x80808080u, x_hi = qs[i + 4] ^ 0x80808080u;
++        xu = dotPacked4x8AccSatEXT(x_lo, b.lo[i], xu);
++        xu = dotPacked4x8AccSatEXT(x_hi, b.hi[i], xu);
++        xs = dotPacked4x8AccSatEXT(x_lo, ONES, xs);
++        xs = dotPacked4x8AccSatEXT(x_hi, ONES, xs);
++    }
++    // x = w + 128 and u = y + 128: sum(w * y) = sum(x * u) - 128 * (sum(x) + sum(u)) + 128 * 128 * 32
++    return d * b.d * float(int(xu) - 128 * (int(xs) + int(b.sum)) + 524288);
++}
++
++// An aligned pair of blocks is seventeen words.
++float pair_dot(const uint base, const act_block b0, const act_block b1) {
++    uint w[17];
++    [[unroll]] for (uint i = 0; i < 17; ++i) {
++        w[i] = data_a[base + i];
++    }
++    // The even block's values start at byte 2; the odd block (byte 34) has its values aligned.
++    uint even[8], odd[8];
++    [[unroll]] for (uint i = 0; i < 8; ++i) {
++        even[i] = (w[i] >> 16) | (w[i + 1] << 16);
++        odd[i] = w[i + 9];
++    }
++    return block_dot(unpackHalf2x16(w[0]).x, even, b0) + block_dot(unpackHalf2x16(w[8] >> 16).x, odd, b1);
++}
++#endif
++
++#if defined(DATA_A_Q4_K)
++// Groups of one 144-byte superblock (36 words): d and dmin, twelve bytes of 6-bit scales and
++// mins for eight 32-value sub-blocks, then 128 bytes of 4-bit values. Group j holds sub-blocks
++// 2j and 2j + 1, the low and high nibbles of bytes 32j onwards; sub-block s pairs with
++// activation block act0 + s. Splitting rows into 64-value groups across 32 invocations
++// measured 1.2x the existing kernel on 896x4864, against no gain for whole superblocks.
++// ggml-vulkan places tensors only 4-byte aligned here, so words are read singly.
++float superblock_dot(const uint sb, const uint act0, const uint first_group, const uint group_count) {
++    const uint base = 36 * sb;
++    const vec2 dm = unpackHalf2x16(data_a[base]);
++    const uint s0 = data_a[base + 1], s1 = data_a[base + 2], s2 = data_a[base + 3];
++    // Byte s of these words is the scale or min of sub-block s (s < 4) or s + 4.
++    const uint scales_lo = s0 & 0x3F3F3F3Fu, mins_lo = s1 & 0x3F3F3F3Fu;
++    const uint scales_hi = (s2 & 0x0F0F0F0Fu) | ((s0 >> 2) & 0x30303030u);
++    const uint mins_hi = ((s2 >> 4) & 0x0F0F0F0Fu) | ((s1 >> 2) & 0x30303030u);
++    float acc_scale = 0, acc_min = 0;
++    [[unroll]] for (uint g = 0; g < group_count; ++g) {
++        const uint j = first_group + g;
++        const uint q = base + 4 + 8 * j;
++        const uvec4 q0 = uvec4(data_a[q], data_a[q + 1], data_a[q + 2], data_a[q + 3]);
++        const uvec4 q1 = uvec4(data_a[q + 4], data_a[q + 5], data_a[q + 6], data_a[q + 7]);
++        [[unroll]] for (uint h = 0; h < 2; ++h) {
++            const uint s = 2 * j + h;
++            const act_block b = load_act(act0 + s);
++            const uvec4 n0 = (q0 >> (4 * h)) & 0x0F0F0F0Fu, n1 = (q1 >> (4 * h)) & 0x0F0F0F0Fu;
++            uint nu = 0, ns = 0;
++            [[unroll]] for (uint i = 0; i < 4; ++i) {
++                nu = dotPacked4x8AccSatEXT(n0[i], b.lo[i], nu);
++                nu = dotPacked4x8AccSatEXT(n1[i], b.hi[i], nu);
++                ns = dotPacked4x8AccSatEXT(n0[i], ONES, ns);
++                ns = dotPacked4x8AccSatEXT(n1[i], ONES, ns);
++            }
++            const uint scale = ((s < 4 ? scales_lo : scales_hi) >> (8 * (s % 4))) & 0xFFu;
++            const uint mn = ((s < 4 ? mins_lo : mins_hi) >> (8 * (s % 4))) & 0xFFu;
++            // value = d * scale * n - dmin * mn with n in [0,15] and u = y + 128:
++            // sum(n * y) = sum(n * u) - 128 * sum(n), sum(y) = sum(u) - 4096
++            acc_scale += b.d * float(int(scale) * (int(nu) - 128 * int(ns)));
++            acc_min += b.d * float(int(mn) * (int(b.sum) - 4096));
++        }
++    }
++    return dm.x * acc_scale - dm.y * acc_min;
++}
++#endif
++
++#if defined(DATA_A_Q6_K)
++// Superblocks of 210 bytes: 128 bytes of low nibbles, 64 bytes of high bit pairs, 16 signed
++// scales (one per 16 values), then d. Every other superblock starts two bytes past a word
++// boundary; eight words are rebuilt from nine aligned loads, which stay inside the superblock
++// for the nibble and bit-pair regions.
++void load8(const uint byte, out uint w[8]) {
++    const uint base = byte >> 2;
++    const bool odd = (byte & 2u) != 0;
++    uint prev = data_a[base];
++    [[unroll]] for (uint i = 0; i < 8; ++i) {
++        const uint next = data_a[base + i + 1];
++        w[i] = odd ? (prev >> 16) | (next << 16) : prev;
++        prev = next;
++    }
++}
++
++// Unit j of the superblock at byte sb_byte: groups g = j % 2 and g + 2 of half h = j / 2, values
++// 32 * (4h + g) onwards and 32 * (4h + g + 2) onwards. Group g uses the low nibbles of bytes
++// 64h + 32(g % 2) onwards (high nibbles for g >= 2), bit pair g of the bit-pair bytes 32h onwards,
++// and scales 8h + 2g (values 0-15) and 8h + 2g + 1 (values 16-31); see ggml's dequantize_row_q6_K.
++float q6k_unit_dot(const uint sb_byte, const uint j, const uint act0) {
++    const uint h = j / 2, g0 = j % 2;
++    const bool odd = (sb_byte & 2u) != 0;
++    uint ql[8], qh[8];
++    load8(sb_byte + 64 * h + 32 * g0, ql);
++    load8(sb_byte + 128 + 32 * h, qh);
++    // The eight scales of half h as two words (bytes 8h to 8h + 7 of the scale block).
++    const uint sbase = (sb_byte + 192 + 8 * h) >> 2;
++    const uint s0 = data_a[sbase], s1 = data_a[sbase + 1];
++    const uint sc_lo = odd ? (s0 >> 16) | (s1 << 16) : s0;
++    const uint sc_hi = odd ? (s1 >> 16) | (data_a[sbase + 2] << 16) : s1;
++    // d is bytes 208-209: the low half of an aligned word, or the high half of the word before.
++    const float d = odd ? unpackHalf2x16(data_a[(sb_byte + 206) >> 2] >> 16).x
++                        : unpackHalf2x16(data_a[(sb_byte + 208) >> 2]).x;
++    float acc = 0;
++    [[unroll]] for (uint t = 0; t < 2; ++t) {
++        const uint g = g0 + 2 * t;
++        const act_block b = load_act(act0 + 4 * h + g);
++        uint q[8];
++        [[unroll]] for (uint i = 0; i < 8; ++i) {
++            q[i] = ((ql[i] >> (4 * t)) & 0x0F0F0F0Fu) | (((qh[i] >> (2 * g)) & 0x03030303u) << 4);
++        }
++        uint nu_lo = 0, ns_lo = 0, su_lo = 0, nu_hi = 0, ns_hi = 0;
++        [[unroll]] for (uint i = 0; i < 4; ++i) {
++            nu_lo = dotPacked4x8AccSatEXT(q[i], b.lo[i], nu_lo);
++            ns_lo = dotPacked4x8AccSatEXT(q[i], ONES, ns_lo);
++            su_lo = dotPacked4x8AccSatEXT(b.lo[i], ONES, su_lo);
++            nu_hi = dotPacked4x8AccSatEXT(q[i + 4], b.hi[i], nu_hi);
++            ns_hi = dotPacked4x8AccSatEXT(q[i + 4], ONES, ns_hi);
++        }
++        const uint su_hi = b.sum - su_lo;
++        // Scale bytes 2g and 2g + 1 of the half, sign-extended.
++        const uint sw = g < 2 ? sc_lo : sc_hi;
++        const int sa = bitfieldExtract(int(sw), int(16 * (g % 2)), 8);
++        const int sb = bitfieldExtract(int(sw), int(16 * (g % 2) + 8), 8);
++        // value = d * scale * (q - 32) with q in [0,63] and u = y + 128 over 16 values:
++        // sum((q - 32) * y) = sum(q * u) - 128 * sum(q) - 32 * (sum(u) - 2048)
++        const int lo = int(nu_lo) - 128 * int(ns_lo) - 32 * (int(su_lo) - 2048);
++        const int hi = int(nu_hi) - 128 * int(ns_hi) - 32 * (int(su_hi) - 2048);
++        acc += b.d * float(sa * lo + sb * hi);
++    }
++    return d * acc;
++}
++#endif
++
++void main() {
++    // Clusters are defined over subgroup invocation ids, which Vulkan does not tie to local ids.
++    // The pipeline requires one full 128-wide subgroup per workgroup, so this covers every row.
++    const uint tid = gl_SubgroupInvocationID;
++    const uint lane = tid % TPR;
++    const uint slot = tid / TPR;
++    const uint slots = BLOCK_SIZE / TPR;
++    const uint first_row = NUM_ROWS * (gl_WorkGroupID.x + gl_NumWorkGroups.x * gl_WorkGroupID.z);
++    const uint blocks = p.ncols / 32;
++    const uint units = p.ncols / UNIT_VALUES;
++
++    // The row loop has the same trip count in every invocation, which keeps the clustered
++    // add uniform; a per-invocation row loop around it measured ~20% slower.
++    float sum[RPS];
++    [[unroll]] for (uint r = 0; r < RPS; ++r) {
++        sum[r] = 0;
++    }
++    for (uint unit = lane; unit < units; unit += TPR) {
++#if defined(DATA_A_Q6_K)
++        // Four units per superblock; rows hold whole superblocks.
++        const uint sb = unit / 4;
++        [[unroll]] for (uint r = 0; r < RPS; ++r) {
++            const uint row = first_row + slot + r * slots;
++            if (row < p.stride_d) {
++                sum[r] += q6k_unit_dot(210 * (row * (units / 4) + sb), unit % 4, 8 * sb);
++            }
++        }
++#elif defined(DATA_A_Q4_K)
++        // A unit is a whole superblock or one of its 64-value groups.
++        const uint per_sb = 256 / UNIT_VALUES, sb = unit / per_sb;
++        [[unroll]] for (uint r = 0; r < RPS; ++r) {
++            const uint row = first_row + slot + r * slots;
++            if (row < p.stride_d) {
++                sum[r] += superblock_dot(row * (units / per_sb) + sb, 8 * sb, (unit % per_sb) * (4 / per_sb), 4 / per_sb);
++            }
++        }
++#else
++        const act_block b0 = load_act(2 * unit), b1 = load_act(2 * unit + 1);
++        [[unroll]] for (uint r = 0; r < RPS; ++r) {
++            const uint row = first_row + slot + r * slots;
++            if (row < p.stride_d) {
++                // Rows hold an even number of blocks, so every pair starts on a 4-byte boundary.
++                sum[r] += pair_dot((row * blocks + 2 * unit) * BLOCK_BYTES / 4, b0, b1);
++            }
++        }
++#endif
++    }
++    [[unroll]] for (uint r = 0; r < RPS; ++r) {
++        const uint row = first_row + slot + r * slots;
++        float total = subgroupClusteredAdd(sum[r], TPR);
++        if (lane == 0 && row < p.stride_d) {
++            if ((p.fusion_flags & MAT_VEC_FUSION_FLAGS_BIAS0) != 0) {
++                total += data_fuse0[row];
++            }
++            if ((p.fusion_flags & MAT_VEC_FUSION_FLAGS_BIAS1) != 0) {
++                total += data_fuse1[row];
++            }
++            data_d[row] = total;
++        }
++    }
++}
+diff --git a/ggml/src/ggml-vulkan/vulkan-shaders/vulkan-shaders-gen.cpp b/ggml/src/ggml-vulkan/vulkan-shaders/vulkan-shaders-gen.cpp
+index 3af09fb..b6c18a6 100644
+--- a/ggml/src/ggml-vulkan/vulkan-shaders/vulkan-shaders-gen.cpp
++++ b/ggml/src/ggml-vulkan/vulkan-shaders/vulkan-shaders-gen.cpp
+@@ -823,6 +823,10 @@ void process_shaders() {
+             string_to_spv("mul_mat_vec_id_" + tname + "_q8_1_f32_subgroup", "mul_mat_vecq.comp", merge_maps(base_dict, {{"MUL_MAT_ID", "1"}, {data_a_key, "1"}, {"D_TYPE", "float"}, {"FLOAT_TYPE", "float"}, {"FLOAT_TYPEV2", "vec2"}, {"ACC_TYPE", "float"}, {"USE_SUBGROUP_ADD", "1"}}));
+             string_to_spv("mul_mat_vec_id_" + tname + "_q8_1_f32_subgroup_no_shmem", "mul_mat_vecq.comp", merge_maps(base_dict, {{"MUL_MAT_ID", "1"}, {data_a_key, "1"}, {"D_TYPE", "float"}, {"FLOAT_TYPE", "float"}, {"FLOAT_TYPEV2", "vec2"}, {"ACC_TYPE", "float"}, {"USE_SUBGROUP_ADD_NO_SHMEM", "1"}}));
+         }
++        // single-column variant for GPUs that accelerate only unsigned 4x8 dots
++        if (tname == "q5_0" || tname == "q8_0" || tname == "q4_k" || tname == "q6_k") {
++            string_to_spv("mul_mat_vecq_u8_" + tname + "_f32", "mul_mat_vecq_u8.comp", {{data_a_key, "1"}});
++        }
+ #endif
+ 
+         // Dequant shaders

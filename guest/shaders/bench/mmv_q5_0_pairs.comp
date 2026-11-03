@@ -1,0 +1,162 @@
+#version 450
+// Floating-point Q5_0 x f32 mat-vec, kept as the comparison for mul_mat_vecq_u8.comp: the same
+// aligned block-pair loads and clustered row reduction, with DQ selecting how blocks become
+// floats. BENCH_NO_A, BENCH_NO_B and BENCH_NO_REDUCE remove loads or the reduction, and
+// DQ=-1 removes the arithmetic, to split the cost; those variants do not compute the product.
+#extension GL_EXT_control_flow_attributes : enable
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_arithmetic : require
+#extension GL_KHR_shader_subgroup_clustered : require
+
+layout(local_size_x_id = 0, local_size_y = 1, local_size_z = 1) in;
+layout(constant_id = 0) const uint BLOCK_SIZE = 128;
+layout(constant_id = 1) const uint NUM_ROWS = 8;   // rows per workgroup
+layout(constant_id = 2) const uint NUM_COLS = 1;
+#ifndef TPR
+#define TPR 16  // invocations per row: a power of two, fixed at compile time for the clustered add
+#endif
+
+layout(binding = 0) readonly buffer A { uint data_a[]; };
+layout(binding = 1) readonly buffer B { vec4 data_b[]; };
+layout(binding = 2) writeonly buffer D { float data_d[]; };
+
+#if defined(B_SHARED)
+#ifndef MAX_K
+#define MAX_K 4864
+#endif
+shared vec4 sh_b[MAX_K / 4];
+#define LOAD_B(i) sh_b[i]
+#elif defined(BENCH_NO_B)
+#define LOAD_B(i) vec4(1.0)
+#else
+#define LOAD_B(i) data_b[i]
+#endif
+#if defined(BENCH_NO_A)
+#define LOAD_A(i) ((i) * 2654435761u)
+#else
+#define LOAD_A(i) data_a[i]
+#endif
+
+layout(push_constant) uniform parameter {
+    uint ncols, stride_a, stride_b, stride_d, batch_stride_a, batch_stride_b, batch_stride_d;
+    uint fusion_flags, base_work_group_y, ne02, ne12, broadcast2, broadcast3;
+} p;
+
+// One 22-byte block: d at bytes 0-1, qh at 2-5, qs at 6-21; w0 holds bytes 0-3.
+// DQ selects the dequantization arithmetic; all variants compute the same dot product.
+#ifndef DQ
+#define DQ 1
+#endif
+// Spread the low four bits of b to bit 0 of each byte.
+uint spread4(const uint b) {
+    return ((b & 0xFu) * 0x00204081u) & 0x01010101u;
+}
+float block_dot(const uint w0, const uint w1, const uint w2, const uint w3, const uint w4, const uint w5,
+                const uint b4) {
+    const float d = unpackHalf2x16(w0).x;
+    const uint qh = (w0 >> 16) | (w1 << 16);
+    const uint qs[4] = uint[4]((w1 >> 16) | (w2 << 16), (w2 >> 16) | (w3 << 16),
+                               (w3 >> 16) | (w4 << 16), (w4 >> 16) | (w5 << 16));
+#if DQ == -1
+    return 0.0;
+#elif DQ == 0
+    // Scaffolding cost only: loads and reduction, no dequantization.
+    return float(qs[0] ^ qs[1] ^ qs[2] ^ qs[3] ^ qh) * d + LOAD_B(b4).x;
+#elif DQ == 1
+    float sum = 0;
+    [[unroll]] for (uint w = 0; w < 4; ++w) {
+        const vec4 lo_b = LOAD_B(b4 + w);
+        const vec4 hi_b = LOAD_B(b4 + 4 + w);
+        const uint q = qs[w];
+        const uint h_lo = qh >> (4 * w);
+        const uint h_hi = qh >> (4 * w + 16);
+        const vec4 lo = vec4(uvec4(q, q >> 8, q >> 16, q >> 24) & 0xFu |
+                             ((uvec4(h_lo, h_lo >> 1, h_lo >> 2, h_lo >> 3) << 4) & 0x10u)) - 16.0;
+        const vec4 hi = vec4(uvec4(q >> 4, q >> 12, q >> 20, q >> 28) & 0xFu |
+                             ((uvec4(h_hi, h_hi >> 1, h_hi >> 2, h_hi >> 3) << 4) & 0x10u)) - 16.0;
+        sum += dot(lo, lo_b) + dot(hi, hi_b);
+    }
+    return d * sum;
+#elif DQ == 2
+    // Signed bytes x-16 built in place, converted four at a time (exact: |x-16| <= 16).
+    float sum = 0;
+    [[unroll]] for (uint w = 0; w < 4; ++w) {
+        const uint q = qs[w];
+        const uint neg_lo = (spread4(qh >> (4 * w)) ^ 0x01010101u) * 0xF0u;
+        const uint neg_hi = (spread4(qh >> (4 * w + 16)) ^ 0x01010101u) * 0xF0u;
+        const vec4 lo = unpackSnorm4x8((q & 0x0F0F0F0Fu) | neg_lo);
+        const vec4 hi = unpackSnorm4x8(((q >> 4) & 0x0F0F0F0Fu) | neg_hi);
+        sum += dot(lo, LOAD_B(b4 + w)) + dot(hi, LOAD_B(b4 + 4 + w));
+    }
+    return d * 127.0 * sum;
+#elif DQ == 3
+    // Unsigned bytes x, converted four at a time; the -16 offset uses the block's sum of b.
+    float sum = 0;
+    vec4 bsum = vec4(0);
+    [[unroll]] for (uint w = 0; w < 4; ++w) {
+        const uint q = qs[w];
+        const vec4 lo_b = LOAD_B(b4 + w);
+        const vec4 hi_b = LOAD_B(b4 + 4 + w);
+        const vec4 lo = unpackUnorm4x8((q & 0x0F0F0F0Fu) | (spread4(qh >> (4 * w)) << 4));
+        const vec4 hi = unpackUnorm4x8(((q >> 4) & 0x0F0F0F0Fu) | (spread4(qh >> (4 * w + 16)) << 4));
+        sum += dot(lo, lo_b) + dot(hi, hi_b);
+        bsum += lo_b + hi_b;
+    }
+    return d * (255.0 * sum - 16.0 * dot(bsum, vec4(1)));
+#elif DQ == 4
+    // Exact float construction from mantissa bits, one element per lane of a uvec4.
+    float sum = 0;
+    [[unroll]] for (uint w = 0; w < 4; ++w) {
+        const uint q = qs[w];
+        const uint x_lo = (q & 0x0F0F0F0Fu) | (spread4(qh >> (4 * w)) << 4);
+        const uint x_hi = ((q >> 4) & 0x0F0F0F0Fu) | (spread4(qh >> (4 * w + 16)) << 4);
+        const uvec4 sh = uvec4(0, 8, 16, 24);
+        const vec4 lo = uintBitsToFloat(((uvec4(x_lo) >> sh) & 0xFFu) | 0x4B000000u) - 8388624.0;
+        const vec4 hi = uintBitsToFloat(((uvec4(x_hi) >> sh) & 0xFFu) | 0x4B000000u) - 8388624.0;
+        sum += dot(lo, LOAD_B(b4 + w)) + dot(hi, LOAD_B(b4 + 4 + w));
+    }
+    return d * sum;
+#endif
+}
+
+void main() {
+    const uint tid = gl_LocalInvocationID.x;
+    const uint lane = tid % TPR;
+    const uint row_slot = tid / TPR;
+    const uint slots = BLOCK_SIZE / TPR;
+    const uint first_row = NUM_ROWS * (gl_WorkGroupID.x + gl_NumWorkGroups.x * gl_WorkGroupID.z);
+    const uint blocks = p.ncols / 32;
+    const uint pairs = blocks / 2;
+#if defined(B_SHARED)
+    for (uint i = tid; i < p.ncols / 4; i += BLOCK_SIZE) {
+        sh_b[i] = data_b[i];
+    }
+    barrier();
+#endif
+
+    for (uint r = row_slot; r < NUM_ROWS; r += slots) {
+        const uint row = first_row + r;
+        float sum = 0;
+        if (row < p.stride_d) {
+            // Rows are 22*blocks bytes; an even block index starts on a 4-byte boundary.
+            const uint row_block = row * blocks;
+            for (uint pair = lane; pair < pairs; pair += TPR) {
+                const uint w = (row_block + 2 * pair) * 22 / 4;
+                const uint b4 = pair * 16;
+                const uint p0 = LOAD_A(w), p1 = LOAD_A(w + 1), p2 = LOAD_A(w + 2), p3 = LOAD_A(w + 3);
+                const uint p4 = LOAD_A(w + 4), p5 = LOAD_A(w + 5), p6 = LOAD_A(w + 6), p7 = LOAD_A(w + 7);
+                const uint p8 = LOAD_A(w + 8), p9 = LOAD_A(w + 9), p10 = LOAD_A(w + 10);
+                sum += block_dot(p0, p1, p2, p3, p4, p5, b4);
+                // The odd block starts at byte 22: realign by one half-word.
+                sum += block_dot((p5 >> 16) | (p6 << 16), (p6 >> 16) | (p7 << 16), (p7 >> 16) | (p8 << 16),
+                                 (p8 >> 16) | (p9 << 16), (p9 >> 16) | (p10 << 16), p10 >> 16, b4 + 8);
+            }
+        }
+#ifndef BENCH_NO_REDUCE
+        sum = subgroupClusteredAdd(sum, TPR);
+#endif
+        if (lane == 0 && row < p.stride_d) {
+            data_d[row] = sum;
+        }
+    }
+}

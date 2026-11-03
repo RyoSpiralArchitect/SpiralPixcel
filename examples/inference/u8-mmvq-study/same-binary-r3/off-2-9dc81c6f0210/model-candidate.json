@@ -1,0 +1,1 @@
+{"status":"pass","technical_validation_only":true,"format":"float32-le","gpu_layers":99,"prompt_sha256":"3ae35bc99e935fea913bbae40ac007931405b8242c50f63bd06b32aac923a762","prompt_tokens":33,"logit_count":151936,"nonzero_count":151936,"nonfinite_count":0,"finite":true,"top1_token":44,"top1_logit":21.6347771,"top1_piece_hex":"4d"}

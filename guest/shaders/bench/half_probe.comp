@@ -1,0 +1,17 @@
+#version 450
+// Writes unpackHalf2x16 and float16_t conversion of f16 bit pattern i for i < 2048, to see
+// whether the driver flushes subnormals (patterns 0x0001-0x03FF) in either path.
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int16 : require
+
+layout(local_size_x_id = 0) in;
+layout(binding = 2) writeonly buffer D { float data_d[]; };
+
+void main() {
+    const uint i = gl_GlobalInvocationID.x;
+    if (i < 1024) {
+        data_d[i] = unpackHalf2x16(i).x;
+    } else if (i < 2048) {
+        data_d[i] = float(uint16BitsToFloat16(uint16_t(i - 1024)));
+    }
+}

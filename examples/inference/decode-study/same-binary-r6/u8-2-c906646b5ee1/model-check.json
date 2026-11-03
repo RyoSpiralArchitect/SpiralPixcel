@@ -1,0 +1,99 @@
+{
+  "status": "pass",
+  "technical_validation_only": true,
+  "nmse_limit": 0.005,
+  "model_sha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+  "runtime_manifest": {
+    "runtime_library_sha256": {
+      "libggml-base.so": "337534b9945fdda0389aff96a5c75e2a739ab46c0861cc65e3f145708821535f",
+      "libggml-base.so.0": "337534b9945fdda0389aff96a5c75e2a739ab46c0861cc65e3f145708821535f",
+      "libggml-base.so.0.28.0": "337534b9945fdda0389aff96a5c75e2a739ab46c0861cc65e3f145708821535f",
+      "libggml-cpu.so": "d2051ad8fd99762d2760cb991cc2f219fbd01bc1321d80ff93ca35d3c78a2f60",
+      "libggml-vulkan.so": "b1985926c4a4c27b647f300a5a5a8d64c9466ec96f89f55c029302fb31b878fc",
+      "libggml.so": "b2b279af1e11add7514374df3b93c3b43c55f21b784d9d1b46ac154994cb1206",
+      "libggml.so.0": "b2b279af1e11add7514374df3b93c3b43c55f21b784d9d1b46ac154994cb1206",
+      "libggml.so.0.28.0": "b2b279af1e11add7514374df3b93c3b43c55f21b784d9d1b46ac154994cb1206",
+      "libllama-bench-impl.so": "9731b9eb6d3dd657fbacfa0140ba4bdce884565f73b1febc61e8faece9d0cd1d",
+      "libllama-common.so": "b2a4571df961209819e7e6a8a041e6e0da40836d53eb1f10e4c4773cebaabe02",
+      "libllama-common.so.0": "b2a4571df961209819e7e6a8a041e6e0da40836d53eb1f10e4c4773cebaabe02",
+      "libllama-common.so.0.8.0": "b2a4571df961209819e7e6a8a041e6e0da40836d53eb1f10e4c4773cebaabe02",
+      "libllama-completion-impl.so": "94612b2c6c82494dcfeefa2a0f71150e1771b8e50de8624bf0065879824dc269",
+      "libllama.so": "5901604bd42a54e95ec3fc18955e8e3519c53e3aa84de153b72f6e0dc9281947",
+      "libllama.so.0": "5901604bd42a54e95ec3fc18955e8e3519c53e3aa84de153b72f6e0dc9281947",
+      "libllama.so.0.8.0": "5901604bd42a54e95ec3fc18955e8e3519c53e3aa84de153b72f6e0dc9281947"
+    },
+    "runtime_executable_sha256": {
+      "llama-bench": "1fc29f31df1b1b182f083fa8b3429b46ce913fdac54365a20434018b23e1d0e5",
+      "llama-completion": "3906c71d744f76e78790b1cf3f6e3c8a9d682472d2153f39a9eb676d086fcf81",
+      "check-mmv": "d3164699e34cece4d556317d76d81fa2570cedbf15c50b210ca32f808033c9d6",
+      "check-large": "95d89db3561657e4aeca61432d00aa849caf8bc9c61bdd72e4e6db27dc15a642",
+      "check-model": "fb01000404d4e276a7105c5481909fb9c24a1148680596a1144aca9b62c0c929",
+      "check-readback": "033d4eb7f57ed0930101b0975610710ff38e542dd39a1b07f5f00f78fae36468"
+    }
+  },
+  "runtime_manifest_sha256": "9da44c5fb6c42a16f42ae23859ed051bd5aae75c106a87e7e5916ce5457eff65",
+  "checker_sha256": "fb01000404d4e276a7105c5481909fb9c24a1148680596a1144aca9b62c0c929",
+  "executions": {
+    "reference": {
+      "command": [
+        "/home/droid/.local/share/SpiralPixcel/runtimes/llama-b11960-pvr-decode-r6/check-model",
+        "/home/droid/.local/share/SpiralPixcel/runtimes/llama-b11960-pvr-decode-r6",
+        "/home/droid/.local/share/spiral-pixel/models/qwen2.5-0.5b-q4_k_m.gguf",
+        "result/model-reference.bin",
+        "0"
+      ],
+      "gpu_layers": 0,
+      "environment_overrides": {
+        "GGML_VK_SPLIT_OUTPUT": "0"
+      },
+      "exit_code": 0
+    },
+    "candidate": {
+      "command": [
+        "/home/droid/.local/share/SpiralPixcel/runtimes/llama-b11960-pvr-decode-r6/check-model",
+        "/home/droid/.local/share/SpiralPixcel/runtimes/llama-b11960-pvr-decode-r6",
+        "/home/droid/.local/share/spiral-pixel/models/qwen2.5-0.5b-q4_k_m.gguf",
+        "result/model-candidate.bin",
+        "99"
+      ],
+      "gpu_layers": 99,
+      "environment_overrides": {
+        "GGML_VK_SPLIT_OUTPUT": "1"
+      },
+      "exit_code": 0
+    }
+  },
+  "environment": {
+    "GGML_VK_MEMORY_LOGGER": "1",
+    "GGML_VK_SPLIT_OUTPUT": "1",
+    "GGML_VK_DISABLE_ASYNC": "1",
+    "GGML_VK_WAIT_IDLE": "1",
+    "GGML_VK_PWR_U8_MMVQ": "1",
+    "LD_LIBRARY_PATH": "/home/droid/.local/share/SpiralPixcel/runtimes/llama-b11960-pvr-decode-r6"
+  },
+  "parameters": {
+    "context_tokens": 512,
+    "batch_tokens": 16,
+    "ubatch_tokens": 16,
+    "threads": 4,
+    "flash_attn": "off",
+    "output_positions": 1,
+    "weight_repack": "runtime default"
+  },
+  "prompt_sha256": "3ae35bc99e935fea913bbae40ac007931405b8242c50f63bd06b32aac923a762",
+  "prompt_tokens": 33,
+  "logit_count": 151936,
+  "nmse": 0.00235991740718096,
+  "max_abs_error": 0.9277904033660889,
+  "top1_equal": true,
+  "reference_top1_token": 44,
+  "candidate_top1_token": 44,
+  "sha256": {
+    "model-reference.bin": "433c8bc1f161564b8a8b6ae2ec73d17623e5541335cc39ebb3b0e77258b1ac00",
+    "model-reference.json": "6b4c975e52922af9ebeeb7d28359ada38310e84fdda146c763ced547a476ec16",
+    "model-reference.log": "b2fd790d0c927404decf064cdb1264525cb5451b800792c3b8363f99ee9bde5f",
+    "model-candidate.bin": "13197ed7b99bd4e8dab32684ccd98ddbd4bb29a8fc7f43a1096ba86840be0b43",
+    "model-candidate.json": "4e78e98423f629f28e93bef6770e99293f136b6773cb562da5564630886dd398",
+    "model-candidate.log": "bc9a48fae541a37911257da7aad3004ba896db8aaedf5da36ff60b9510a4fb62"
+  }
+}

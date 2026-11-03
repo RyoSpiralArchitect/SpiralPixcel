@@ -1,0 +1,18 @@
+{
+  "run_id": "20261103T220029Z-f4c111af5d27",
+  "order": 5,
+  "guest_args": [
+    "--runtime",
+    "/home/droid/.local/share/SpiralPixcel/runtimes/llama-b11960-pvr-decode-r6",
+    "--gpu-layers",
+    "99",
+    "--repetitions",
+    "3",
+    "--split-output",
+    "--completion-wait",
+    "queue",
+    "--u8-mmvq"
+  ],
+  "wrapper": "systemd-run --user --collect -p MemoryHigh=1900M -p MemoryMax=2100M -p MemorySwapMax=2500M --working-directory=<guest run dir> sh -c '{ python3 experiment.py doctor && cp result/result.json result/doctor.json && python3 inference.py ARGS; } > result/build-run.log 2>&1'",
+  "note": "Same guest job as `pixel-lab run inference`, run in a memory-limited systemd user unit so the Terminal VM stays below Android's 4 GiB MemoryLimiter; collected with `pixel-lab collect`."
+}

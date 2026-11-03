@@ -57,3 +57,5 @@ Macで拡散係数を変え、同じ点刺激がどこまで広がるかを比�
 `./pixel-lab run inference` でdoctorを通してから、既存モデルの速度・メモリ・モデルとランタイムのハッシュを記録する。[比較手順とPowerVR用の実験パッチ](docs/inference.md)
 
 `--schedule-report` を付けると、速度測定とは別にCPU/GPUの演算配置を保存する。[128 MiB超の出力行列の分割](docs/large-output.md)と[転送検査・完了待ちの修正](docs/readback.md)も用意した。Qwen2.5-0.5Bの全GPU要求で固定プロンプトの数値ゲートを通過し、演算ごとに待つ対照からdecodeを改善した。CPU主体の方が速かった結果と、失敗した条件も保存している。
+
+[符号なしdot積のmat-vec](docs/kernels.md)は、このGPUが高速に実行できる唯一の整数dot積を使う。同じランタイムで切り替えて交互に測ると、全GPU構成のdecodeは2.33倍（8.06→18.74 tok/s、数値ゲート通過）になった。[decodeの続き](docs/decode.md)では、転送ステージを含む高いバリア、ホストから見えるメモリへの配置、attentionスコアの小さいワークグループを直し、さらに1.51倍（18.89→28.56 tok/s、全logitはバイト単位で同じ）になった。CPU主体の構成にはまだ届かない。

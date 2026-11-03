@@ -1,0 +1,38 @@
+{
+ "window_s": 11.491830425,
+ "tg480_tokens_s": 20.029973,
+ "tokens_in_window": 230.1810531333285,
+ "note": "crosvm_debian per-thread utime/stime deltas (100 Hz jiffies) over a window inside a tg480 run; r3 runtime, u8 on, split output, queue wait, 1 CPU thread",
+ "process_user_ms_per_token": 54.44,
+ "process_sys_ms_per_token": 31.8,
+ "threads": [
+  {
+   "tid": "15008",
+   "comm": "crosvm_vcpu6",
+   "user_ms_per_token": 49.83,
+   "sys_ms_per_token": 0.09,
+   "new_in_window": false
+  },
+  {
+   "tid": "937",
+   "comm": "llama-bench",
+   "user_ms_per_token": 4.08,
+   "sys_ms_per_token": 30.5,
+   "new_in_window": false
+  },
+  {
+   "tid": "15005",
+   "comm": "crosvm_vcpu3",
+   "user_ms_per_token": 0.43,
+   "sys_ms_per_token": 0.3,
+   "new_in_window": false
+  },
+  {
+   "tid": "14975",
+   "comm": "v_gpu",
+   "user_ms_per_token": 0.13,
+   "sys_ms_per_token": 0.26,
+   "new_in_window": false
+  }
+ ]
+}

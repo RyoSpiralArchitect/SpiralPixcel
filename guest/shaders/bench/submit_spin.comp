@@ -1,0 +1,10 @@
+#version 450
+// Integer spin loop: p.iters steps per invocation, then one store.
+layout(local_size_x = 128) in;
+layout(binding = 0) buffer B { uint d[]; };
+layout(push_constant) uniform P { uint iters; } p;
+void main() {
+    uint v = gl_GlobalInvocationID.x;
+    for (uint i = 0; i < p.iters; i++) v = v * 1664525u + 1013904223u;
+    d[gl_GlobalInvocationID.x] = v;
+}

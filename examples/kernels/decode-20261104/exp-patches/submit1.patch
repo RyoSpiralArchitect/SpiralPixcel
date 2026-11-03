@@ -1,0 +1,60 @@
+diff --git a/ggml/src/ggml-vulkan/ggml-vulkan-types.h b/ggml/src/ggml-vulkan/ggml-vulkan-types.h
+index f48aae6..4ec422b 100644
+--- a/ggml/src/ggml-vulkan/ggml-vulkan-types.h
++++ b/ggml/src/ggml-vulkan/ggml-vulkan-types.h
+@@ -729,6 +729,7 @@ struct vk_device_struct {
+     bool pvr_attn;     // mul_mat_vec_p021_pvr for attention scores
+     bool pvr_softmax;  // subgroup-reduction softmax
+     bool pvr_compute_barrier;  // compute-only destination scope for ggml_vk_sync_buffers
++    bool pvr_single_submit;    // one submission per graph
+     std::atomic<bool> pvr_attn_logged {};
+     // 0: default, 1: force mmvq, -1: disable mmvq
+     int32_t mmvq_mode;
+diff --git a/ggml/src/ggml-vulkan/ggml-vulkan.cpp b/ggml/src/ggml-vulkan/ggml-vulkan.cpp
+index b0bc16c..e18677b 100644
+--- a/ggml/src/ggml-vulkan/ggml-vulkan.cpp
++++ b/ggml/src/ggml-vulkan/ggml-vulkan.cpp
+@@ -3311,9 +3311,10 @@ void ggml_vk_load_shaders(vk_device& device, vk_pipeline requested) {
+         }
+     }
+     if (device->pvr_attn) {
+-        // One 128-wide subgroup per workgroup: 16 positions per pass (8 invocations each), 4 passes.
++        // One 128-wide subgroup per workgroup: 16 positions (8 invocations each) in one pass; more
++        // passes per workgroup were slower at every context length tried (33 to 4096 positions).
+         for (uint32_t i = 0; i < p021_max_gqa_ratio; ++i) {
+-            ggml_vk_create_pipeline2(device, device->pipeline_mul_mat_vec_p021_pvr_f16_f32[i], "mul_mat_vec_p021_pvr_f16_f32_" + std::to_string(i + 1), mul_mat_vec_p021_pvr_f16_f32_len, mul_mat_vec_p021_pvr_f16_f32_data, "main", mul_mat_vec_num_bindings, sizeof(vk_mat_vec_p021_push_constants), {1, 64, 1}, {128, i + 1, 4}, 1, true, true, 128);
++            ggml_vk_create_pipeline2(device, device->pipeline_mul_mat_vec_p021_pvr_f16_f32[i], "mul_mat_vec_p021_pvr_f16_f32_" + std::to_string(i + 1), mul_mat_vec_p021_pvr_f16_f32_len, mul_mat_vec_p021_pvr_f16_f32_data, "main", mul_mat_vec_num_bindings, sizeof(vk_mat_vec_p021_push_constants), {1, 16, 1}, {128, i + 1, 1}, 1, true, true, 128);
+         }
+     }
+     ggml_vk_create_pipeline(device, device->pipeline_mul_mat_vec_nc_f16_f32, "mul_mat_vec_nc_f16_f32", mul_mat_vec_nc_f16_f32_len, mul_mat_vec_nc_f16_f32_data, "main", mul_mat_vec_num_bindings, sizeof(vk_mat_vec_nc_push_constants), {1, 1, 1}, {}, 1);
+@@ -4662,6 +4663,9 @@ vk_device ggml_vk_get_device(size_t idx) {
+         device->pvr_softmax = pvr_softmax_candidate && pvr_subgroup_128;
+         device->pvr_compute_barrier = getenv("GGML_VK_PWR_BARRIER") != nullptr &&
+                                       device->driver_id == vk::DriverId::eImaginationProprietary;
++        // Each submission through this VM costs a host round trip; submit a graph once.
++        device->pvr_single_submit = getenv("GGML_VK_PWR_SINGLE_SUBMIT") != nullptr &&
++                                    device->driver_id == vk::DriverId::eImaginationProprietary;
+ 
+ #if defined(VK_KHR_cooperative_matrix)
+         device->coopmat_support = device->coopmat_support && coopmat_features.cooperativeMatrix;
+@@ -14656,6 +14660,9 @@ static ggml_status ggml_backend_vk_graph_compute(ggml_backend_t backend, ggml_cg
+         }
+     }
+     uint64_t flops_per_submit = std::min(flops_cap, ctx->last_total_flops / 40u);
++    if (ctx->device->pvr_single_submit) {
++        flops_per_submit = 0;
++    }
+ 
+     auto const submit_after = [&](int start, int end) {
+         if (ctx->device->serialize_submissions) {
+@@ -14968,8 +14975,8 @@ static ggml_status ggml_backend_vk_graph_compute(ggml_backend_t backend, ggml_cg
+         }
+ 
+         // Signal the almost_ready fence when the graph is mostly complete (< 20% remaining)
+-        bool almost_ready = (cgraph->n_nodes - i) < cgraph->n_nodes / 5;
+-        bool submit = (submitted_nodes >= ctx->device->max_nodes_per_submit) ||
++        bool almost_ready = !ctx->device->pvr_single_submit && (cgraph->n_nodes - i) < cgraph->n_nodes / 5;
++        bool submit = (!ctx->device->pvr_single_submit && submitted_nodes >= ctx->device->max_nodes_per_submit) ||
+                       (flops_per_submit != 0 && batch_flops >= flops_per_submit) ||
+                       (i + ctx->num_additional_fused_ops >= last_node) ||
+                       (almost_ready && !ctx->almost_ready_fence_pending);

@@ -1,0 +1,10 @@
+#version 450
+// One read-modify-write per invocation; K makes each specialization a distinct pipeline.
+layout(local_size_x = 128) in;
+layout(constant_id = 0) const uint K = 3;
+layout(binding = 0) buffer B { uint d[]; };
+layout(push_constant) uniform P { uint n; uint pad[31]; } p;
+void main() {
+    uint i = gl_GlobalInvocationID.x;
+    if (i < 16384u) d[i] = d[i] * K + p.n;
+}
