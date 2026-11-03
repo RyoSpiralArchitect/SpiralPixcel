@@ -1,5 +1,5 @@
 {
-  "README.md": "5ba60f61a76534d24c1e386b60daaa56e857affc8d87a24361ea08166913662a",
+  "README.md": "fc5e913e93271affea8a3acd78ff59747cddb4d97f1fd1deaf3a3bfa55d251b6",
   "generation/r4/commands.json": "6e67b0914373a52998a54a028cae28cbbb464633125e1c00283c26e0bda124f3",
   "generation/r4/decode.log.gz": "e3e13dcc8bbff4b970f2395284e5763fe063fc6b3d2553ba895928d3cf0d5cb6",
   "generation/r4/decode.txt": "b25dfd9e4ec602d97b2932c3b26e0defdff7e9fe9bb0a640abad3ab515f9f7e7",
@@ -29,6 +29,8 @@
   "runtime/r6/large-check-decode.jsonl": "751dc653be97af2a70223c6b1d87e40760815cf84f6e48abbece67f4627ed1b1",
   "runtime/r6/large-check-decode.log.gz": "a0be2d2472783006c203c6336d79fb0f9d740742b53b507c57c49fea88077cf4",
   "runtime/r6/large-check.jsonl": "5ae6c6961aacc5e2a9136fc03fa31e07e0855b470b63372dd7af87e8b41afc66",
+  "runtime/r6/r5r6-compare.json": "f9d581c043ea063f55b7ea2a3d617d2b6b2283f48fb9573657652b5d99d70781",
+  "runtime/r6/r5r6-compare.sh": "2704167dc6c5df03cd5ef050d1fe4b292013578b20897824b02e89716ed691df",
   "runtime/r6/r6-build.log.gz": "987d5acf4461e03ed0ca579177d5b4e4906294abfb72117f09c200bfdc376a7a",
   "runtime/r6/readback-check-decode.jsonl": "67fa0fa962dfb1f4a9b0b032fba50f2d237b4df1f39d7faeaed08c02b907ddd8",
   "runtime/r6/readback-check-decode.log.gz": "15e8eef30f69c9547ef8b1260a7a47ce0d31f0a06d52d0dfacb19ef9fa4b4748",

@@ -36,7 +36,9 @@
     "vkshim.c": "42cadbc7dbfa143a4204eb023843017a4f085f442f780b7bc3ceb6633d7f0937",
     "submit_probe.c": "d4b43558bb059523ebcc4e615ac7461a7b322331bef00d660a205f36d4e31275",
     "dispatch_probe.c": "b14eb6124d829635f734479e6f0dbb7e5ebb4392c9c0fb3702224768d3e8c0ee",
-    "p021_test.c": "5e14deef1fe3679bf3ad17b2f10e0f6ce10b021d583e9886810ac8cafc30a8df"
+    "p021_test.c": "5e14deef1fe3679bf3ad17b2f10e0f6ce10b021d583e9886810ac8cafc30a8df",
+    "dispatch_tiny.comp": "3ddf171142e9626a089406592f93c220e43113d4b83e2d059fd74be7a4ff7dd2",
+    "submit_spin.comp": "fbccd94b8380a48682a625aa22c61799f32df4bc45a55e1bd6c7b133738d882b"
   },
   "evidence_sha256": {
     "attention/p021-passes.jsonl": "4c693d54f54da7a46795b649358dfbc9f98679c2f5f8daa41980439a453096b2",
