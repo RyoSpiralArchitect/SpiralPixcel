@@ -1,0 +1,13 @@
+{"test": "mem_compute", "pipelines": 1, "sets": 1, "rebind": 0, "barrier": 1, "push_bytes": 4, "timestamps": 0, "groups": 1, "us_per_dispatch": 14.85, "min": 13.92, "max": 15.19}
+{"test": "ggml_barrier", "pipelines": 1, "sets": 1, "rebind": 0, "barrier": 2, "push_bytes": 4, "timestamps": 0, "groups": 1, "us_per_dispatch": 20.87, "min": 18.71, "max": 55.14}
+{"test": "c_to_ct", "pipelines": 1, "sets": 1, "rebind": 0, "barrier": 6, "push_bytes": 4, "timestamps": 0, "groups": 1, "us_per_dispatch": 22.30, "min": 20.99, "max": 22.83}
+{"test": "ct_to_c", "pipelines": 1, "sets": 1, "rebind": 0, "barrier": 7, "push_bytes": 4, "timestamps": 0, "groups": 1, "us_per_dispatch": 5.34, "min": 5.31, "max": 5.65}
+{"test": "write_to_read", "pipelines": 1, "sets": 1, "rebind": 0, "barrier": 8, "push_bytes": 4, "timestamps": 0, "groups": 1, "us_per_dispatch": 6.76, "min": 5.28, "max": 7.20}
+{"test": "ggml_no_src_reads", "pipelines": 1, "sets": 1, "rebind": 0, "barrier": 9, "push_bytes": 4, "timestamps": 0, "groups": 1, "us_per_dispatch": 27.37, "min": 27.16, "max": 27.59}
+{"test": "ggml_stages_shader_access", "pipelines": 1, "sets": 1, "rebind": 0, "barrier": 10, "push_bytes": 4, "timestamps": 0, "groups": 1, "us_per_dispatch": 27.48, "min": 26.97, "max": 28.02}
+{"test": "compute_stages_all_access", "pipelines": 1, "sets": 1, "rebind": 0, "barrier": 11, "push_bytes": 4, "timestamps": 0, "groups": 1, "us_per_dispatch": 6.98, "min": 6.81, "max": 8.48}
+{"test": "sync2_compute", "pipelines": 1, "sets": 1, "rebind": 0, "barrier": 5, "push_bytes": 4, "timestamps": 0, "groups": 1, "us_per_dispatch": 7.75, "min": 6.26, "max": 8.94}
+{"test": "sync2_compute_copy_clear", "pipelines": 1, "sets": 1, "rebind": 0, "barrier": 12, "push_bytes": 4, "timestamps": 0, "groups": 1, "us_per_dispatch": 39.31, "min": 38.12, "max": 42.26}
+{"test": "sync2_all_transfer", "pipelines": 1, "sets": 1, "rebind": 0, "barrier": 13, "push_bytes": 4, "timestamps": 0, "groups": 1, "us_per_dispatch": 39.65, "min": 38.95, "max": 40.30}
+{"test": "ggml_barrier", "pipelines": 1, "sets": 1, "rebind": 0, "barrier": 2, "push_bytes": 4, "timestamps": 0, "groups": 1, "us_per_dispatch": 39.69, "min": 39.18, "max": 40.66}
+{"test": "sync2_compute", "pipelines": 1, "sets": 1, "rebind": 0, "barrier": 5, "push_bytes": 4, "timestamps": 0, "groups": 1, "us_per_dispatch": 10.45, "min": 10.26, "max": 10.55}

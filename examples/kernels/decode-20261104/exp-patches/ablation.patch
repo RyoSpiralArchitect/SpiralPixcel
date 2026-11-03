@@ -1,0 +1,90 @@
+diff --git a/ggml/src/ggml-vulkan/ggml-vulkan-buffers.cpp b/ggml/src/ggml-vulkan/ggml-vulkan-buffers.cpp
+index 9028b9a..b2c678a 100644
+--- a/ggml/src/ggml-vulkan/ggml-vulkan-buffers.cpp
++++ b/ggml/src/ggml-vulkan/ggml-vulkan-buffers.cpp
+@@ -220,7 +220,10 @@ vk_buffer ggml_vk_create_buffer_check(vk_device& device, size_t size, vk::Memory
+ vk_buffer ggml_vk_create_buffer_device(vk_device& device, size_t size) {
+     vk_buffer buf;
+     try {
+-        if (device->prefer_host_memory) {
++        if (device->prefer_device_local) {
++            buf = ggml_vk_create_buffer(device, size, {vk::MemoryPropertyFlagBits::eDeviceLocal,
++                                                       vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent});
++        } else if (device->prefer_host_memory) {
+             buf = ggml_vk_create_buffer(device, size, {vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
+                                                        vk::MemoryPropertyFlagBits::eDeviceLocal});
+         } else if (device->uma) {
+diff --git a/ggml/src/ggml-vulkan/ggml-vulkan-types.h b/ggml/src/ggml-vulkan/ggml-vulkan-types.h
+index 460e621..90844c8 100644
+--- a/ggml/src/ggml-vulkan/ggml-vulkan-types.h
++++ b/ggml/src/ggml-vulkan/ggml-vulkan-types.h
+@@ -698,6 +698,7 @@ struct vk_device_struct {
+     uint32_t shader_core_count;
+     bool uma;
+     bool prefer_host_memory;
++    bool prefer_device_local;
+     bool float_controls_rte_fp16;
+     bool float_controls_denorm_preserve_fp16;
+     bool subgroup_basic;
+diff --git a/ggml/src/ggml-vulkan/ggml-vulkan.cpp b/ggml/src/ggml-vulkan/ggml-vulkan.cpp
+index 8b7d2c0..4716011 100644
+--- a/ggml/src/ggml-vulkan/ggml-vulkan.cpp
++++ b/ggml/src/ggml-vulkan/ggml-vulkan.cpp
+@@ -4068,6 +4068,10 @@ vk_device ggml_vk_get_device(size_t idx) {
+         const char* GGML_VK_PREFER_HOST_MEMORY = getenv("GGML_VK_PREFER_HOST_MEMORY");
+         device->prefer_host_memory = GGML_VK_PREFER_HOST_MEMORY != nullptr;
+ 
++        // Opt-in for the Pixel study: keep UMA device buffers out of host-visible memory.
++        const char* GGML_VK_PREFER_DEVICE_LOCAL = getenv("GGML_VK_PREFER_DEVICE_LOCAL");
++        device->prefer_device_local = GGML_VK_PREFER_DEVICE_LOCAL != nullptr;
++
+         const char* GGML_VK_DISABLE_HOST_VISIBLE_VIDMEM = getenv("GGML_VK_DISABLE_HOST_VISIBLE_VIDMEM");
+         device->disable_host_visible_vidmem = GGML_VK_DISABLE_HOST_VISIBLE_VIDMEM != nullptr;
+ 
+@@ -12425,6 +12429,36 @@ void ggml_vk_preallocate_buffers(ggml_backend_vk_context * ctx, vk_context subct
+     }
+ }
+ 
++// Timing ablation for the Pixel study: GGML_VK_SKIP_OPS=SOFT_MAX,MUL_MAT:f16 leaves matching nodes,
++// and any ops fused into them, unrecorded. Entries are op names, optionally with the src0 type.
++// The graph's results are invalid while it is set.
++static bool ggml_vk_skip_op(const ggml_tensor * node) {
++    static const std::set<std::string> skip = [] {
++        std::set<std::string> names;
++        if (const char * value = getenv("GGML_VK_SKIP_OPS")) {
++            std::string list(value);
++            size_t start = 0;
++            while (start <= list.size()) {
++                size_t end = list.find(',', start);
++                if (end == std::string::npos) {
++                    end = list.size();
++                }
++                if (end > start) {
++                    names.insert(list.substr(start, end - start));
++                }
++                start = end + 1;
++            }
++            GGML_LOG_WARN("ggml_vulkan: GGML_VK_SKIP_OPS=%s, results are invalid\n", value);
++        }
++        return names;
++    }();
++    if (skip.empty()) {
++        return false;
++    }
++    const std::string op = ggml_op_name(node->op);
++    return skip.count(op) || (node->src[0] && skip.count(op + ":" + ggml_type_name(node->src[0]->type)));
++}
++
+ bool ggml_vk_build_graph(ggml_backend_vk_context * ctx, ggml_cgraph * cgraph, int node_idx, ggml_tensor *node_begin, int node_idx_begin, bool last_node, bool almost_ready, bool submit){
+     ggml_tensor * node = cgraph->nodes[node_idx];
+     if (ggml_is_empty(node) || ggml_op_is_empty(node->op) || !node->buffer) {
+@@ -12433,6 +12467,9 @@ bool ggml_vk_build_graph(ggml_backend_vk_context * ctx, ggml_cgraph * cgraph, in
+     if ((node->flags & GGML_TENSOR_FLAG_COMPUTE) == 0) {
+         return false;
+     }
++    if (ggml_vk_skip_op(node)) {
++        return false;
++    }
+ 
+     VK_LOG_DEBUG("ggml_vk_build_graph(" << node << ", " << ggml_op_name(node->op) << ")");
+     ctx->semaphore_idx = 0;

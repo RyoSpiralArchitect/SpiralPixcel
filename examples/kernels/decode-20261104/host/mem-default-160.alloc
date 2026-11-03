@@ -1,0 +1,15 @@
+alloc type=2 kib=382676 next=1000060000 res=-1 us=281.2
+alloc type=0 kib=382676 next=1000060000 res=0 us=53149.0
+alloc type=2 kib=91404 next=1000060000 res=-1 us=167.0
+alloc type=2 kib=91404 next=1000060000 res=-1 us=332.9
+alloc type=2 kib=1028 next=1000060000 res=0 us=622.3
+alloc type=2 kib=1028 next=1000060000 res=0 us=702.4
+alloc type=2 kib=1028 next=1000060000 res=0 us=616.7
+alloc type=2 kib=1028 next=1000060000 res=0 us=513.5
+alloc type=2 kib=596 next=1000060000 res=0 us=668.1
+alloc type=2 kib=3072 next=1000060000 res=0 us=1609.7
+alloc type=2 kib=27444 next=1000060000 res=0 us=14328.3
+alloc type=2 kib=284 next=1000060000 res=0 us=199.2
+alloc type=2 kib=4 next=1000060000 res=0 us=75.7
+alloc type=2 kib=4 next=1000060000 res=0 us=169.8
+alloc type=2 kib=8 next=1000060000 res=0 us=131.9

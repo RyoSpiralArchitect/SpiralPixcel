@@ -93,29 +93,38 @@ def validate_runtime_files(runtime, marker):
     return verified
 
 
-# check-mmv layouts: the original 56 cases, and 68 with Q8_0 mat-vec cases added for the
-# unsigned PowerVR kernel, which must be checked on the extended layout.
+# check-mmv layouts: the original 56 cases, 68 with Q8_0 mat-vec cases added for the unsigned
+# PowerVR kernel, and 76 with single-token attention-score cases for the PowerVR decode path.
+# Each switch must be checked on a layout that covers it.
 KERNEL_GATES = {56: {"MUL_MAT": 40, "RMS_NORM": 8, "RMS_NORM_MUL": 8},
-                68: {"MUL_MAT": 52, "RMS_NORM": 8, "RMS_NORM_MUL": 8}}
+                68: {"MUL_MAT": 52, "RMS_NORM": 8, "RMS_NORM_MUL": 8},
+                76: {"MUL_MAT": 52, "ATTN_SCORES": 8, "RMS_NORM": 8, "RMS_NORM_MUL": 8}}
 
 
 # The u8 patch logs the first use of its kernel per weight type. The extended gate layout
 # alone does not show that the kernel ran: an unavailable pipeline falls back silently.
 U8_SELECTED = re.compile(r"ggml_vulkan: mul_mat_vecq_u8 selected for (\S+)")
+# Runtimes built before the Q6_K kernel do not list their types in the receipt.
 U8_GATE_TYPES = {"q4_K", "q5_0", "q8_0"}
+# The decode patch logs the first use of its attention-score kernel in the same way.
+ATTN_SELECTED = "ggml_vulkan: mul_mat_vec_p021_pvr selected"
 
 
 def u8_selected_types(log_path):
     return sorted(set(U8_SELECTED.findall(Path(log_path).read_text(errors="replace"))))
 
 
-def check_kernel_gate(raw, require_q8_0=False):
+def attention_kernel_selected(log_path):
+    return ATTN_SELECTED in Path(log_path).read_text(errors="replace").splitlines()
+
+
+def check_kernel_gate(raw, require_q8_0=False, require_attention=False):
     checks = [json.loads(line) for line in raw.splitlines()]
     if not checks or any(not isinstance(row, dict) for row in checks):
         raise ValueError("CPU vs Vulkan numerical gate has an incomplete receipt")
     gate, rows = checks[-1], checks[:-1]
     expected = KERNEL_GATES.get(len(rows))
-    if expected is None or (require_q8_0 and len(rows) != 68):
+    if expected is None or (require_q8_0 and len(rows) < 68) or (require_attention and "ATTN_SCORES" not in expected):
         raise ValueError("CPU vs Vulkan numerical gate has an incomplete receipt")
     operations = {}
     for row in rows:
@@ -288,7 +297,10 @@ def main():
     parser.add_argument("--workgroup", type=int, choices=(32, 64, 128), help="opt-in patched PowerVR MMV specialization")
     parser.add_argument("--rms-subgroups", action="store_true")
     parser.add_argument("--u8-mmvq", action="store_true",
-                        help="patched PowerVR Q5_0/Q8_0/Q4_K single-column mat-vec on unsigned 4x8 dots")
+                        help="patched PowerVR Q5_0/Q8_0/Q4_K/Q6_K single-column mat-vec on unsigned 4x8 dots")
+    parser.add_argument("--powervr-decode", action="store_true",
+                        help="patched PowerVR decode path: attention-score kernel, compute-only barriers, "
+                             "device-local buffers")
     parser.add_argument("--flash-attn", choices=("off", "on"), default="off")
     parser.add_argument("--decode-only", action="store_true")
     parser.add_argument("--repack", type=int, choices=(0, 1), default=1)
@@ -307,6 +319,11 @@ def main():
         parser.error("--sync-transfers requires GPU layers and --flash-attn off for its fixed-prompt gate")
     if args.u8_mmvq and not (args.split_output or args.sync_transfers):
         parser.error("--u8-mmvq requires --split-output or --sync-transfers, so its full-model logit gate runs")
+    if args.powervr_decode and not args.split_output:
+        parser.error("--powervr-decode requires --split-output, the runtime it is built into, so its full-model logit gate runs")
+    if args.powervr_decode and args.profile == "host-memory":
+        # The decode path places device buffers in device-local memory, which would override the profile.
+        parser.error("--powervr-decode cannot be combined with --profile host-memory")
     if (args.split_output or args.sync_transfers) and args.repack != 1:
         parser.error("checked transfer profiles require --repack 1 to match the pinned model checker's default")
     OUT.mkdir(exist_ok=True)
@@ -331,7 +348,8 @@ def main():
     result["command"] = command
     environment = os.environ.copy()
     for key in ("GGML_VK_PREFER_HOST_MEMORY", "GGML_VK_FORCE_MMVQ", "GGML_VK_DISABLE_MMVQ",
-                "GGML_VK_PWR_MMV_WG", "GGML_VK_PWR_RMS_SUBGROUPS", "GGML_VK_PWR_U8_MMVQ", "GGML_VK_PERF_LOGGER", "GGML_VK_DISABLE_F16", "GGML_VK_SPLIT_OUTPUT", "GGML_VK_DISABLE_ASYNC", "GGML_VK_SERIALIZE_SUBMISSIONS", "GGML_VK_WAIT_IDLE"):
+                "GGML_VK_PWR_MMV_WG", "GGML_VK_PWR_RMS_SUBGROUPS", "GGML_VK_PWR_U8_MMVQ", "GGML_VK_PERF_LOGGER", "GGML_VK_DISABLE_F16", "GGML_VK_SPLIT_OUTPUT", "GGML_VK_DISABLE_ASYNC", "GGML_VK_SERIALIZE_SUBMISSIONS", "GGML_VK_WAIT_IDLE",
+                "GGML_VK_PWR_ATTN", "GGML_VK_PWR_BARRIER", "GGML_VK_PREFER_DEVICE_LOCAL"):
         environment.pop(key, None)
     environment.pop("GGML_SCHED_DEBUG", None)
     environment["GGML_VK_MEMORY_LOGGER"] = "1"
@@ -353,6 +371,9 @@ def main():
         environment["GGML_VK_PWR_RMS_SUBGROUPS"] = "1"
     if args.u8_mmvq:
         environment["GGML_VK_PWR_U8_MMVQ"] = "1"
+    if args.powervr_decode:
+        for key in ("GGML_VK_PWR_ATTN", "GGML_VK_PWR_BARRIER", "GGML_VK_PREFER_DEVICE_LOCAL"):
+            environment[key] = "1"
     paths = [str(args.runtime), *map(str, args.library_path)]
     if environment.get("LD_LIBRARY_PATH"):
         paths.append(environment["LD_LIBRARY_PATH"])
@@ -361,7 +382,7 @@ def main():
                              if key.startswith("GGML_VK_") or key == "LD_LIBRARY_PATH"}
     try:
         if (args.split_output or args.sync_transfers or args.workgroup or args.rms_subgroups or args.u8_mmvq
-                or (args.runtime / "spiralpixcel-kernel.json").exists()):
+                or args.powervr_decode or (args.runtime / "spiralpixcel-kernel.json").exists()):
             marker = json.loads((args.runtime / "spiralpixcel-kernel.json").read_text())
             core = validate_core_libraries(args.runtime, marker, required=args.split_output or args.sync_transfers)
             result["core_library_manifest_verified"] = bool(core)
@@ -373,6 +394,8 @@ def main():
                     raise ValueError("runtime lacks queue completion waits; rebuild it or choose --completion-wait serial")
             if args.u8_mmvq and marker.get("powervr_u8_mmvq") is not True:
                 raise ValueError("runtime lacks the PowerVR unsigned mat-vec patch; rebuild with --powervr-u8-mmvq")
+            if args.powervr_decode and marker.get("powervr_decode") is not True:
+                raise ValueError("runtime lacks the PowerVR decode patch; rebuild with --powervr-decode")
             if marker.get("libggml-vulkan_sha256") != sha256(args.runtime / "libggml-vulkan.so"):
                 raise ValueError("patched runtime identity differs from its build receipt")
             if marker.get("check-mmv_sha256") != sha256(args.runtime / "check-mmv"):
@@ -386,12 +409,17 @@ def main():
             with (OUT / "kernel-check.jsonl").open("wb") as out, (OUT / "kernel-check.log").open("wb") as err:
                 subprocess.run([str(args.runtime / "check-mmv"), str(args.runtime)], env=environment,
                                stdout=out, stderr=err, check=True, timeout=180)
-            result["kernel_check"] = check_kernel_gate((OUT / "kernel-check.jsonl").read_text(), args.u8_mmvq)
+            result["kernel_check"] = check_kernel_gate((OUT / "kernel-check.jsonl").read_text(), args.u8_mmvq,
+                                                       args.powervr_decode)
             if args.u8_mmvq:
                 selected = u8_selected_types(OUT / "kernel-check.log")
-                if not U8_GATE_TYPES <= set(selected):
+                if not set(marker.get("powervr_u8_mmvq_types", U8_GATE_TYPES)) <= set(selected):
                     raise ValueError("the unsigned mat-vec kernel did not run for every gated type; see kernel-check.log")
                 result["u8_mmvq_selected"] = {"kernel_check": selected}
+            if args.powervr_decode:
+                if not attention_kernel_selected(OUT / "kernel-check.log"):
+                    raise ValueError("the attention-score kernel did not run in the kernel gate; see kernel-check.log")
+                result["attention_kernel_selected"] = {"kernel_check": True}
             if args.split_output:
                 if not marker.get("output_row_split"):
                     raise ValueError("runtime does not advertise output row splitting")
@@ -432,6 +460,11 @@ def main():
                 result["u8_mmvq_selected"]["model_candidate"] = u8_selected_types(OUT / "model-candidate.log")
                 if not result["u8_mmvq_selected"]["model_candidate"]:
                     raise ValueError("the unsigned mat-vec kernel did not run in the full-model gate")
+            if args.powervr_decode:
+                # The checker's last ubatch is a single token, which takes the attention-score kernel.
+                if not attention_kernel_selected(OUT / "model-candidate.log"):
+                    raise ValueError("the attention-score kernel did not run in the full-model gate")
+                result["attention_kernel_selected"]["model_candidate"] = True
         if args.schedule_report or args.split_output or args.sync_transfers:
             from schedule_report import collect
             placement = collect(args.runtime, args.model, args.gpu_layers, args.repack, args.flash_attn, environment, OUT)

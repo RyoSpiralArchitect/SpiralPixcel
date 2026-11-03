@@ -1,0 +1,328 @@
+{
+  "tool": "readback-rep.sh RUNTIME OUT N, run as `bash` inside a memory-limited systemd user scope",
+  "check": "check-readback: 27 transfer cases (64 B, 4 KiB, 1 MiB at offset 64, three trials, three routes)",
+  "series": {
+    "r5": {
+      "runtime": "/home/droid/.local/share/SpiralPixcel/runtimes/llama-b11960-pvr-decode-r5",
+      "libggml_vulkan_sha256": "23c51dde9cb65cdce405ebeb5afc8b695e10662a363354bbd2ba34f9caf9bc6f",
+      "note": "Final patch before the pinned-destination invalidate.",
+      "file": "rep-r5.jsonl.gz",
+      "rows": 2240,
+      "arms": {
+        "control": {
+          "env": {
+            "GGML_VK_SPLIT_OUTPUT": "1",
+            "GGML_VK_DISABLE_ASYNC": "1",
+            "GGML_VK_WAIT_IDLE": "1",
+            "GGML_VK_PWR_U8_MMVQ": "1"
+          },
+          "runs": 20,
+          "failed_runs": 0,
+          "failures": []
+        },
+        "barrier": {
+          "env": {
+            "GGML_VK_SPLIT_OUTPUT": "1",
+            "GGML_VK_DISABLE_ASYNC": "1",
+            "GGML_VK_WAIT_IDLE": "1",
+            "GGML_VK_PWR_U8_MMVQ": "1",
+            "GGML_VK_PWR_BARRIER": "1"
+          },
+          "runs": 20,
+          "failed_runs": 0,
+          "failures": []
+        },
+        "devlocal": {
+          "env": {
+            "GGML_VK_SPLIT_OUTPUT": "1",
+            "GGML_VK_DISABLE_ASYNC": "1",
+            "GGML_VK_WAIT_IDLE": "1",
+            "GGML_VK_PWR_U8_MMVQ": "1",
+            "GGML_VK_PREFER_DEVICE_LOCAL": "1"
+          },
+          "runs": 20,
+          "failed_runs": 3,
+          "failures": [
+            {
+              "run": 1,
+              "summary": {
+                "status": "fail",
+                "cases": 27,
+                "failed": 2,
+                "transfer_only": true,
+                "max_payload_bytes": 1048576,
+                "host_buffer_requested": "Vulkan host type (allocation may fall back)",
+                "split_output_env": "1",
+                "disable_async_env": true
+              },
+              "failed_cases": [
+                {
+                  "route": "async_api_vulkan_host",
+                  "bytes": 64,
+                  "trial": 1,
+                  "mismatched_bytes": 64,
+                  "zero_bytes": 64
+                },
+                {
+                  "route": "async_api_vulkan_host",
+                  "bytes": 64,
+                  "trial": 2,
+                  "mismatched_bytes": 64,
+                  "zero_bytes": 64
+                }
+              ]
+            },
+            {
+              "run": 6,
+              "summary": {
+                "status": "fail",
+                "cases": 27,
+                "failed": 1,
+                "transfer_only": true,
+                "max_payload_bytes": 1048576,
+                "host_buffer_requested": "Vulkan host type (allocation may fall back)",
+                "split_output_env": "1",
+                "disable_async_env": true
+              },
+              "failed_cases": [
+                {
+                  "route": "async_api_vulkan_host",
+                  "bytes": 4096,
+                  "trial": 1,
+                  "mismatched_bytes": 319,
+                  "zero_bytes": 334
+                }
+              ]
+            },
+            {
+              "run": 19,
+              "summary": {
+                "status": "fail",
+                "cases": 27,
+                "failed": 1,
+                "transfer_only": true,
+                "max_payload_bytes": 1048576,
+                "host_buffer_requested": "Vulkan host type (allocation may fall back)",
+                "split_output_env": "1",
+                "disable_async_env": true
+              },
+              "failed_cases": [
+                {
+                  "route": "async_api_vulkan_host",
+                  "bytes": 64,
+                  "trial": 1,
+                  "mismatched_bytes": 64,
+                  "zero_bytes": 64
+                }
+              ]
+            }
+          ]
+        },
+        "both": {
+          "env": {
+            "GGML_VK_SPLIT_OUTPUT": "1",
+            "GGML_VK_DISABLE_ASYNC": "1",
+            "GGML_VK_WAIT_IDLE": "1",
+            "GGML_VK_PWR_U8_MMVQ": "1",
+            "GGML_VK_PWR_BARRIER": "1",
+            "GGML_VK_PREFER_DEVICE_LOCAL": "1",
+            "GGML_VK_PWR_ATTN": "1"
+          },
+          "runs": 20,
+          "failed_runs": 3,
+          "failures": [
+            {
+              "run": 1,
+              "summary": {
+                "status": "fail",
+                "cases": 27,
+                "failed": 1,
+                "transfer_only": true,
+                "max_payload_bytes": 1048576,
+                "host_buffer_requested": "Vulkan host type (allocation may fall back)",
+                "split_output_env": "1",
+                "disable_async_env": true
+              },
+              "failed_cases": [
+                {
+                  "route": "async_api_vulkan_host",
+                  "bytes": 1048576,
+                  "trial": 1,
+                  "mismatched_bytes": 64,
+                  "zero_bytes": 4160
+                }
+              ]
+            },
+            {
+              "run": 13,
+              "summary": {
+                "status": "fail",
+                "cases": 27,
+                "failed": 1,
+                "transfer_only": true,
+                "max_payload_bytes": 1048576,
+                "host_buffer_requested": "Vulkan host type (allocation may fall back)",
+                "split_output_env": "1",
+                "disable_async_env": true
+              },
+              "failed_cases": [
+                {
+                  "route": "async_api_vulkan_host",
+                  "bytes": 64,
+                  "trial": 1,
+                  "mismatched_bytes": 64,
+                  "zero_bytes": 64
+                }
+              ]
+            },
+            {
+              "run": 17,
+              "summary": {
+                "status": "fail",
+                "cases": 27,
+                "failed": 2,
+                "transfer_only": true,
+                "max_payload_bytes": 1048576,
+                "host_buffer_requested": "Vulkan host type (allocation may fall back)",
+                "split_output_env": "1",
+                "disable_async_env": true
+              },
+              "failed_cases": [
+                {
+                  "route": "async_api_vulkan_host",
+                  "bytes": 4096,
+                  "trial": 1,
+                  "mismatched_bytes": 383,
+                  "zero_bytes": 398
+                },
+                {
+                  "route": "async_api_vulkan_host",
+                  "bytes": 4096,
+                  "trial": 2,
+                  "mismatched_bytes": 382,
+                  "zero_bytes": 399
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "exp-pinned": {
+      "runtime": "/home/droid/.local/share/SpiralPixcel/runtimes/exp-pinned",
+      "libggml_vulkan_sha256": "89b1a14b7fe72de55efdd0252818234023a0947d942210cb6e6628b5558cb3bb",
+      "note": "Experimental tree (exp-patches/ in order) with pinned-fix.patch applied last.",
+      "file": "rep-exp-pinned.jsonl.gz",
+      "rows": 3360,
+      "arms": {
+        "control": {
+          "env": {
+            "GGML_VK_SPLIT_OUTPUT": "1",
+            "GGML_VK_DISABLE_ASYNC": "1",
+            "GGML_VK_WAIT_IDLE": "1",
+            "GGML_VK_PWR_U8_MMVQ": "1"
+          },
+          "runs": 30,
+          "failed_runs": 0,
+          "failures": []
+        },
+        "barrier": {
+          "env": {
+            "GGML_VK_SPLIT_OUTPUT": "1",
+            "GGML_VK_DISABLE_ASYNC": "1",
+            "GGML_VK_WAIT_IDLE": "1",
+            "GGML_VK_PWR_U8_MMVQ": "1",
+            "GGML_VK_PWR_BARRIER": "1"
+          },
+          "runs": 30,
+          "failed_runs": 0,
+          "failures": []
+        },
+        "devlocal": {
+          "env": {
+            "GGML_VK_SPLIT_OUTPUT": "1",
+            "GGML_VK_DISABLE_ASYNC": "1",
+            "GGML_VK_WAIT_IDLE": "1",
+            "GGML_VK_PWR_U8_MMVQ": "1",
+            "GGML_VK_PREFER_DEVICE_LOCAL": "1"
+          },
+          "runs": 30,
+          "failed_runs": 0,
+          "failures": []
+        },
+        "both": {
+          "env": {
+            "GGML_VK_SPLIT_OUTPUT": "1",
+            "GGML_VK_DISABLE_ASYNC": "1",
+            "GGML_VK_WAIT_IDLE": "1",
+            "GGML_VK_PWR_U8_MMVQ": "1",
+            "GGML_VK_PWR_BARRIER": "1",
+            "GGML_VK_PREFER_DEVICE_LOCAL": "1",
+            "GGML_VK_PWR_ATTN": "1"
+          },
+          "runs": 30,
+          "failed_runs": 0,
+          "failures": []
+        }
+      }
+    },
+    "r6": {
+      "runtime": "/home/droid/.local/share/SpiralPixcel/runtimes/llama-b11960-pvr-decode-r6",
+      "libggml_vulkan_sha256": "b1985926c4a4c27b647f300a5a5a8d64c9466ec96f89f55c029302fb31b878fc",
+      "note": "Final patch with the pinned-destination invalidate.",
+      "file": "rep-r6.jsonl.gz",
+      "rows": 3360,
+      "arms": {
+        "control": {
+          "env": {
+            "GGML_VK_SPLIT_OUTPUT": "1",
+            "GGML_VK_DISABLE_ASYNC": "1",
+            "GGML_VK_WAIT_IDLE": "1",
+            "GGML_VK_PWR_U8_MMVQ": "1"
+          },
+          "runs": 30,
+          "failed_runs": 0,
+          "failures": []
+        },
+        "barrier": {
+          "env": {
+            "GGML_VK_SPLIT_OUTPUT": "1",
+            "GGML_VK_DISABLE_ASYNC": "1",
+            "GGML_VK_WAIT_IDLE": "1",
+            "GGML_VK_PWR_U8_MMVQ": "1",
+            "GGML_VK_PWR_BARRIER": "1"
+          },
+          "runs": 30,
+          "failed_runs": 0,
+          "failures": []
+        },
+        "devlocal": {
+          "env": {
+            "GGML_VK_SPLIT_OUTPUT": "1",
+            "GGML_VK_DISABLE_ASYNC": "1",
+            "GGML_VK_WAIT_IDLE": "1",
+            "GGML_VK_PWR_U8_MMVQ": "1",
+            "GGML_VK_PREFER_DEVICE_LOCAL": "1"
+          },
+          "runs": 30,
+          "failed_runs": 0,
+          "failures": []
+        },
+        "both": {
+          "env": {
+            "GGML_VK_SPLIT_OUTPUT": "1",
+            "GGML_VK_DISABLE_ASYNC": "1",
+            "GGML_VK_WAIT_IDLE": "1",
+            "GGML_VK_PWR_U8_MMVQ": "1",
+            "GGML_VK_PWR_BARRIER": "1",
+            "GGML_VK_PREFER_DEVICE_LOCAL": "1",
+            "GGML_VK_PWR_ATTN": "1"
+          },
+          "runs": 30,
+          "failed_runs": 0,
+          "failures": []
+        }
+      }
+    }
+  }
+}

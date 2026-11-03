@@ -1,0 +1,13 @@
+{"test": "same_state", "pipelines": 1, "sets": 1, "rebind": 0, "barrier": 1, "push_bytes": 4, "timestamps": 0, "groups": 1, "us_per_dispatch": 14.22, "min": 12.40, "max": 18.73}
+{"test": "same_state_no_barrier", "pipelines": 1, "sets": 1, "rebind": 0, "barrier": 0, "push_bytes": 4, "timestamps": 0, "groups": 1, "us_per_dispatch": 0.53, "min": 0.27, "max": 0.60}
+{"test": "rebind_same", "pipelines": 1, "sets": 1, "rebind": 1, "barrier": 1, "push_bytes": 4, "timestamps": 0, "groups": 1, "us_per_dispatch": 17.13, "min": 15.48, "max": 18.68}
+{"test": "sets_cycle8", "pipelines": 1, "sets": 8, "rebind": 0, "barrier": 1, "push_bytes": 4, "timestamps": 0, "groups": 1, "us_per_dispatch": 14.24, "min": 13.50, "max": 14.29}
+{"test": "pipes_cycle2", "pipelines": 2, "sets": 2, "rebind": 0, "barrier": 1, "push_bytes": 4, "timestamps": 0, "groups": 1, "us_per_dispatch": 14.92, "min": 14.20, "max": 15.75}
+{"test": "pipes_cycle8", "pipelines": 8, "sets": 8, "rebind": 0, "barrier": 1, "push_bytes": 4, "timestamps": 0, "groups": 1, "us_per_dispatch": 14.51, "min": 14.20, "max": 14.68}
+{"test": "pipes_cycle8_no_barrier", "pipelines": 8, "sets": 8, "rebind": 0, "barrier": 0, "push_bytes": 4, "timestamps": 0, "groups": 1, "us_per_dispatch": 0.38, "min": 0.13, "max": 0.46}
+{"test": "push128_same_state", "pipelines": 1, "sets": 1, "rebind": 0, "barrier": 1, "push_bytes": 128, "timestamps": 0, "groups": 1, "us_per_dispatch": 13.77, "min": 13.64, "max": 14.09}
+{"test": "pipes_cycle8_push128", "pipelines": 8, "sets": 8, "rebind": 0, "barrier": 1, "push_bytes": 128, "timestamps": 0, "groups": 1, "us_per_dispatch": 14.15, "min": 13.05, "max": 14.37}
+{"test": "timestamps_same_state", "pipelines": 1, "sets": 1, "rebind": 0, "barrier": 1, "push_bytes": 4, "timestamps": 1, "groups": 1, "us_per_dispatch": 77.71, "min": 63.28, "max": 82.11}
+{"test": "same_state_g64", "pipelines": 1, "sets": 1, "rebind": 0, "barrier": 1, "push_bytes": 4, "timestamps": 0, "groups": 64, "us_per_dispatch": 17.36, "min": 16.68, "max": 17.49}
+{"test": "pipes_cycle8_g64", "pipelines": 8, "sets": 8, "rebind": 0, "barrier": 1, "push_bytes": 4, "timestamps": 0, "groups": 64, "us_per_dispatch": 17.19, "min": 16.81, "max": 17.23}
+{"test": "same_state", "pipelines": 1, "sets": 1, "rebind": 0, "barrier": 1, "push_bytes": 4, "timestamps": 0, "groups": 1, "us_per_dispatch": 13.72, "min": 12.55, "max": 14.52}

@@ -44,10 +44,11 @@ class InferenceReceipt(unittest.TestCase):
 
 
 class KernelGate(unittest.TestCase):
-    def records(self, matmuls, status="pass"):
+    def records(self, matmuls, status="pass", attention=0):
         rows = [{"op": op, "status": status} for op, count in
-                (("MUL_MAT", matmuls), ("RMS_NORM", 8), ("RMS_NORM_MUL", 8)) for _ in range(count)]
-        rows.append({"status": "pass", "cases": matmuls + 16, "failed": 0})
+                (("MUL_MAT", matmuls), ("ATTN_SCORES", attention), ("RMS_NORM", 8), ("RMS_NORM_MUL", 8))
+                for _ in range(count)]
+        rows.append({"status": "pass", "cases": matmuls + attention + 16, "failed": 0})
         return "\n".join(map(json.dumps, rows))
 
     def test_accepts_both_layouts_and_requires_q8_0_on_request(self):
@@ -56,6 +57,13 @@ class KernelGate(unittest.TestCase):
         for raw, require in ((self.records(40), True), (self.records(44), False), (self.records(52, "fail"), False)):
             with self.subTest(raw=raw[:40], require=require), self.assertRaises(ValueError):
                 inference.check_kernel_gate(raw, require)
+
+    def test_attention_layout_is_required_for_the_decode_path(self):
+        self.assertEqual(inference.check_kernel_gate(self.records(52, attention=8), True, True)["cases"], 76)
+        self.assertEqual(inference.check_kernel_gate(self.records(52, attention=8), True)["cases"], 76)
+        for raw in (self.records(52), self.records(52, attention=4), self.records(52, "fail", attention=8)):
+            with self.subTest(raw=raw[:40]), self.assertRaises(ValueError):
+                inference.check_kernel_gate(raw, True, True)
 
 
 class MatchedCoreManifest(unittest.TestCase):
@@ -178,15 +186,22 @@ class SplitModelAcceptance(unittest.TestCase):
                 if mode == "bad-readback":
                     records[0].update(mismatched_bytes=64, status="fail")
             elif name == "check-mmv":
-                extended = mode in ("u8", "u8-legacy-gate", "u8-fallback")
-                if mode in ("u8", "u8-legacy-gate"):
+                decode = mode.startswith("decode")
+                extended = mode in ("u8", "u8-legacy-gate", "u8-fallback") or decode
+                if mode in ("u8", "u8-legacy-gate") or decode:
                     for type_name in ("q4_K", "q5_0", "q8_0"):
                         stderr.write(f"ggml_vulkan: mul_mat_vecq_u8 selected for {type_name}\n".encode())
+                if mode in ("decode", "decode-legacy-gate"):
+                    stderr.write(b"ggml_vulkan: mul_mat_vec_p021_pvr selected\n")
                 self.assertEqual(env.get("GGML_VK_PWR_U8_MMVQ"), "1" if extended else None)
-                matmuls = 52 if mode in ("u8", "u8-fallback") else 40
+                for key in ("GGML_VK_PWR_ATTN", "GGML_VK_PWR_BARRIER", "GGML_VK_PREFER_DEVICE_LOCAL"):
+                    self.assertEqual(env.get(key), "1" if decode else None)
+                matmuls = 52 if mode in ("u8", "u8-fallback") or decode else 40
+                attention = 8 if mode in ("decode", "decode-fallback") else 0
                 records = [{"op": op, "status": "pass"} for op, count in
-                           (("MUL_MAT", matmuls), ("RMS_NORM", 8), ("RMS_NORM_MUL", 8)) for _ in range(count)]
-                records.append({"status": "pass", "cases": matmuls + 16, "failed": 0})
+                           (("MUL_MAT", matmuls), ("ATTN_SCORES", attention), ("RMS_NORM", 8), ("RMS_NORM_MUL", 8))
+                           for _ in range(count)]
+                records.append({"status": "pass", "cases": matmuls + attention + 16, "failed": 0})
             elif name == "check-large":
                 case = {"status": "pass", "weight_bytes": 129*1024*1024,
                         "reference": "dequantized_q8_0_basis_values", "separate_weight_buffer": True,
@@ -198,9 +213,11 @@ class SplitModelAcceptance(unittest.TestCase):
                 records.append({"status": "pass", "cases": 2, "failed": 0})
             elif name == "check-model":
                 layers = int(command[4])
-                self.assertEqual(env.get("GGML_VK_PWR_U8_MMVQ"), "1" if mode == "u8" else None)
-                if mode == "u8" and layers:
+                self.assertEqual(env.get("GGML_VK_PWR_U8_MMVQ"), "1" if mode in ("u8", "decode") else None)
+                if mode in ("u8", "decode") and layers:
                     stderr.write(b"ggml_vulkan: mul_mat_vecq_u8 selected for q5_0\n")
+                if mode == "decode" and layers:
+                    stderr.write(b"ggml_vulkan: mul_mat_vec_p021_pvr selected\n")
                 self.assertEqual(env.get("GGML_VK_SPLIT_OUTPUT", "0"), "0" if layers == 0 or mode == "matching-baseline" else "1")
                 values = [1., 2., 3.]
                 if layers and mode == "zero":
@@ -335,6 +352,56 @@ class SplitModelAcceptance(unittest.TestCase):
                 benchmark.assert_not_called()
                 self.assertIn(message, json.loads((root / "result/result.json").read_text())["error"])
 
+    def decode_fixture(self, root, flagged=True):
+        runtime, model = self.make_fixture(root)
+        marker_path = runtime / "spiralpixcel-kernel.json"
+        extra = {"powervr_u8_mmvq": True, **({"powervr_decode": True} if flagged else {})}
+        marker_path.write_text(json.dumps({**json.loads(marker_path.read_text()), **extra}))
+        return runtime, model
+
+    def test_decode_path_reaches_timing_on_the_attention_gate(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            runtime, model = self.decode_fixture(root)
+            output = root / "result"
+            command = ["inference.py", "--runtime", str(runtime), "--model", str(model), "--split-output",
+                       "--u8-mmvq", "--powervr-decode"]
+            placement = {"nodes_per_backend": {"Vulkan0": 2}, "cpu_nodes": [], "rejected_weights": [],
+                         "output_nodes": [{"name": f"output_mm.chunk.{i}", "backend": "Vulkan0"} for i in range(2)]}
+            def timed_run(command, environment, timeout):
+                for key in ("GGML_VK_PWR_U8_MMVQ", "GGML_VK_PWR_ATTN", "GGML_VK_PWR_BARRIER", "GGML_VK_PREFER_DEVICE_LOCAL"):
+                    self.assertEqual(environment[key], "1")
+                (output / "bench.json").write_text(json.dumps(rows()))
+                (output / "bench.log").write_text("")
+                return {"exit_code": 0, "timed_out": False, "sampled_peak_rss_kib": 1}
+
+            with patch.object(inference, "OUT", output), patch.object(sys, "argv", command), \
+                    patch("inference.subprocess.run", side_effect=self.fake_checkers("decode")), \
+                    patch("schedule_report.collect", return_value=placement), \
+                    patch("inference.run_benchmark", side_effect=timed_run) as benchmark, redirect_stdout(io.StringIO()):
+                self.assertEqual(inference.main(), 0)
+            benchmark.assert_called_once()
+            receipt = json.loads((output / "result.json").read_text())
+            self.assertEqual(receipt["kernel_check"]["cases"], 76)
+            self.assertEqual(receipt["attention_kernel_selected"], {"kernel_check": True, "model_candidate": True})
+            self.assertEqual(receipt["model_check"]["environment"]["GGML_VK_PREFER_DEVICE_LOCAL"], "1")
+
+    def test_decode_path_requires_its_patch_attention_cases_and_no_fallback(self):
+        for flagged, mode, message in ((False, "decode", "PowerVR decode patch"),
+                                       (True, "decode-legacy-gate", "incomplete receipt"),
+                                       (True, "decode-fallback", "attention-score kernel did not run")):
+            with self.subTest(flagged=flagged, mode=mode), tempfile.TemporaryDirectory() as folder:
+                root = Path(folder)
+                runtime, model = self.decode_fixture(root, flagged)
+                command = ["inference.py", "--runtime", str(runtime), "--model", str(model), "--split-output",
+                           "--u8-mmvq", "--powervr-decode"]
+                with patch.object(inference, "OUT", root / "result"), patch.object(sys, "argv", command), \
+                        patch("inference.subprocess.run", side_effect=self.fake_checkers(mode)), \
+                        patch("inference.run_benchmark") as benchmark, redirect_stdout(io.StringIO()):
+                    self.assertEqual(inference.main(), 1)
+                benchmark.assert_not_called()
+                self.assertIn(message, json.loads((root / "result/result.json").read_text())["error"])
+
     def test_large_gate_requires_exactly_two_case_rows(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
@@ -402,6 +469,13 @@ class SplitModelAcceptance(unittest.TestCase):
                 redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as error:
             inference.main()
         self.assertEqual(error.exception.code, 2)
+
+    def test_decode_path_requires_the_split_runtime(self):
+        for argv in (["inference.py", "--powervr-decode"], ["inference.py", "--sync-transfers", "--powervr-decode"],
+                     ["inference.py", "--split-output", "--powervr-decode", "--profile", "host-memory"]):
+            with self.subTest(argv=argv), patch.object(sys, "argv", argv), redirect_stderr(io.StringIO()), \
+                    self.assertRaises(SystemExit):
+                inference.main()
 
     def test_unsigned_matvec_requires_the_logit_gate(self):
         with patch.object(sys, "argv", ["inference.py", "--u8-mmvq"]), redirect_stderr(io.StringIO()), \

@@ -1,0 +1,444 @@
+diff --git a/ggml/src/ggml-vulkan/ggml-vulkan-buffers.cpp b/ggml/src/ggml-vulkan/ggml-vulkan-buffers.cpp
+index 9028b9a..b214217 100644
+--- a/ggml/src/ggml-vulkan/ggml-vulkan-buffers.cpp
++++ b/ggml/src/ggml-vulkan/ggml-vulkan-buffers.cpp
+@@ -220,7 +220,10 @@ vk_buffer ggml_vk_create_buffer_check(vk_device& device, size_t size, vk::Memory
+ vk_buffer ggml_vk_create_buffer_device(vk_device& device, size_t size) {
+     vk_buffer buf;
+     try {
+-        if (device->prefer_host_memory) {
++        if (device->prefer_device_local) {
++            buf = ggml_vk_create_buffer(device, size, {vk::MemoryPropertyFlagBits::eDeviceLocal,
++                                                       vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent});
++        } else if (device->prefer_host_memory) {
+             buf = ggml_vk_create_buffer(device, size, {vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
+                                                        vk::MemoryPropertyFlagBits::eDeviceLocal});
+         } else if (device->uma) {
+@@ -462,6 +465,7 @@ static void ggml_vk_buffer_write_nc_async(ggml_backend_vk_context * ctx, vk_cont
+         }
+ 
+         ggml_vk_sync_buffers(ctx, subctx);
++        ggml_vk_sync_before_transfer(subctx);
+         subctx->s->buffer->buf.copyBuffer(buf->buffer, dst->buffer, slices);
+         return;
+     }
+@@ -477,6 +481,7 @@ static void ggml_vk_buffer_write_nc_async(ggml_backend_vk_context * ctx, vk_cont
+     VkBufferCopy buf_copy{ 0, offset, copy_size };
+ 
+     ggml_vk_sync_buffers(ctx, subctx);
++    ggml_vk_sync_before_transfer(subctx);
+     vkCmdCopyBuffer(subctx->s->buffer->buf, (VkBuffer)staging->buffer, (VkBuffer)dst->buffer, 1, &buf_copy);
+ 
+     for (uint64_t i3 = 0; i3 < ne3; i3++) {
+@@ -526,6 +531,7 @@ bool ggml_vk_buffer_write_2d_async(vk_context subctx, vk_buffer& dst, size_t off
+         }
+ 
+         ggml_vk_sync_buffers(nullptr, subctx);
++        ggml_vk_sync_before_transfer(subctx);
+         subctx->s->buffer->buf.copyBuffer(buf->buffer, dst->buffer, slices);
+         return true;
+     }
+@@ -557,6 +563,7 @@ bool ggml_vk_buffer_write_2d_async(vk_context subctx, vk_buffer& dst, size_t off
+     }
+ 
+     ggml_vk_sync_buffers(nullptr, subctx);
++    ggml_vk_sync_before_transfer(subctx);
+     subctx->s->buffer->buf.copyBuffer(staging_buffer->buffer, dst->buffer, slices);
+ 
+     if (width == spitch) {
+@@ -659,6 +666,7 @@ bool ggml_vk_buffer_read_2d_async(vk_context subctx, vk_buffer& src, size_t offs
+     if (buf != nullptr) {
+         // Memory is pinned, use as staging buffer
+         ggml_vk_sync_buffers(nullptr, subctx);
++        ggml_vk_sync_before_transfer(subctx);
+         subctx->s->buffer->buf.copyBuffer(src->buffer, buf->buffer, slices);
+         // Make the transfer result visible to host reads after the fence wait.
+         subctx->s->buffer->buf.pipelineBarrier(
+@@ -695,6 +703,7 @@ bool ggml_vk_buffer_read_2d_async(vk_context subctx, vk_buffer& src, size_t offs
+     }
+ 
+     ggml_vk_sync_buffers(nullptr, subctx);
++    ggml_vk_sync_before_transfer(subctx);
+     subctx->s->buffer->buf.copyBuffer(src->buffer, staging_buffer->buffer, staging_slices);
+     // Make the transfer result visible to host reads after the fence wait.
+     subctx->s->buffer->buf.pipelineBarrier(
+@@ -770,6 +779,18 @@ void ggml_vk_buffer_read_2d(vk_buffer& src, size_t offset, void * dst, size_t sp
+             src->device->device.invalidateMappedMemoryRanges(
+                 vk::MappedMemoryRange{src->device->sync_staging->device_memory, 0, VK_WHOLE_SIZE});
+         }
++        // A pinned destination took the copy directly (ggml_vk_buffer_read_2d_async). The VM can
++        // return stale zeros from it unless it is invalidated as well; this path runs only when the
++        // source is not host-visible, as with GGML_VK_PREFER_DEVICE_LOCAL on UMA.
++        if (split_output && strcmp(split_output, "1") == 0) {
++            vk_buffer pinned = nullptr;
++            size_t pinned_offset = 0;
++            ggml_vk_host_get(src->device, dst, pinned, pinned_offset);
++            if (pinned != nullptr) {
++                src->device->device.invalidateMappedMemoryRanges(
++                    vk::MappedMemoryRange{pinned->device_memory, 0, VK_WHOLE_SIZE});
++            }
++        }
+         for (auto& cpy : subctx->out_memcpys) {
+             memcpy(cpy.dst, cpy.src, cpy.n);
+         }
+@@ -788,6 +809,7 @@ void ggml_vk_buffer_copy_async(vk_context& ctx, vk_buffer& dst, size_t dst_offse
+ 
+     VkBufferCopy bc{ src_offset, dst_offset, size };
+ 
++    ggml_vk_sync_before_transfer(ctx);
+     vkCmdCopyBuffer(ctx->s->buffer->buf, (VkBuffer)src->buffer, (VkBuffer)dst->buffer, 1, &bc);
+ }
+ 
+@@ -826,6 +848,7 @@ void ggml_vk_buffer_memset_async(vk_context& ctx, vk_buffer& dst, size_t offset,
+     }
+ 
+     // Fall back to GPU fillBuffer for non-UMA or non-host-visible buffers
++    ggml_vk_sync_before_transfer(ctx);
+     ctx->s->buffer->buf.fillBuffer(dst->buffer, offset, size, c);
+ }
+ 
+@@ -841,6 +864,7 @@ void ggml_vk_buffer_memset(vk_buffer& dst, size_t offset, uint32_t c, size_t siz
+     std::lock_guard<std::recursive_mutex> guard(dst->device->mutex);
+     vk_context subctx = ggml_vk_create_temporary_context(dst->device->transfer_queue->cmd_pool);
+     ggml_vk_ctx_begin(dst->device, subctx);
++    ggml_vk_sync_before_transfer(subctx);
+     subctx->s->buffer->buf.fillBuffer(dst->buffer, offset, size, c);
+     ggml_vk_ctx_end(subctx);
+ 
+diff --git a/ggml/src/ggml-vulkan/ggml-vulkan-common.h b/ggml/src/ggml-vulkan/ggml-vulkan-common.h
+index 66b7557..e537aa5 100644
+--- a/ggml/src/ggml-vulkan/ggml-vulkan-common.h
++++ b/ggml/src/ggml-vulkan/ggml-vulkan-common.h
+@@ -79,6 +79,7 @@ void ggml_vk_command_pool_cleanup(vk_device& device, vk_command_pool& p);
+ void ggml_vk_queue_command_pools_cleanup(vk_device& device);
+ vk_subbuffer ggml_vk_subbuffer(const ggml_backend_vk_context* ctx, const vk_buffer& buf, size_t offset = 0);
+ void ggml_vk_sync_buffers(ggml_backend_vk_context* ctx, vk_context& subctx);
++void ggml_vk_sync_before_transfer(vk_context& subctx);
+ void ggml_vk_set_event(vk_context& ctx, vk::Event& event);
+ void ggml_vk_wait_events(vk_context& ctx, std::vector<vk::Event>&& events);
+ vk_subbuffer ggml_vk_tensor_subbuffer(const ggml_backend_vk_context * ctx, const ggml_tensor * tensor, bool allow_misalign = false);
+diff --git a/ggml/src/ggml-vulkan/ggml-vulkan-types.h b/ggml/src/ggml-vulkan/ggml-vulkan-types.h
+index 460e621..3ee69e5 100644
+--- a/ggml/src/ggml-vulkan/ggml-vulkan-types.h
++++ b/ggml/src/ggml-vulkan/ggml-vulkan-types.h
+@@ -357,6 +357,10 @@ struct vk_queue {
+     vk::PipelineStageFlags stage_flags;
+ 
+     bool transfer_only;
++
++    // ggml_vk_sync_buffers leaves transfers out of its destination scope; transfer commands
++    // then wait through ggml_vk_sync_before_transfer (GGML_VK_PWR_BARRIER).
++    bool compute_only_barrier = false;
+ };
+ 
+ static constexpr uint32_t mul_mat_vec_max_cols = 8;
+@@ -698,6 +702,7 @@ struct vk_device_struct {
+     uint32_t shader_core_count;
+     bool uma;
+     bool prefer_host_memory;
++    bool prefer_device_local;
+     bool float_controls_rte_fp16;
+     bool float_controls_denorm_preserve_fp16;
+     bool subgroup_basic;
+@@ -721,6 +726,9 @@ struct vk_device_struct {
+     // PowerVR: single-column Q5_0/Q8_0/Q4_K mat-vec on unsigned 4x8 dots (GGML_VK_PWR_U8_MMVQ=1)
+     bool pvr_u8_mmvq;
+     std::atomic<uint32_t> pvr_u8_mmvq_logged_types {};  // bit per ggml_type, for the one-time log
++    bool pvr_attn;             // mul_mat_vec_p021_pvr for single-token attention scores
++    std::atomic<bool> pvr_attn_logged {};
++    bool pvr_compute_barrier;  // compute-only destination scope for ggml_vk_sync_buffers
+     // 0: default, 1: force mmvq, -1: disable mmvq
+     int32_t mmvq_mode;
+ 
+@@ -804,6 +812,7 @@ struct vk_device_struct {
+     vk_pipeline pipeline_mul_mat_vecq_u8_f32[GGML_TYPE_COUNT];
+ 
+     vk_pipeline pipeline_mul_mat_vec_p021_f16_f32[p021_max_gqa_ratio];
++    vk_pipeline pipeline_mul_mat_vec_p021_pvr_f16_f32[p021_max_gqa_ratio];
+     vk_pipeline pipeline_mul_mat_vec_nc_f16_f32;
+     vk_pipeline pipeline_get_rows[GGML_TYPE_COUNT];
+     vk_pipeline pipeline_get_rows_f32[GGML_TYPE_COUNT];
+diff --git a/ggml/src/ggml-vulkan/ggml-vulkan.cpp b/ggml/src/ggml-vulkan/ggml-vulkan.cpp
+index 9bcd2b1..bc106b0 100644
+--- a/ggml/src/ggml-vulkan/ggml-vulkan.cpp
++++ b/ggml/src/ggml-vulkan/ggml-vulkan.cpp
+@@ -1053,6 +1053,7 @@ std::unique_ptr<vk_queue> ggml_vk_create_queue(vk_device& device, uint32_t queue
+     q->cmd_pool.init(device, q.get());
+ 
+     q->stage_flags = stage_flags;
++    q->compute_only_barrier = device->pvr_compute_barrier && !transfer_only;
+     return q;
+ }
+ 
+@@ -1063,6 +1064,7 @@ std::unique_ptr<vk_queue> ggml_vk_create_aliased_queue(vk_device& device, const
+     q->queue_family_index = source->queue_family_index;
+     q->stage_flags = source->stage_flags;
+     q->transfer_only = source->transfer_only;
++    q->compute_only_barrier = source->compute_only_barrier;
+     q->cmd_pool.init(device, q.get());
+     return q;
+ }
+@@ -1150,6 +1152,22 @@ void ggml_vk_sync_buffers(ggml_backend_vk_context* ctx, vk_context& subctx) {
+         ctx->prealloc_x_need_sync = ctx->prealloc_y_need_sync = ctx->prealloc_split_k_need_sync = false;
+     }
+ 
++    // On PowerVR a barrier whose destination scope includes the transfer stage costs about
++    // 20-40 us, against about 5 us for a compute-only destination. Shader and transfer writes
++    // stay in the source scope; transfer commands add their own barrier.
++    if (subctx->p->q->compute_only_barrier) {
++        subctx->s->buffer->buf.pipelineBarrier(
++            vk::PipelineStageFlagBits::eComputeShader | vk::PipelineStageFlagBits::eTransfer,
++            vk::PipelineStageFlagBits::eComputeShader,
++            {},
++            { { vk::AccessFlagBits::eShaderWrite | vk::AccessFlagBits::eTransferWrite,
++                vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eShaderWrite } },
++            {},
++            {}
++        );
++        return;
++    }
++
+     subctx->s->buffer->buf.pipelineBarrier(
+         subctx->p->q->stage_flags,
+         subctx->p->q->stage_flags,
+@@ -1163,6 +1181,23 @@ void ggml_vk_sync_buffers(ggml_backend_vk_context* ctx, vk_context& subctx) {
+     );
+ }
+ 
++// With compute-only barriers, a copy or fill on the compute queue first waits for earlier shader
++// and transfer accesses here (read-after-write and write-after-read).
++void ggml_vk_sync_before_transfer(vk_context& subctx) {
++    if (!subctx->p->q->compute_only_barrier) {
++        return;
++    }
++    subctx->s->buffer->buf.pipelineBarrier(
++        vk::PipelineStageFlagBits::eComputeShader | vk::PipelineStageFlagBits::eTransfer,
++        vk::PipelineStageFlagBits::eTransfer,
++        {},
++        { { vk::AccessFlagBits::eShaderWrite | vk::AccessFlagBits::eTransferWrite,
++            vk::AccessFlagBits::eTransferRead | vk::AccessFlagBits::eTransferWrite } },
++        {},
++        {}
++    );
++}
++
+ static void ggml_vk_reset_event(vk_context& ctx, vk::Event& event) {
+     VK_LOG_DEBUG("ggml_vk_set_event()");
+ 
+@@ -3276,6 +3311,13 @@ void ggml_vk_load_shaders(vk_device& device, vk_pipeline requested) {
+             ggml_vk_create_pipeline2(device, device->pipeline_mul_mat_vec_p021_f16_f32[i], "mul_mat_vec_p021_f16_f32"+std::to_string(i+1), mul_mat_vec_p021_f16_f32_len,              mul_mat_vec_p021_f16_f32_data,              "main", mul_mat_vec_num_bindings, sizeof(vk_mat_vec_p021_push_constants), {1, 1, 1}, {device->subgroup_size, i + 1}, 1, true);
+         }
+     }
++    if (device->pvr_attn) {
++        // One 128-wide subgroup per workgroup and 16 positions (8 invocations each) per workgroup;
++        // more positions per workgroup were slower at every context length tried (33 to 4096).
++        for (uint32_t i = 0; i < p021_max_gqa_ratio; ++i) {
++            ggml_vk_create_pipeline2(device, device->pipeline_mul_mat_vec_p021_pvr_f16_f32[i], "mul_mat_vec_p021_pvr_f16_f32_" + std::to_string(i + 1), mul_mat_vec_p021_pvr_f16_f32_len, mul_mat_vec_p021_pvr_f16_f32_data, "main", mul_mat_vec_num_bindings, sizeof(vk_mat_vec_p021_push_constants), {1, 16, 1}, {128, i + 1, 1}, 1, true, true, 128);
++        }
++    }
+     ggml_vk_create_pipeline(device, device->pipeline_mul_mat_vec_nc_f16_f32, "mul_mat_vec_nc_f16_f32", mul_mat_vec_nc_f16_f32_len, mul_mat_vec_nc_f16_f32_data, "main", mul_mat_vec_num_bindings, sizeof(vk_mat_vec_nc_push_constants), {1, 1, 1}, {}, 1);
+ 
+     ggml_vk_create_pipeline(device, device->pipeline_norm_f32, "norm_f32", norm_f32_len, norm_f32_data, "main", 2, sizeof(vk_op_unary_push_constants), {1, 1, 1}, {}, 1);
+@@ -4069,6 +4111,11 @@ vk_device ggml_vk_get_device(size_t idx) {
+         const char* GGML_VK_PREFER_HOST_MEMORY = getenv("GGML_VK_PREFER_HOST_MEMORY");
+         device->prefer_host_memory = GGML_VK_PREFER_HOST_MEMORY != nullptr;
+ 
++        // On UMA, device buffers otherwise prefer host-visible memory. Through this Pixel's VM, keeping
++        // them in device-local memory made decode GPU time and per-submission host work shorter.
++        const char* GGML_VK_PREFER_DEVICE_LOCAL = getenv("GGML_VK_PREFER_DEVICE_LOCAL");
++        device->prefer_device_local = GGML_VK_PREFER_DEVICE_LOCAL != nullptr;
++
+         const char* GGML_VK_DISABLE_HOST_VISIBLE_VIDMEM = getenv("GGML_VK_DISABLE_HOST_VISIBLE_VIDMEM");
+         device->disable_host_visible_vidmem = GGML_VK_DISABLE_HOST_VISIBLE_VIDMEM != nullptr;
+ 
+@@ -4173,6 +4220,7 @@ vk_device ggml_vk_get_device(size_t idx) {
+         const bool pvr_u8_candidate = getenv("GGML_VK_PWR_U8_MMVQ") != nullptr && base_props.vendorID == 0x1010 &&
+                                       base_props.apiVersion >= VK_API_VERSION_1_3 &&
+                                       vk::enumerateInstanceVersion() >= VK_API_VERSION_1_3;
++        const bool pvr_attn_candidate = getenv("GGML_VK_PWR_ATTN") != nullptr && base_props.vendorID == 0x1010;
+ 
+         vk::PhysicalDeviceProperties2 props2;
+         vk::PhysicalDeviceMaintenance3Properties props3;
+@@ -4598,6 +4646,13 @@ vk_device ggml_vk_get_device(size_t idx) {
+                               device->subgroup_arithmetic && device->subgroup_clustered &&
+                               device->subgroup_size_control && device->subgroup_require_full_support &&
+                               device->subgroup_min_size <= 128 && device->subgroup_max_size >= 128;
++        // The attention-score kernel reduces inside one 128-wide subgroup as well.
++        device->pvr_attn = pvr_attn_candidate && device->driver_id == vk::DriverId::eImaginationProprietary &&
++                           device->subgroup_arithmetic && device->subgroup_clustered &&
++                           device->subgroup_size_control && device->subgroup_require_full_support &&
++                           device->subgroup_min_size <= 128 && device->subgroup_max_size >= 128;
++        device->pvr_compute_barrier = getenv("GGML_VK_PWR_BARRIER") != nullptr &&
++                                      device->driver_id == vk::DriverId::eImaginationProprietary;
+ 
+ #if defined(VK_KHR_cooperative_matrix)
+         device->coopmat_support = device->coopmat_support && coopmat_features.cooperativeMatrix;
+@@ -7128,6 +7183,20 @@ static void ggml_vk_mul_mat_vec_p021_f16_f32(ggml_backend_vk_context * ctx, vk_c
+ 
+     init_pushconst_tensor_offsets(ctx, pc, src0, src1, nullptr, nullptr, cgraph->nodes[node_idx + ctx->num_additional_fused_ops]);
+ 
++    // PowerVR: several positions per workgroup (mul_mat_vec_p021_pvr.comp). It reads K as f16vec4 and
++    // stages the query heads in shared memory, and it does not apply shader offsets.
++    if (ctx->device->pvr_attn && ne11 == 1 && ne00 % 4 == 0 && gqa_ratio * ne00 <= 2048 &&
++        (gqa_ratio > 1 || ne12 == ne02) && pc.b_offset == 0 && pc.d_offset == 0 && d_Qx.offset % 8 == 0 &&
++        ggml_nbytes(src0) <= ctx->device->properties.limits.maxStorageBufferRange) {
++        pipeline = ctx->device->pipeline_mul_mat_vec_p021_pvr_f16_f32[gqa_ratio - 1];
++        // Requesting a descriptor set also compiles the pipeline on first use.
++        ggml_pipeline_request_descriptor_sets(ctx, pipeline, 1);
++        // Checkers look for this line to confirm the kernel ran rather than a silent fallback.
++        if (!ctx->device->pvr_attn_logged.exchange(true)) {
++            GGML_LOG_INFO("ggml_vulkan: mul_mat_vec_p021_pvr selected\n");
++        }
++    }
++
+     uint32_t workgroups_z = (uint32_t)ne12;
+     // When gqa_ratio > 1, each invocation does multiple rows and we can launch fewer workgroups
+     if (gqa_ratio > 1) {
+@@ -7760,6 +7829,7 @@ static void ggml_vk_mul_mat_id_q_f16(ggml_backend_vk_context * ctx, vk_context&
+             if (y_needs_k_padding) {
+                 GGML_ASSERT(y_sz % 4 == 0);
+                 // Zero B padding because clamping only A can produce 0 * Inf or NaN.
++                ggml_vk_sync_before_transfer(subctx);
+                 subctx->s->buffer->buf.fillBuffer(d_Y->buffer, 0, y_sz, 0);
+                 ggml_vk_sync_buffers(ctx, subctx);
+                 const ggml_tensor y_staged_dst = make_y_staged_dst();
+@@ -13460,6 +13530,7 @@ static void ggml_backend_vk_set_tensor_2d_async(ggml_backend_t backend, ggml_ten
+             }
+         }
+ 
++        ggml_vk_sync_before_transfer(cpy_ctx);
+         cpy_ctx->s->buffer->buf.copyBuffer(ctx->sync_staging->buffer, buf->buffer, slices);
+ 
+         if (size == stride_data) {
+@@ -13516,6 +13587,7 @@ static void ggml_backend_vk_get_tensor_2d_async(ggml_backend_t backend, const gg
+             }
+         }
+ 
++        ggml_vk_sync_before_transfer(compute_ctx);
+         compute_ctx->s->buffer->buf.copyBuffer(buf->buffer, ctx->sync_staging->buffer, slices);
+         // Make the transfer result visible to host reads after the fence wait.
+         compute_ctx->s->buffer->buf.pipelineBarrier(
+diff --git a/ggml/src/ggml-vulkan/vulkan-shaders/mul_mat_vec_p021_pvr.comp b/ggml/src/ggml-vulkan/vulkan-shaders/mul_mat_vec_p021_pvr.comp
+new file mode 100644
+index 0000000..cf10281
+--- /dev/null
++++ b/ggml/src/ggml-vulkan/vulkan-shaders/mul_mat_vec_p021_pvr.comp
+@@ -0,0 +1,106 @@
++#version 450
++// Attention scores for single-token decode on PowerVR: f16 K rows (KV positions, permuted as
++// in mul_mat_vec_p021.comp) times gqa_ratio query heads. The stock shader runs one workgroup
++// per position, and each workgroup costs about 0.5 us on this GPU. Here one 128-wide subgroup
++// covers 128 / TPR positions per pass with TPR invocations per position, the query heads are
++// staged once per workgroup in shared memory, and one clustered add finishes each dot product.
++#extension GL_EXT_control_flow_attributes : enable
++#extension GL_EXT_shader_16bit_storage : require
++#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
++#extension GL_KHR_shader_subgroup_basic : require
++#extension GL_KHR_shader_subgroup_arithmetic : require
++#extension GL_KHR_shader_subgroup_clustered : require
++
++layout(local_size_x_id = 0, local_size_y = 1, local_size_z = 1) in;
++layout(constant_id = 0) const uint BLOCK_SIZE = 128;  // equals the required subgroup size
++layout(constant_id = 1) const uint gqa_ratio = 1;     // query heads per K head, 1..8
++layout(constant_id = 2) const uint PASSES = 1;        // groups of BLOCK_SIZE / TPR positions per workgroup
++
++#ifndef TPR
++#define TPR 8  // invocations per position, fixed at compile time for the clustered add
++#endif
++// Query values staged per workgroup: gqa_ratio * ncols_x must not exceed this.
++#define MAX_Q 2048
++
++#define MAT_VEC_FUSION_FLAGS_BIAS0 0x1
++#define MAT_VEC_FUSION_FLAGS_BIAS1 0x2
++
++layout(binding = 0) readonly buffer AV4 { f16vec4 data_a_v4[]; };
++layout(binding = 1) readonly buffer BV4 { vec4 data_b_v4[]; };
++layout(binding = 2) writeonly buffer D { float data_d[]; };
++layout(binding = 3) readonly buffer Fuse0 { float data_fuse0[]; };
++layout(binding = 4) readonly buffer Fuse1 { float data_fuse1[]; };
++
++layout(push_constant) uniform parameter {
++    uint ncols_x;
++    uint nrows_x;
++    uint nchannels_x;
++    uint nchannels_y;
++    uint b_offset;
++    uint d_offset;
++    uint fusion_flags;
++} p;
++
++shared vec4 q_sh[MAX_Q / 4];
++
++void main() {
++    // The pipeline requires one full subgroup per workgroup, so these ids cover every lane.
++    const uint tid = gl_SubgroupInvocationID;
++    const uint lane = tid % TPR;
++    const uint slot = tid / TPR;
++    const uint SLOTS = BLOCK_SIZE / TPR;
++
++    uint channel, channel_x;
++    if (gqa_ratio > 1) {
++        channel_x = gl_WorkGroupID.z;
++        channel = channel_x * gqa_ratio;
++    } else {
++        channel = gl_WorkGroupID.z;
++        channel_x = channel / (p.nchannels_y / p.nchannels_x);
++    }
++
++    // The host requires ncols_x % 4 == 0.
++    const uint ncols4 = p.ncols_x / 4;
++    for (uint i = gl_LocalInvocationID.x; i < gqa_ratio * ncols4; i += BLOCK_SIZE) {
++        const uint c = i / ncols4;
++        q_sh[i] = data_b_v4[(channel + c) * ncols4 + i % ncols4];
++    }
++    barrier();
++
++    // x is transposed and permuted: position-major, then channel, then column.
++    const uint row_stride4 = p.nchannels_x * ncols4;
++    const uint first_row = gl_WorkGroupID.y * SLOTS * PASSES;
++    [[unroll]] for (uint pass = 0; pass < PASSES; ++pass) {
++        const uint row = first_row + pass * SLOTS + slot;
++        float temp[8];
++        [[unroll]] for (uint c = 0; c < 8; ++c) {
++            temp[c] = 0.0f;
++        }
++        if (row < p.nrows_x) {
++            const uint a4 = row * row_stride4 + channel_x * ncols4;
++            for (uint j = lane; j < ncols4; j += TPR) {
++                const vec4 a = vec4(data_a_v4[a4 + j]);
++                [[unroll]] for (uint c = 0; c < gqa_ratio; ++c) {
++                    temp[c] += dot(a, q_sh[c * ncols4 + j]);
++                }
++            }
++        }
++        [[unroll]] for (uint c = 0; c < gqa_ratio; ++c) {
++            temp[c] = subgroupClusteredAdd(temp[c], TPR);
++        }
++        if (lane == 0 && row < p.nrows_x) {
++            [[unroll]] for (uint c = 0; c < gqa_ratio; ++c) {
++                // dst is not transposed and not permuted
++                const uint idst = (channel + c) * p.nrows_x + row;
++                float v = temp[c];
++                if ((p.fusion_flags & MAT_VEC_FUSION_FLAGS_BIAS0) != 0) {
++                    v += data_fuse0[idst];
++                }
++                if ((p.fusion_flags & MAT_VEC_FUSION_FLAGS_BIAS1) != 0) {
++                    v += data_fuse1[idst];
++                }
++                data_d[idst] = v;
++            }
++        }
++    }
++}
+diff --git a/ggml/src/ggml-vulkan/vulkan-shaders/vulkan-shaders-gen.cpp b/ggml/src/ggml-vulkan/vulkan-shaders/vulkan-shaders-gen.cpp
+index b6c18a6..94ad3c7 100644
+--- a/ggml/src/ggml-vulkan/vulkan-shaders/vulkan-shaders-gen.cpp
++++ b/ggml/src/ggml-vulkan/vulkan-shaders/vulkan-shaders-gen.cpp
+@@ -852,6 +852,7 @@ void process_shaders() {
+ 
+     string_to_spv("mul_mat_vec_p021_f16_f32_subgroup_add", "mul_mat_vec_p021.comp", {{"A_TYPE", "float16_t"}, {"A_TYPEV4", "f16vec4"}, {"B_TYPE", "float"}, {"B_TYPEV4", "vec4"}, {"D_TYPE", "float"}, {"USE_SUBGROUP_ADD", "1"}});
+     string_to_spv("mul_mat_vec_p021_f16_f32",              "mul_mat_vec_p021.comp", {{"A_TYPE", "float16_t"}, {"A_TYPEV4", "f16vec4"}, {"B_TYPE", "float"}, {"B_TYPEV4", "vec4"}, {"D_TYPE", "float"}});
++    string_to_spv("mul_mat_vec_p021_pvr_f16_f32",          "mul_mat_vec_p021_pvr.comp", {});
+     string_to_spv("mul_mat_vec_nc_f16_f32", "mul_mat_vec_nc.comp", {{"A_TYPE", "float16_t"}, {"A_TYPEV4", "f16vec4"}, {"B_TYPE", "float"}, {"B_TYPEV4", "vec4"}, {"D_TYPE", "float"}});
+ 
+     // Norms

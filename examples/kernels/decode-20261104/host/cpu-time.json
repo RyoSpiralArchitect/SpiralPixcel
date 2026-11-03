@@ -1,0 +1,85 @@
+{
+ "note": "bash time (wall, user, sys seconds) of llama-bench tg32 and tg160 runs on the r3 runtime with the u8 kernel, split output and queue wait (warmup on); per-token values are the 160-32 differences divided by 128. threads1 used -t 1, the others -t 4.",
+ "variants": {
+  "plain": {
+   "env": "GGML_VK_SPLIT_OUTPUT=1 GGML_VK_DISABLE_ASYNC=1 GGML_VK_WAIT_IDLE=1",
+   "raw_seconds": {
+    "32": {
+     "wall": 4.337,
+     "user": 1.506,
+     "sys": 3.483
+    },
+    "160": {
+     "wall": 10.722,
+     "user": 5.327,
+     "sys": 8.799
+    }
+   },
+   "per_token_ms": {
+    "wall": 49.88,
+    "user": 29.85,
+    "sys": 41.53
+   }
+  },
+  "no_waitidle": {
+   "env": "GGML_VK_SPLIT_OUTPUT=1 GGML_VK_DISABLE_ASYNC=1",
+   "raw_seconds": {
+    "32": {
+     "wall": 4.175,
+     "user": 1.596,
+     "sys": 3.228
+    },
+    "160": {
+     "wall": 9.293,
+     "user": 4.993,
+     "sys": 7.635
+    }
+   },
+   "per_token_ms": {
+    "wall": 39.98,
+    "user": 26.54,
+    "sys": 34.43
+   }
+  },
+  "async_on": {
+   "env": "GGML_VK_SPLIT_OUTPUT=1 GGML_VK_WAIT_IDLE=1",
+   "raw_seconds": {
+    "32": {
+     "wall": 4.105,
+     "user": 1.454,
+     "sys": 3.296
+    },
+    "160": {
+     "wall": 9.666,
+     "user": 5.041,
+     "sys": 8.008
+    }
+   },
+   "per_token_ms": {
+    "wall": 43.45,
+    "user": 28.02,
+    "sys": 36.81
+   }
+  },
+  "threads1": {
+   "env": "GGML_VK_SPLIT_OUTPUT=1 GGML_VK_DISABLE_ASYNC=1 GGML_VK_WAIT_IDLE=1",
+   "raw_seconds": {
+    "32": {
+     "wall": 3.986,
+     "user": 0.661,
+     "sys": 3.297
+    },
+    "160": {
+     "wall": 10.114,
+     "user": 1.528,
+     "sys": 8.531
+    }
+   },
+   "per_token_ms": {
+    "wall": 47.88,
+    "user": 6.77,
+    "sys": 40.89
+   }
+  }
+ }
+}

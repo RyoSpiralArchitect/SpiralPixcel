@@ -180,6 +180,8 @@ def execute(ssh, args):
             inference_args += ["--rms-subgroups"]
         if args.u8_mmvq:
             inference_args += ["--u8-mmvq"]
+        if args.powervr_decode:
+            inference_args += ["--powervr-decode"]
         # The integer GPU check completes in the same guest source snapshot first.
         command = "python3 experiment.py doctor && cp result/result.json result/doctor.json"
         command += " && python3 inference.py " + shlex.join(inference_args)
@@ -240,7 +242,10 @@ def main():
     inference.add_argument("--flash-attn", choices=("off", "on"), default="off")
     inference.add_argument("--rms-subgroups", action="store_true")
     inference.add_argument("--u8-mmvq", action="store_true",
-                           help="patched PowerVR Q5_0/Q8_0/Q4_K single-column mat-vec on unsigned 4x8 dots")
+                           help="patched PowerVR Q5_0/Q8_0/Q4_K/Q6_K single-column mat-vec on unsigned 4x8 dots")
+    inference.add_argument("--powervr-decode", action="store_true",
+                           help="patched PowerVR decode path: attention-score kernel, compute-only barriers, "
+                                "device-local buffers")
     inference.add_argument("--profile", choices=("baseline", "host-memory", "mmvq"), default="baseline")
     diffusion.add_argument("--trace", type=Path, help="replay touch/v1 JSON before the requested free diffusion steps")
     args = parser.parse_args()
@@ -254,6 +259,11 @@ def main():
             parser.error("--sync-transfers requires GPU layers and --flash-attn off")
     if args.command == "run" and args.experiment == "inference" and (args.split_output or args.sync_transfers) and args.repack != 1:
         parser.error("checked transfer profiles require --repack 1")
+    if args.command == "run" and args.experiment == "inference" and args.powervr_decode:
+        if not args.split_output:
+            parser.error("--powervr-decode requires --split-output")
+        if args.profile == "host-memory":
+            parser.error("--powervr-decode cannot be combined with --profile host-memory")
     if args.command == "run" and args.experiment == "diffusion" and not (1 <= args.steps <= 1024 and 0 <= args.rate <= 0.25 and 0 <= args.decay <= 1):
         parser.error("steps: 1..1024, rate: 0..0.25, decay: 0..1")
     if args.command == "pair":

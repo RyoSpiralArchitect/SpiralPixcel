@@ -1,0 +1,383 @@
+{
+  "experiment": "inference",
+  "status": "pass",
+  "guest_arch": "aarch64",
+  "kernel": "6.12.93-android16-6-g3a7d1771d492-ab16496487-4k",
+  "started_utc": "2026-11-03T21:59:46.432934+00:00",
+  "vulkan": {
+    "device": "PowerVR C-Series CXTP-48-1536 MC1",
+    "selected": "Vulkan0"
+  },
+  "runtime": "/home/droid/.local/share/SpiralPixcel/runtimes/llama-b11960-pvr-decode-r6",
+  "model": "/home/droid/.local/share/spiral-pixel/models/qwen2.5-0.5b-q4_k_m.gguf",
+  "profile": "baseline",
+  "vm": {
+    "boot_id": "59b05043-d0ba-4add-8024-25975af6deff",
+    "uptime_seconds": 37494.72
+  },
+  "command": [
+    "/home/droid/.local/share/SpiralPixcel/runtimes/llama-b11960-pvr-decode-r6/llama-bench",
+    "-m",
+    "/home/droid/.local/share/spiral-pixel/models/qwen2.5-0.5b-q4_k_m.gguf",
+    "-p",
+    "64",
+    "-n",
+    "32",
+    "-b",
+    "16",
+    "-ub",
+    "16",
+    "-t",
+    "4",
+    "-fa",
+    "off",
+    "-ngl",
+    "99",
+    "-dev",
+    "Vulkan0",
+    "-r",
+    "3",
+    "--repack",
+    "1",
+    "--no-warmup",
+    "-o",
+    "json"
+  ],
+  "environment": {
+    "GGML_VK_MEMORY_LOGGER": "1",
+    "GGML_VK_SPLIT_OUTPUT": "1",
+    "GGML_VK_DISABLE_ASYNC": "1",
+    "GGML_VK_WAIT_IDLE": "1",
+    "GGML_VK_PWR_U8_MMVQ": "1",
+    "LD_LIBRARY_PATH": "/home/droid/.local/share/SpiralPixcel/runtimes/llama-b11960-pvr-decode-r6"
+  },
+  "core_library_manifest_verified": true,
+  "kernel_build": {
+    "source_vulkan_cpp_before_sha256": "47f42dd8978358e173da55665406b35dfae4b80a5a256077b0811ddd0060389c",
+    "libggml-vulkan_sha256": "b1985926c4a4c27b647f300a5a5a8d64c9466ec96f89f55c029302fb31b878fc",
+    "check-mmv_sha256": "d3164699e34cece4d556317d76d81fa2570cedbf15c50b210ca32f808033c9d6",
+    "core_library_sha256": {
+      "libggml.so": "b2b279af1e11add7514374df3b93c3b43c55f21b784d9d1b46ac154994cb1206",
+      "libggml.so.0": "b2b279af1e11add7514374df3b93c3b43c55f21b784d9d1b46ac154994cb1206",
+      "libggml.so.0.28.0": "b2b279af1e11add7514374df3b93c3b43c55f21b784d9d1b46ac154994cb1206",
+      "libggml-base.so": "337534b9945fdda0389aff96a5c75e2a739ab46c0861cc65e3f145708821535f",
+      "libggml-base.so.0": "337534b9945fdda0389aff96a5c75e2a739ab46c0861cc65e3f145708821535f",
+      "libggml-base.so.0.28.0": "337534b9945fdda0389aff96a5c75e2a739ab46c0861cc65e3f145708821535f"
+    },
+    "patches": [
+      "core16",
+      "core-fp16",
+      "powervr-mmv-wg",
+      "powervr-rms-subgroups",
+      "output-row-split",
+      "metadata-views",
+      "bounded-upload",
+      "host-read-barrier",
+      "coherent-readback",
+      "completion-wait",
+      "powervr-u8-mmvq",
+      "powervr-decode"
+    ],
+    "build_cxx_optimization": "O1",
+    "jobs": 1,
+    "resumed_build": false,
+    "patch_sha256": {
+      "core16": "6f1da061a8d0c7cdd84b26b135de64c50a2a9c5c7f369f2a81add92021df556c",
+      "powervr-mmv": "9ed6ff3f7b44eef13a5a5348be1644d2153d6156dd339ca6c5ff113a70bf6f46",
+      "powervr-rms": "137115f5e3cac5a9907ea975d7c7a36437804e95b0946a859842e39de3014e7e",
+      "core-fp16": "22104942d2e89eeac595958daef91e067082c49d70abfbc555a3af80d147928a",
+      "output-row-split": "a17677018f3a80742b0434e75bb117545a503665200d2d8f8aa129f699d7197e",
+      "metadata-views": "1de4a958b59373f705d8cc692e38b45821d0aa4e6d41c0eae33f24cde8661592",
+      "bounded-upload": "0d8855ac30fc7b00e13eb07ce0696bbbb76813a7dd718d1227ca4e1d6587bee1",
+      "host-read-barrier": "63c05b3d13587f8127ea965da405b6fbdec52e7aa4e6bac1fa410b1ab1034316",
+      "coherent-readback": "a82e466564af1dc5208b94248a9dc2853cf37c9f519f55c9be478cd9cbb90fc1",
+      "completion-wait": "b8af8eff4383988b5d0f952540a325ed8134fa23865891c92f085c357f98e3cb",
+      "powervr-u8-mmvq": "9828dd27f88ec94c20136973574f58deba6a5d17b5052d8573c1904a8b46f86f",
+      "powervr-decode": "a17395ba77dc361d7fba678ebe60cf33d7d5a575535bc50257b772d12d94755d"
+    },
+    "output_row_split": true,
+    "experimental": true,
+    "validation_status": "experimental_not_model_validated",
+    "model_correctness_validated": false,
+    "queue_idle_completion": true,
+    "validation_transfer_mode": "GGML_VK_DISABLE_ASYNC=1 GGML_VK_WAIT_IDLE=1",
+    "libllama_sha256": "5901604bd42a54e95ec3fc18955e8e3519c53e3aa84de153b72f6e0dc9281947",
+    "runtime_library_sha256": {
+      "libggml-base.so": "337534b9945fdda0389aff96a5c75e2a739ab46c0861cc65e3f145708821535f",
+      "libggml-base.so.0": "337534b9945fdda0389aff96a5c75e2a739ab46c0861cc65e3f145708821535f",
+      "libggml-base.so.0.28.0": "337534b9945fdda0389aff96a5c75e2a739ab46c0861cc65e3f145708821535f",
+      "libggml-cpu.so": "d2051ad8fd99762d2760cb991cc2f219fbd01bc1321d80ff93ca35d3c78a2f60",
+      "libggml-vulkan.so": "b1985926c4a4c27b647f300a5a5a8d64c9466ec96f89f55c029302fb31b878fc",
+      "libggml.so": "b2b279af1e11add7514374df3b93c3b43c55f21b784d9d1b46ac154994cb1206",
+      "libggml.so.0": "b2b279af1e11add7514374df3b93c3b43c55f21b784d9d1b46ac154994cb1206",
+      "libggml.so.0.28.0": "b2b279af1e11add7514374df3b93c3b43c55f21b784d9d1b46ac154994cb1206",
+      "libllama-bench-impl.so": "9731b9eb6d3dd657fbacfa0140ba4bdce884565f73b1febc61e8faece9d0cd1d",
+      "libllama-common.so": "b2a4571df961209819e7e6a8a041e6e0da40836d53eb1f10e4c4773cebaabe02",
+      "libllama-common.so.0": "b2a4571df961209819e7e6a8a041e6e0da40836d53eb1f10e4c4773cebaabe02",
+      "libllama-common.so.0.8.0": "b2a4571df961209819e7e6a8a041e6e0da40836d53eb1f10e4c4773cebaabe02",
+      "libllama-completion-impl.so": "94612b2c6c82494dcfeefa2a0f71150e1771b8e50de8624bf0065879824dc269",
+      "libllama.so": "5901604bd42a54e95ec3fc18955e8e3519c53e3aa84de153b72f6e0dc9281947",
+      "libllama.so.0": "5901604bd42a54e95ec3fc18955e8e3519c53e3aa84de153b72f6e0dc9281947",
+      "libllama.so.0.8.0": "5901604bd42a54e95ec3fc18955e8e3519c53e3aa84de153b72f6e0dc9281947"
+    },
+    "runtime_executable_sha256": {
+      "llama-bench": "1fc29f31df1b1b182f083fa8b3429b46ce913fdac54365a20434018b23e1d0e5",
+      "llama-completion": "3906c71d744f76e78790b1cf3f6e3c8a9d682472d2153f39a9eb676d086fcf81",
+      "check-mmv": "d3164699e34cece4d556317d76d81fa2570cedbf15c50b210ca32f808033c9d6",
+      "check-large": "95d89db3561657e4aeca61432d00aa849caf8bc9c61bdd72e4e6db27dc15a642",
+      "check-model": "fb01000404d4e276a7105c5481909fb9c24a1148680596a1144aca9b62c0c929",
+      "check-readback": "033d4eb7f57ed0930101b0975610710ff38e542dd39a1b07f5f00f78fae36468"
+    },
+    "check-large_sha256": "95d89db3561657e4aeca61432d00aa849caf8bc9c61bdd72e4e6db27dc15a642",
+    "check-model_sha256": "fb01000404d4e276a7105c5481909fb9c24a1148680596a1144aca9b62c0c929",
+    "powervr_u8_mmvq": true,
+    "powervr_u8_mmvq_types": [
+      "q4_K",
+      "q5_0",
+      "q6_K",
+      "q8_0"
+    ],
+    "powervr_decode": true
+  },
+  "runtime_manifest_verified": true,
+  "readback_check": {
+    "status": "pass",
+    "cases": 27,
+    "failed": 0,
+    "transfer_only": true,
+    "max_payload_bytes": 1048576,
+    "host_buffer_requested": "Vulkan host type (allocation may fall back)",
+    "split_output_env": "1",
+    "disable_async_env": true
+  },
+  "kernel_check": {
+    "status": "pass",
+    "cases": 76,
+    "failed": 0,
+    "mmv_nmse_limit": 0.0005,
+    "rms_nmse_limit": 1e-05
+  },
+  "u8_mmvq_selected": {
+    "kernel_check": [
+      "q4_K",
+      "q5_0",
+      "q6_K",
+      "q8_0"
+    ],
+    "model_candidate": [
+      "q4_K",
+      "q5_0",
+      "q6_K",
+      "q8_0"
+    ],
+    "benchmark": []
+  },
+  "large_kernel_check": {
+    "status": "pass",
+    "cases": 2,
+    "failed": 0
+  },
+  "model_bytes": 491400032,
+  "model_sha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+  "runtime_sha256": {
+    "llama-bench": "1fc29f31df1b1b182f083fa8b3429b46ce913fdac54365a20434018b23e1d0e5",
+    "libggml-base.so": "337534b9945fdda0389aff96a5c75e2a739ab46c0861cc65e3f145708821535f",
+    "libggml-base.so.0": "337534b9945fdda0389aff96a5c75e2a739ab46c0861cc65e3f145708821535f",
+    "libggml-base.so.0.28.0": "337534b9945fdda0389aff96a5c75e2a739ab46c0861cc65e3f145708821535f",
+    "libggml-cpu.so": "d2051ad8fd99762d2760cb991cc2f219fbd01bc1321d80ff93ca35d3c78a2f60",
+    "libggml-vulkan.so": "b1985926c4a4c27b647f300a5a5a8d64c9466ec96f89f55c029302fb31b878fc",
+    "libggml.so": "b2b279af1e11add7514374df3b93c3b43c55f21b784d9d1b46ac154994cb1206",
+    "libggml.so.0": "b2b279af1e11add7514374df3b93c3b43c55f21b784d9d1b46ac154994cb1206",
+    "libggml.so.0.28.0": "b2b279af1e11add7514374df3b93c3b43c55f21b784d9d1b46ac154994cb1206",
+    "libllama-bench-impl.so": "9731b9eb6d3dd657fbacfa0140ba4bdce884565f73b1febc61e8faece9d0cd1d",
+    "libllama-common.so": "b2a4571df961209819e7e6a8a041e6e0da40836d53eb1f10e4c4773cebaabe02",
+    "libllama-common.so.0": "b2a4571df961209819e7e6a8a041e6e0da40836d53eb1f10e4c4773cebaabe02",
+    "libllama-common.so.0.8.0": "b2a4571df961209819e7e6a8a041e6e0da40836d53eb1f10e4c4773cebaabe02",
+    "libllama-completion-impl.so": "94612b2c6c82494dcfeefa2a0f71150e1771b8e50de8624bf0065879824dc269",
+    "libllama.so": "5901604bd42a54e95ec3fc18955e8e3519c53e3aa84de153b72f6e0dc9281947",
+    "libllama.so.0": "5901604bd42a54e95ec3fc18955e8e3519c53e3aa84de153b72f6e0dc9281947",
+    "libllama.so.0.8.0": "5901604bd42a54e95ec3fc18955e8e3519c53e3aa84de153b72f6e0dc9281947"
+  },
+  "model_check": {
+    "status": "pass",
+    "technical_validation_only": true,
+    "nmse_limit": 0.005,
+    "model_sha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+    "runtime_manifest": {
+      "runtime_library_sha256": {
+        "libggml-base.so": "337534b9945fdda0389aff96a5c75e2a739ab46c0861cc65e3f145708821535f",
+        "libggml-base.so.0": "337534b9945fdda0389aff96a5c75e2a739ab46c0861cc65e3f145708821535f",
+        "libggml-base.so.0.28.0": "337534b9945fdda0389aff96a5c75e2a739ab46c0861cc65e3f145708821535f",
+        "libggml-cpu.so": "d2051ad8fd99762d2760cb991cc2f219fbd01bc1321d80ff93ca35d3c78a2f60",
+        "libggml-vulkan.so": "b1985926c4a4c27b647f300a5a5a8d64c9466ec96f89f55c029302fb31b878fc",
+        "libggml.so": "b2b279af1e11add7514374df3b93c3b43c55f21b784d9d1b46ac154994cb1206",
+        "libggml.so.0": "b2b279af1e11add7514374df3b93c3b43c55f21b784d9d1b46ac154994cb1206",
+        "libggml.so.0.28.0": "b2b279af1e11add7514374df3b93c3b43c55f21b784d9d1b46ac154994cb1206",
+        "libllama-bench-impl.so": "9731b9eb6d3dd657fbacfa0140ba4bdce884565f73b1febc61e8faece9d0cd1d",
+        "libllama-common.so": "b2a4571df961209819e7e6a8a041e6e0da40836d53eb1f10e4c4773cebaabe02",
+        "libllama-common.so.0": "b2a4571df961209819e7e6a8a041e6e0da40836d53eb1f10e4c4773cebaabe02",
+        "libllama-common.so.0.8.0": "b2a4571df961209819e7e6a8a041e6e0da40836d53eb1f10e4c4773cebaabe02",
+        "libllama-completion-impl.so": "94612b2c6c82494dcfeefa2a0f71150e1771b8e50de8624bf0065879824dc269",
+        "libllama.so": "5901604bd42a54e95ec3fc18955e8e3519c53e3aa84de153b72f6e0dc9281947",
+        "libllama.so.0": "5901604bd42a54e95ec3fc18955e8e3519c53e3aa84de153b72f6e0dc9281947",
+        "libllama.so.0.8.0": "5901604bd42a54e95ec3fc18955e8e3519c53e3aa84de153b72f6e0dc9281947"
+      },
+      "runtime_executable_sha256": {
+        "llama-bench": "1fc29f31df1b1b182f083fa8b3429b46ce913fdac54365a20434018b23e1d0e5",
+        "llama-completion": "3906c71d744f76e78790b1cf3f6e3c8a9d682472d2153f39a9eb676d086fcf81",
+        "check-mmv": "d3164699e34cece4d556317d76d81fa2570cedbf15c50b210ca32f808033c9d6",
+        "check-large": "95d89db3561657e4aeca61432d00aa849caf8bc9c61bdd72e4e6db27dc15a642",
+        "check-model": "fb01000404d4e276a7105c5481909fb9c24a1148680596a1144aca9b62c0c929",
+        "check-readback": "033d4eb7f57ed0930101b0975610710ff38e542dd39a1b07f5f00f78fae36468"
+      }
+    },
+    "runtime_manifest_sha256": "9da44c5fb6c42a16f42ae23859ed051bd5aae75c106a87e7e5916ce5457eff65",
+    "checker_sha256": "fb01000404d4e276a7105c5481909fb9c24a1148680596a1144aca9b62c0c929",
+    "executions": {
+      "reference": {
+        "command": [
+          "/home/droid/.local/share/SpiralPixcel/runtimes/llama-b11960-pvr-decode-r6/check-model",
+          "/home/droid/.local/share/SpiralPixcel/runtimes/llama-b11960-pvr-decode-r6",
+          "/home/droid/.local/share/spiral-pixel/models/qwen2.5-0.5b-q4_k_m.gguf",
+          "result/model-reference.bin",
+          "0"
+        ],
+        "gpu_layers": 0,
+        "environment_overrides": {
+          "GGML_VK_SPLIT_OUTPUT": "0"
+        },
+        "exit_code": 0
+      },
+      "candidate": {
+        "command": [
+          "/home/droid/.local/share/SpiralPixcel/runtimes/llama-b11960-pvr-decode-r6/check-model",
+          "/home/droid/.local/share/SpiralPixcel/runtimes/llama-b11960-pvr-decode-r6",
+          "/home/droid/.local/share/spiral-pixel/models/qwen2.5-0.5b-q4_k_m.gguf",
+          "result/model-candidate.bin",
+          "99"
+        ],
+        "gpu_layers": 99,
+        "environment_overrides": {
+          "GGML_VK_SPLIT_OUTPUT": "1"
+        },
+        "exit_code": 0
+      }
+    },
+    "environment": {
+      "GGML_VK_MEMORY_LOGGER": "1",
+      "GGML_VK_SPLIT_OUTPUT": "1",
+      "GGML_VK_DISABLE_ASYNC": "1",
+      "GGML_VK_WAIT_IDLE": "1",
+      "GGML_VK_PWR_U8_MMVQ": "1",
+      "LD_LIBRARY_PATH": "/home/droid/.local/share/SpiralPixcel/runtimes/llama-b11960-pvr-decode-r6"
+    },
+    "parameters": {
+      "context_tokens": 512,
+      "batch_tokens": 16,
+      "ubatch_tokens": 16,
+      "threads": 4,
+      "flash_attn": "off",
+      "output_positions": 1,
+      "weight_repack": "runtime default"
+    },
+    "prompt_sha256": "3ae35bc99e935fea913bbae40ac007931405b8242c50f63bd06b32aac923a762",
+    "prompt_tokens": 33,
+    "logit_count": 151936,
+    "nmse": 0.00235991740718096,
+    "max_abs_error": 0.9277904033660889,
+    "top1_equal": true,
+    "reference_top1_token": 44,
+    "candidate_top1_token": 44,
+    "sha256": {
+      "model-reference.bin": "433c8bc1f161564b8a8b6ae2ec73d17623e5541335cc39ebb3b0e77258b1ac00",
+      "model-reference.json": "6b4c975e52922af9ebeeb7d28359ada38310e84fdda146c763ced547a476ec16",
+      "model-reference.log": "b2fd790d0c927404decf064cdb1264525cb5451b800792c3b8363f99ee9bde5f",
+      "model-candidate.bin": "13197ed7b99bd4e8dab32684ccd98ddbd4bb29a8fc7f43a1096ba86840be0b43",
+      "model-candidate.json": "4e78e98423f629f28e93bef6770e99293f136b6773cb562da5564630886dd398",
+      "model-candidate.log": "bc9a48fae541a37911257da7aad3004ba896db8aaedf5da36ff60b9510a4fb62"
+    }
+  },
+  "schedule": {
+    "nodes_per_backend": {
+      "CPU": 2,
+      "Vulkan0": 611
+    },
+    "cpu_nodes": [
+      {
+        "index": 0,
+        "op": "GET_ROWS",
+        "name": "embd",
+        "backend": "CPU",
+        "buffer_label": "CPU",
+        "split": 0,
+        "sources": "token_embd.weight (  89M) [  CPU         ]           inp_tokens (   0K) [  CPU         ]"
+      },
+      {
+        "index": 1,
+        "op": "GET_ROWS",
+        "name": "node_1",
+        "backend": "CPU",
+        "buffer_label": "CPU",
+        "split": 0,
+        "sources": "token_embd.weight (  89M) [  CPU         ]     inp_mixed_tokens (   0K) [  CPU         ]"
+      }
+    ],
+    "output_nodes": [
+      {
+        "index": 945,
+        "op": "MUL_MAT",
+        "name": "output_mm.chunk.0",
+        "backend": "Vulkan0",
+        "buffer_label": "Vulka",
+        "split": 1,
+        "sources": "output.weight (  59M) [Vulka         ]          result_norm (   3K) [Vulka         ]"
+      },
+      {
+        "index": 947,
+        "op": "MUL_MAT",
+        "name": "output_mm.chunk.6553",
+        "backend": "Vulkan0",
+        "buffer_label": "Vulka",
+        "split": 1,
+        "sources": "output.weight (  59M) [Vulka         ]          result_norm (   3K) [Vulka         ]"
+      },
+      {
+        "index": 950,
+        "op": "MUL_MAT",
+        "name": "output_mm.chunk.1310",
+        "backend": "Vulkan0",
+        "buffer_label": "Vulka",
+        "split": 1,
+        "sources": "output.weight (  18M) [Vulka         ]          result_norm (   3K) [Vulka         ]"
+      },
+      {
+        "index": 951,
+        "op": "CONCAT",
+        "name": "result_output",
+        "backend": "Vulkan0",
+        "buffer_label": "Vulka",
+        "split": 1,
+        "sources": "node_948 ( 512K) [Vulka         ] output_mm.chunk.1310 (  81K) [Vulka         ]"
+      }
+    ],
+    "rejected_weights": []
+  },
+  "exit_code": 0,
+  "timed_out": false,
+  "benchmark_wall_seconds": 11.835,
+  "sampled_peak_rss_kib": 223248,
+  "sampled_peak_hwm_kib": 226212,
+  "memory_method": "/proc/PID/status sampled every 20 ms; process memory, excludes separate GPU accounting",
+  "peak_device_allocated_mib": 404.48,
+  "peak_host_allocated_mib": 0.0,
+  "memory_logger_devices": {
+    "Vulkan0": {
+      "device_mib": 404.48,
+      "host_mib": 0.0
+    }
+  },
+  "device_memory_method": "GGML_VK_MEMORY_LOGGER allocation totals; logger-rounded values, separate from process RSS",
+  "decode_tg32_tokens_s": 19.384877,
+  "prefill_pp64_tokens_s": 42.981977,
+  "finished_utc": "2026-11-03T22:00:18.366498+00:00"
+}

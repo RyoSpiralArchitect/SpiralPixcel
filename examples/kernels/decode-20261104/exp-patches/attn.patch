@@ -1,0 +1,288 @@
+diff --git a/ggml/src/ggml-vulkan/ggml-vulkan-types.h b/ggml/src/ggml-vulkan/ggml-vulkan-types.h
+index 90844c8..452e24d 100644
+--- a/ggml/src/ggml-vulkan/ggml-vulkan-types.h
++++ b/ggml/src/ggml-vulkan/ggml-vulkan-types.h
+@@ -722,6 +722,9 @@ struct vk_device_struct {
+     // PowerVR: single-column Q5_0/Q8_0/Q4_K mat-vec on unsigned 4x8 dots (GGML_VK_PWR_U8_MMVQ=1)
+     bool pvr_u8_mmvq;
+     std::atomic<uint32_t> pvr_u8_mmvq_logged_types {};  // bit per ggml_type, for the one-time log
++    bool pvr_attn;     // mul_mat_vec_p021_pvr for attention scores
++    bool pvr_softmax;  // subgroup-reduction softmax
++    std::atomic<bool> pvr_attn_logged {};
+     // 0: default, 1: force mmvq, -1: disable mmvq
+     int32_t mmvq_mode;
+ 
+@@ -805,6 +808,7 @@ struct vk_device_struct {
+     vk_pipeline pipeline_mul_mat_vecq_u8_f32[GGML_TYPE_COUNT];
+ 
+     vk_pipeline pipeline_mul_mat_vec_p021_f16_f32[p021_max_gqa_ratio];
++    vk_pipeline pipeline_mul_mat_vec_p021_pvr_f16_f32[p021_max_gqa_ratio];
+     vk_pipeline pipeline_mul_mat_vec_nc_f16_f32;
+     vk_pipeline pipeline_get_rows[GGML_TYPE_COUNT];
+     vk_pipeline pipeline_get_rows_f32[GGML_TYPE_COUNT];
+diff --git a/ggml/src/ggml-vulkan/ggml-vulkan.cpp b/ggml/src/ggml-vulkan/ggml-vulkan.cpp
+index 4716011..691f274 100644
+--- a/ggml/src/ggml-vulkan/ggml-vulkan.cpp
++++ b/ggml/src/ggml-vulkan/ggml-vulkan.cpp
+@@ -3275,6 +3275,12 @@ void ggml_vk_load_shaders(vk_device& device, vk_pipeline requested) {
+             ggml_vk_create_pipeline2(device, device->pipeline_mul_mat_vec_p021_f16_f32[i], "mul_mat_vec_p021_f16_f32"+std::to_string(i+1), mul_mat_vec_p021_f16_f32_len,              mul_mat_vec_p021_f16_f32_data,              "main", mul_mat_vec_num_bindings, sizeof(vk_mat_vec_p021_push_constants), {1, 1, 1}, {device->subgroup_size, i + 1}, 1, true);
+         }
+     }
++    if (device->pvr_attn) {
++        // One 128-wide subgroup per workgroup: 16 positions per pass (8 invocations each), 4 passes.
++        for (uint32_t i = 0; i < p021_max_gqa_ratio; ++i) {
++            ggml_vk_create_pipeline(device, device->pipeline_mul_mat_vec_p021_pvr_f16_f32[i], "mul_mat_vec_p021_pvr_f16_f32_" + std::to_string(i + 1), mul_mat_vec_p021_pvr_f16_f32_len, mul_mat_vec_p021_pvr_f16_f32_data, "main", mul_mat_vec_num_bindings, sizeof(vk_mat_vec_p021_push_constants), {1, 64, 1}, {128, i + 1, 4}, 1, true, true, 128);
++        }
++    }
+     ggml_vk_create_pipeline(device, device->pipeline_mul_mat_vec_nc_f16_f32, "mul_mat_vec_nc_f16_f32", mul_mat_vec_nc_f16_f32_len, mul_mat_vec_nc_f16_f32_data, "main", mul_mat_vec_num_bindings, sizeof(vk_mat_vec_nc_push_constants), {1, 1, 1}, {}, 1);
+ 
+     ggml_vk_create_pipeline(device, device->pipeline_norm_f32, "norm_f32", norm_f32_len, norm_f32_data, "main", 2, sizeof(vk_op_unary_push_constants), {1, 1, 1}, {}, 1);
+@@ -3526,9 +3532,15 @@ void ggml_vk_load_shaders(vk_device& device, vk_pipeline requested) {
+ 
+     ggml_vk_create_pipeline(device, device->pipeline_diag_mask_inf_f32, "diag_mask_inf_f32", diag_mask_inf_f32_len, diag_mask_inf_f32_data, "main", 2, sizeof(vk_op_diag_mask_push_constants), {1, 512, 1}, {}, 1, true);
+ 
+-    ggml_vk_create_pipeline(device, device->pipeline_soft_max_f32, "soft_max_f32", soft_max_f32_len, soft_max_f32_data, "main", 4, sizeof(vk_op_soft_max_push_constants), {1, 1, 1}, { device->subgroup_size }, 1);
++    if (device->pvr_softmax) {
++        // Rows up to 1024 columns: one 128-wide subgroup per row, reduced without shared memory.
++        ggml_vk_create_pipeline(device, device->pipeline_soft_max_f32, "soft_max_subgroup_f32", soft_max_subgroup_f32_len, soft_max_subgroup_f32_data, "main", 4, sizeof(vk_op_soft_max_push_constants), {1, 1, 1}, { 128 }, 1, false, true, 128);
++        ggml_vk_create_pipeline(device, device->pipeline_soft_max_f32_f16, "soft_max_subgroup_f32_f16", soft_max_subgroup_f32_f16_len, soft_max_subgroup_f32_f16_data, "main", 4, sizeof(vk_op_soft_max_push_constants), {1, 1, 1}, { 128 }, 1, false, true, 128);
++    } else {
++        ggml_vk_create_pipeline(device, device->pipeline_soft_max_f32, "soft_max_f32", soft_max_f32_len, soft_max_f32_data, "main", 4, sizeof(vk_op_soft_max_push_constants), {1, 1, 1}, { device->subgroup_size }, 1);
++        ggml_vk_create_pipeline(device, device->pipeline_soft_max_f32_f16, "soft_max_f32_f16", soft_max_f32_f16_len, soft_max_f32_f16_data, "main", 4, sizeof(vk_op_soft_max_push_constants), {1, 1, 1}, { device->subgroup_size }, 1);
++    }
+     ggml_vk_create_pipeline(device, device->pipeline_soft_max_f32_wg512, "soft_max_f32_wg512", soft_max_f32_len, soft_max_f32_data, "main", 4, sizeof(vk_op_soft_max_push_constants), {1, 1, 1}, { 512 }, 1);
+-    ggml_vk_create_pipeline(device, device->pipeline_soft_max_f32_f16, "soft_max_f32_f16", soft_max_f32_f16_len, soft_max_f32_f16_data, "main", 4, sizeof(vk_op_soft_max_push_constants), {1, 1, 1}, { device->subgroup_size }, 1);
+     ggml_vk_create_pipeline(device, device->pipeline_soft_max_f32_f16_wg512, "soft_max_f32_f16_wg512", soft_max_f32_f16_len, soft_max_f32_f16_data, "main", 4, sizeof(vk_op_soft_max_push_constants), {1, 1, 1}, { 512 }, 1);
+     ggml_vk_create_pipeline(device, device->pipeline_soft_max_back_f32, "soft_max_back_f32", soft_max_back_f32_len, soft_max_back_f32_data, "main", 3, sizeof(vk_op_push_constants), {1, 1, 1}, { device->subgroup_size }, 1, true);
+ 
+@@ -4176,6 +4188,11 @@ vk_device ggml_vk_get_device(size_t idx) {
+         const bool pvr_u8_candidate = getenv("GGML_VK_PWR_U8_MMVQ") != nullptr && base_props.vendorID == 0x1010 &&
+                                       base_props.apiVersion >= VK_API_VERSION_1_3 &&
+                                       vk::enumerateInstanceVersion() >= VK_API_VERSION_1_3;
++        // GGML_VK_PWR_ATTN=1 selects both decode attention kernels; "kq" or "softmax" selects one.
++        const char * pvr_attn_env = getenv("GGML_VK_PWR_ATTN");
++        const std::string pvr_attn_value = pvr_attn_env ? pvr_attn_env : "";
++        const bool pvr_attn_candidate = base_props.vendorID == 0x1010 && (pvr_attn_value == "1" || pvr_attn_value == "kq");
++        const bool pvr_softmax_candidate = base_props.vendorID == 0x1010 && (pvr_attn_value == "1" || pvr_attn_value == "softmax");
+ 
+         vk::PhysicalDeviceProperties2 props2;
+         vk::PhysicalDeviceMaintenance3Properties props3;
+@@ -4601,6 +4618,13 @@ vk_device ggml_vk_get_device(size_t idx) {
+                               device->subgroup_arithmetic && device->subgroup_clustered &&
+                               device->subgroup_size_control && device->subgroup_require_full_support &&
+                               device->subgroup_min_size <= 128 && device->subgroup_max_size >= 128;
++        // The decode attention kernels reduce inside one 128-wide subgroup as well.
++        const bool pvr_subgroup_128 = device->driver_id == vk::DriverId::eImaginationProprietary &&
++                                      device->subgroup_arithmetic && device->subgroup_size_control &&
++                                      device->subgroup_require_full_support &&
++                                      device->subgroup_min_size <= 128 && device->subgroup_max_size >= 128;
++        device->pvr_attn = pvr_attn_candidate && pvr_subgroup_128 && device->subgroup_clustered;
++        device->pvr_softmax = pvr_softmax_candidate && pvr_subgroup_128;
+ 
+ #if defined(VK_KHR_cooperative_matrix)
+         device->coopmat_support = device->coopmat_support && coopmat_features.cooperativeMatrix;
+@@ -7129,6 +7153,19 @@ static void ggml_vk_mul_mat_vec_p021_f16_f32(ggml_backend_vk_context * ctx, vk_c
+ 
+     init_pushconst_tensor_offsets(ctx, pc, src0, src1, nullptr, nullptr, cgraph->nodes[node_idx + ctx->num_additional_fused_ops]);
+ 
++    // PowerVR: several positions per workgroup (mul_mat_vec_p021_pvr.comp). It reads K as f16vec4 and
++    // stages the query heads in shared memory, and it does not apply shader offsets.
++    if (ctx->device->pvr_attn && ne11 == 1 && ne00 % 4 == 0 && gqa_ratio * ne00 <= 2048 &&
++        (gqa_ratio > 1 || ne12 == ne02) && pc.b_offset == 0 && pc.d_offset == 0 && d_Qx.offset % 8 == 0 &&
++        ggml_nbytes(src0) <= ctx->device->properties.limits.maxStorageBufferRange) {
++        pipeline = ctx->device->pipeline_mul_mat_vec_p021_pvr_f16_f32[gqa_ratio - 1];
++        // Requesting a descriptor set also compiles the pipeline on first use.
++        ggml_pipeline_request_descriptor_sets(ctx, pipeline, 1);
++        if (!ctx->device->pvr_attn_logged.exchange(true)) {
++            GGML_LOG_INFO("ggml_vulkan: mul_mat_vec_p021_pvr selected\n");
++        }
++    }
++
+     uint32_t workgroups_z = (uint32_t)ne12;
+     // When gqa_ratio > 1, each invocation does multiple rows and we can launch fewer workgroups
+     if (gqa_ratio > 1) {
+diff --git a/ggml/src/ggml-vulkan/vulkan-shaders/mul_mat_vec_p021_pvr.comp b/ggml/src/ggml-vulkan/vulkan-shaders/mul_mat_vec_p021_pvr.comp
+new file mode 100644
+index 0000000..1784175
+--- /dev/null
++++ b/ggml/src/ggml-vulkan/vulkan-shaders/mul_mat_vec_p021_pvr.comp
+@@ -0,0 +1,106 @@
++#version 450
++// Attention scores for single-token decode on PowerVR: f16 K rows (KV positions, permuted as
++// in mul_mat_vec_p021.comp) times gqa_ratio query heads. The stock shader runs one workgroup
++// per position, and each workgroup costs about 0.5 us on this GPU. Here one 128-wide subgroup
++// covers 128 / TPR positions per pass with TPR invocations per position, the query heads are
++// staged once per workgroup in shared memory, and one clustered add finishes each dot product.
++#extension GL_EXT_control_flow_attributes : enable
++#extension GL_EXT_shader_16bit_storage : require
++#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
++#extension GL_KHR_shader_subgroup_basic : require
++#extension GL_KHR_shader_subgroup_arithmetic : require
++#extension GL_KHR_shader_subgroup_clustered : require
++
++layout(local_size_x_id = 0, local_size_y = 1, local_size_z = 1) in;
++layout(constant_id = 0) const uint BLOCK_SIZE = 128;  // equals the required subgroup size
++layout(constant_id = 1) const uint gqa_ratio = 1;     // query heads per K head, 1..8
++layout(constant_id = 2) const uint PASSES = 4;        // groups of BLOCK_SIZE / TPR positions per workgroup
++
++#ifndef TPR
++#define TPR 8  // invocations per position, fixed at compile time for the clustered add
++#endif
++// Query values staged per workgroup: gqa_ratio * ncols_x must not exceed this.
++#define MAX_Q 2048
++
++#define MAT_VEC_FUSION_FLAGS_BIAS0 0x1
++#define MAT_VEC_FUSION_FLAGS_BIAS1 0x2
++
++layout(binding = 0) readonly buffer AV4 { f16vec4 data_a_v4[]; };
++layout(binding = 1) readonly buffer BV4 { vec4 data_b_v4[]; };
++layout(binding = 2) writeonly buffer D { float data_d[]; };
++layout(binding = 3) readonly buffer Fuse0 { float data_fuse0[]; };
++layout(binding = 4) readonly buffer Fuse1 { float data_fuse1[]; };
++
++layout(push_constant) uniform parameter {
++    uint ncols_x;
++    uint nrows_x;
++    uint nchannels_x;
++    uint nchannels_y;
++    uint b_offset;
++    uint d_offset;
++    uint fusion_flags;
++} p;
++
++shared vec4 q_sh[MAX_Q / 4];
++
++void main() {
++    // The pipeline requires one full subgroup per workgroup, so these ids cover every lane.
++    const uint tid = gl_SubgroupInvocationID;
++    const uint lane = tid % TPR;
++    const uint slot = tid / TPR;
++    const uint SLOTS = BLOCK_SIZE / TPR;
++
++    uint channel, channel_x;
++    if (gqa_ratio > 1) {
++        channel_x = gl_WorkGroupID.z;
++        channel = channel_x * gqa_ratio;
++    } else {
++        channel = gl_WorkGroupID.z;
++        channel_x = channel / (p.nchannels_y / p.nchannels_x);
++    }
++
++    // The host requires ncols_x % 4 == 0.
++    const uint ncols4 = p.ncols_x / 4;
++    for (uint i = gl_LocalInvocationID.x; i < gqa_ratio * ncols4; i += BLOCK_SIZE) {
++        const uint c = i / ncols4;
++        q_sh[i] = data_b_v4[(channel + c) * ncols4 + i % ncols4];
++    }
++    barrier();
++
++    // x is transposed and permuted: position-major, then channel, then column.
++    const uint row_stride4 = p.nchannels_x * ncols4;
++    const uint first_row = gl_WorkGroupID.y * SLOTS * PASSES;
++    [[unroll]] for (uint pass = 0; pass < PASSES; ++pass) {
++        const uint row = first_row + pass * SLOTS + slot;
++        float temp[8];
++        [[unroll]] for (uint c = 0; c < 8; ++c) {
++            temp[c] = 0.0f;
++        }
++        if (row < p.nrows_x) {
++            const uint a4 = row * row_stride4 + channel_x * ncols4;
++            for (uint j = lane; j < ncols4; j += TPR) {
++                const vec4 a = vec4(data_a_v4[a4 + j]);
++                [[unroll]] for (uint c = 0; c < gqa_ratio; ++c) {
++                    temp[c] += dot(a, q_sh[c * ncols4 + j]);
++                }
++            }
++        }
++        [[unroll]] for (uint c = 0; c < gqa_ratio; ++c) {
++            temp[c] = subgroupClusteredAdd(temp[c], TPR);
++        }
++        if (lane == 0 && row < p.nrows_x) {
++            [[unroll]] for (uint c = 0; c < gqa_ratio; ++c) {
++                // dst is not transposed and not permuted
++                const uint idst = (channel + c) * p.nrows_x + row;
++                float v = temp[c];
++                if ((p.fusion_flags & MAT_VEC_FUSION_FLAGS_BIAS0) != 0) {
++                    v += data_fuse0[idst];
++                }
++                if ((p.fusion_flags & MAT_VEC_FUSION_FLAGS_BIAS1) != 0) {
++                    v += data_fuse1[idst];
++                }
++                data_d[idst] = v;
++            }
++        }
++    }
++}
+diff --git a/ggml/src/ggml-vulkan/vulkan-shaders/soft_max.comp b/ggml/src/ggml-vulkan/vulkan-shaders/soft_max.comp
+index dca0d89..721a192 100644
+--- a/ggml/src/ggml-vulkan/vulkan-shaders/soft_max.comp
++++ b/ggml/src/ggml-vulkan/vulkan-shaders/soft_max.comp
+@@ -1,6 +1,11 @@
+ #version 450
+ 
+ #extension GL_EXT_control_flow_attributes : enable
++#if USE_SUBGROUP_REDUCE
++// The pipeline makes each workgroup exactly one full subgroup, so subgroup reductions cover the row.
++#extension GL_KHR_shader_subgroup_basic : require
++#extension GL_KHR_shader_subgroup_arithmetic : require
++#endif
+ 
+ layout (push_constant) uniform parameter
+ {
+@@ -99,6 +104,9 @@ void soft_max(uint num_iters) {
+         }
+     }
+ 
++#if USE_SUBGROUP_REDUCE
++    max_val = subgroupMax(max_val);
++#else
+     // reduce across the workgroup
+     vals[tid] = max_val;
+     barrier();
+@@ -111,6 +119,7 @@ void soft_max(uint num_iters) {
+ 
+     max_val = vals[0];
+     barrier();
++#endif
+ 
+     FLOAT_TYPE sum = FLOAT_TYPE(0.0f);
+ 
+@@ -139,6 +148,9 @@ void soft_max(uint num_iters) {
+         }
+     }
+ 
++#if USE_SUBGROUP_REDUCE
++    sum = subgroupAdd(sum);
++#else
+     // reduce across the workgroup
+     vals[tid] = sum;
+     barrier();
+@@ -149,6 +161,7 @@ void soft_max(uint num_iters) {
+         barrier();
+     }
+     sum = vals[0];
++#endif
+ 
+     if (p.has_sinks != 0) {
+         sum += FLOAT_TYPE(exp(FLOAT_TYPE(data_c[i02]) - max_val));
+diff --git a/ggml/src/ggml-vulkan/vulkan-shaders/vulkan-shaders-gen.cpp b/ggml/src/ggml-vulkan/vulkan-shaders/vulkan-shaders-gen.cpp
+index 4983dbd..db3d76a 100644
+--- a/ggml/src/ggml-vulkan/vulkan-shaders/vulkan-shaders-gen.cpp
++++ b/ggml/src/ggml-vulkan/vulkan-shaders/vulkan-shaders-gen.cpp
+@@ -852,6 +852,7 @@ void process_shaders() {
+ 
+     string_to_spv("mul_mat_vec_p021_f16_f32_subgroup_add", "mul_mat_vec_p021.comp", {{"A_TYPE", "float16_t"}, {"A_TYPEV4", "f16vec4"}, {"B_TYPE", "float"}, {"B_TYPEV4", "vec4"}, {"D_TYPE", "float"}, {"USE_SUBGROUP_ADD", "1"}});
+     string_to_spv("mul_mat_vec_p021_f16_f32",              "mul_mat_vec_p021.comp", {{"A_TYPE", "float16_t"}, {"A_TYPEV4", "f16vec4"}, {"B_TYPE", "float"}, {"B_TYPEV4", "vec4"}, {"D_TYPE", "float"}});
++    string_to_spv("mul_mat_vec_p021_pvr_f16_f32",          "mul_mat_vec_p021_pvr.comp", {});
+     string_to_spv("mul_mat_vec_nc_f16_f32", "mul_mat_vec_nc.comp", {{"A_TYPE", "float16_t"}, {"A_TYPEV4", "f16vec4"}, {"B_TYPE", "float"}, {"B_TYPEV4", "vec4"}, {"D_TYPE", "float"}});
+ 
+     // Norms
+@@ -1079,6 +1080,8 @@ void process_shaders() {
+ 
+     string_to_spv("soft_max_f32", "soft_max.comp", merge_maps(base_dict, {{"A_TYPE", "float"}, {"B_TYPE", "float"}, {"D_TYPE", "float"}}));
+     string_to_spv("soft_max_f32_f16", "soft_max.comp", merge_maps(base_dict, {{"A_TYPE", "float"}, {"B_TYPE", "float16_t"}, {"D_TYPE", "float"}}));
++    string_to_spv("soft_max_subgroup_f32", "soft_max.comp", merge_maps(base_dict, {{"A_TYPE", "float"}, {"B_TYPE", "float"}, {"D_TYPE", "float"}, {"USE_SUBGROUP_REDUCE", "1"}}));
++    string_to_spv("soft_max_subgroup_f32_f16", "soft_max.comp", merge_maps(base_dict, {{"A_TYPE", "float"}, {"B_TYPE", "float16_t"}, {"D_TYPE", "float"}, {"USE_SUBGROUP_REDUCE", "1"}}));
+     string_to_spv("soft_max_back_f32", "soft_max_back.comp", merge_maps(base_dict, {{"A_TYPE", "float"}, {"B_TYPE", "float"}, {"D_TYPE", "float"}}));
+ 
+     string_to_spv("soft_max_large1_f32", "soft_max_large1.comp", merge_maps(base_dict, {{"A_TYPE", "float"}, {"B_TYPE", "float"}, {"D_TYPE", "float"}}));

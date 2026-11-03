@@ -1,0 +1,93 @@
+diff --git a/ggml/src/ggml-vulkan/ggml-vulkan.cpp b/ggml/src/ggml-vulkan/ggml-vulkan.cpp
+index e18677b..d4d7198 100644
+--- a/ggml/src/ggml-vulkan/ggml-vulkan.cpp
++++ b/ggml/src/ggml-vulkan/ggml-vulkan.cpp
+@@ -12508,34 +12508,45 @@ void ggml_vk_preallocate_buffers(ggml_backend_vk_context * ctx, vk_context subct
+     }
+ }
+ 
+-// Timing ablation for the Pixel study: GGML_VK_SKIP_OPS=SOFT_MAX,MUL_MAT:f16 leaves matching nodes,
+-// and any ops fused into them, unrecorded. Entries are op names, optionally with the src0 type.
+-// The graph's results are invalid while it is set.
+-static bool ggml_vk_skip_op(const ggml_tensor * node) {
+-    static const std::set<std::string> skip = [] {
+-        std::set<std::string> names;
+-        if (const char * value = getenv("GGML_VK_SKIP_OPS")) {
+-            std::string list(value);
+-            size_t start = 0;
+-            while (start <= list.size()) {
+-                size_t end = list.find(',', start);
+-                if (end == std::string::npos) {
+-                    end = list.size();
+-                }
+-                if (end > start) {
+-                    names.insert(list.substr(start, end - start));
+-                }
+-                start = end + 1;
++// Timing ablation for the Pixel study. GGML_VK_SKIP_OPS=SOFT_MAX,MUL_MAT:f16 leaves matching nodes,
++// and any ops fused into them, unrecorded; GGML_VK_DUP_OPS records them twice with a barrier between.
++// Entries are op names, optionally with the src0 type. Results are invalid while either is set.
++static std::set<std::string> ggml_vk_op_list(const char * env) {
++    std::set<std::string> names;
++    if (const char * value = getenv(env)) {
++        std::string list(value);
++        size_t start = 0;
++        while (start <= list.size()) {
++            size_t end = list.find(',', start);
++            if (end == std::string::npos) {
++                end = list.size();
++            }
++            if (end > start) {
++                names.insert(list.substr(start, end - start));
+             }
+-            GGML_LOG_WARN("ggml_vulkan: GGML_VK_SKIP_OPS=%s, results are invalid\n", value);
++            start = end + 1;
+         }
+-        return names;
+-    }();
+-    if (skip.empty()) {
++        GGML_LOG_WARN("ggml_vulkan: %s=%s, results are invalid\n", env, value);
++    }
++    return names;
++}
++
++static bool ggml_vk_op_listed(const std::set<std::string> & names, const ggml_tensor * node) {
++    if (names.empty()) {
+         return false;
+     }
+     const std::string op = ggml_op_name(node->op);
+-    return skip.count(op) || (node->src[0] && skip.count(op + ":" + ggml_type_name(node->src[0]->type)));
++    return names.count(op) || (node->src[0] && names.count(op + ":" + ggml_type_name(node->src[0]->type)));
++}
++
++static bool ggml_vk_skip_op(const ggml_tensor * node) {
++    static const std::set<std::string> skip = ggml_vk_op_list("GGML_VK_SKIP_OPS");
++    return ggml_vk_op_listed(skip, node);
++}
++
++static bool ggml_vk_dup_op(const ggml_tensor * node) {
++    static const std::set<std::string> dup = ggml_vk_op_list("GGML_VK_DUP_OPS");
++    return ggml_vk_op_listed(dup, node);
+ }
+ 
+ bool ggml_vk_build_graph(ggml_backend_vk_context * ctx, ggml_cgraph * cgraph, int node_idx, ggml_tensor *node_begin, int node_idx_begin, bool last_node, bool almost_ready, bool submit){
+@@ -12681,6 +12692,11 @@ bool ggml_vk_build_graph(ggml_backend_vk_context * ctx, ggml_cgraph * cgraph, in
+     // closed explicitly below, and by the destructor on the early returns
+     ggml_vk_debug_label dbg(compute_ctx, cgraph, node_idx, ctx->num_additional_fused_ops);
+ 
++    const int recordings = ggml_vk_dup_op(node) ? 2 : 1;
++    for (int recording = 0; recording < recordings; ++recording) {
++    if (recording > 0) {
++        ggml_vk_sync_buffers(ctx, compute_ctx);
++    }
+     switch (node->op) {
+     case GGML_OP_REPEAT:
+         ggml_vk_repeat(ctx, compute_ctx, src0, node);
+@@ -13089,6 +13105,7 @@ bool ggml_vk_build_graph(ggml_backend_vk_context * ctx, ggml_cgraph * cgraph, in
+     default:
+         return false;
+     }
++    }
+ 
+     // the submit path below can end the command buffer, so close the region first
+     dbg.close();

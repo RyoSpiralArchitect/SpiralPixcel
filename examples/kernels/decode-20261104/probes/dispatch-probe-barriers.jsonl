@@ -1,0 +1,11 @@
+{"test": "no_barrier", "pipelines": 1, "sets": 1, "rebind": 0, "barrier": 0, "push_bytes": 4, "timestamps": 0, "groups": 1, "us_per_dispatch": 0.41, "min": 0.27, "max": 0.51}
+{"test": "mem_compute", "pipelines": 1, "sets": 1, "rebind": 0, "barrier": 1, "push_bytes": 4, "timestamps": 0, "groups": 1, "us_per_dispatch": 13.53, "min": 13.13, "max": 13.62}
+{"test": "ggml_barrier", "pipelines": 1, "sets": 1, "rebind": 0, "barrier": 2, "push_bytes": 4, "timestamps": 0, "groups": 1, "us_per_dispatch": 54.33, "min": 17.79, "max": 57.55}
+{"test": "exec_only", "pipelines": 1, "sets": 1, "rebind": 0, "barrier": 3, "push_bytes": 4, "timestamps": 0, "groups": 1, "us_per_dispatch": 0.12, "min": 0.05, "max": 0.19}
+{"test": "buffer_barrier", "pipelines": 1, "sets": 1, "rebind": 0, "barrier": 4, "push_bytes": 4, "timestamps": 0, "groups": 1, "us_per_dispatch": 5.32, "min": 5.10, "max": 5.48}
+{"test": "sync2_barrier", "pipelines": 1, "sets": 1, "rebind": 0, "barrier": 5, "push_bytes": 4, "timestamps": 0, "groups": 1, "us_per_dispatch": 5.44, "min": 5.20, "max": 6.82}
+{"test": "ggml_barrier_g64", "pipelines": 1, "sets": 1, "rebind": 0, "barrier": 2, "push_bytes": 4, "timestamps": 0, "groups": 64, "us_per_dispatch": 36.32, "min": 29.25, "max": 37.27}
+{"test": "exec_only_g64", "pipelines": 1, "sets": 1, "rebind": 0, "barrier": 3, "push_bytes": 4, "timestamps": 0, "groups": 64, "us_per_dispatch": 2.58, "min": 2.40, "max": 2.70}
+{"test": "sync2_barrier_g64", "pipelines": 1, "sets": 1, "rebind": 0, "barrier": 5, "push_bytes": 4, "timestamps": 0, "groups": 64, "us_per_dispatch": 11.46, "min": 10.21, "max": 11.60}
+{"test": "mem_compute", "pipelines": 1, "sets": 1, "rebind": 0, "barrier": 1, "push_bytes": 4, "timestamps": 0, "groups": 1, "us_per_dispatch": 9.38, "min": 9.26, "max": 9.46}
+{"test": "ggml_barrier", "pipelines": 1, "sets": 1, "rebind": 0, "barrier": 2, "push_bytes": 4, "timestamps": 0, "groups": 1, "us_per_dispatch": 38.40, "min": 18.68, "max": 38.89}
