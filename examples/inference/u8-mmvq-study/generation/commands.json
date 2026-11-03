@@ -1,0 +1,115 @@
+{
+  "prompt": "The three most important ideas in the history of mathematics are",
+  "model": "/home/droid/.local/share/spiral-pixel/models/qwen2.5-0.5b-q4_k_m.gguf",
+  "runs": {
+    "cpu": {
+      "date_local": "2026-11-03",
+      "runtime": "/home/droid/.local/share/SpiralPixcel/large-study/runtime-completion-wait",
+      "env": {
+        "GGML_VK_DISABLE_ASYNC": "1"
+      },
+      "args": [
+        "-no-cnv",
+        "-fit",
+        "off",
+        "-b",
+        "16",
+        "-ub",
+        "16",
+        "--no-warmup",
+        "-fa",
+        "off",
+        "-c",
+        "512",
+        "-t",
+        "4",
+        "-n",
+        "64",
+        "--temp",
+        "0",
+        "--seed",
+        "1",
+        "-dev",
+        "none",
+        "-ngl",
+        "0"
+      ]
+    },
+    "gpu-base": {
+      "date_local": "2026-11-03",
+      "runtime": "/home/droid/.local/share/SpiralPixcel/large-study/runtime-completion-wait",
+      "env": {
+        "GGML_VK_SPLIT_OUTPUT": "1",
+        "GGML_VK_DISABLE_ASYNC": "1",
+        "GGML_VK_WAIT_IDLE": "1"
+      },
+      "args": [
+        "-no-cnv",
+        "-fit",
+        "off",
+        "-b",
+        "16",
+        "-ub",
+        "16",
+        "--no-warmup",
+        "-fa",
+        "off",
+        "-c",
+        "512",
+        "-t",
+        "4",
+        "-n",
+        "64",
+        "--temp",
+        "0",
+        "--seed",
+        "1",
+        "-dev",
+        "Vulkan0",
+        "-ngl",
+        "99"
+      ]
+    },
+    "gpu-u8": {
+      "date_local": "2026-11-04",
+      "runtime": "/home/droid/.local/share/SpiralPixcel/runtimes/llama-b11960-u8-mmvq-r2",
+      "env": {
+        "GGML_VK_SPLIT_OUTPUT": "1",
+        "GGML_VK_DISABLE_ASYNC": "1",
+        "GGML_VK_WAIT_IDLE": "1",
+        "GGML_VK_PWR_U8_MMVQ": "1"
+      },
+      "args": [
+        "-no-cnv",
+        "-fit",
+        "off",
+        "-b",
+        "16",
+        "-ub",
+        "16",
+        "--no-warmup",
+        "-fa",
+        "off",
+        "-c",
+        "512",
+        "-t",
+        "4",
+        "-n",
+        "64",
+        "--temp",
+        "0",
+        "--seed",
+        "1",
+        "-dev",
+        "Vulkan0",
+        "-ngl",
+        "99"
+      ]
+    }
+  },
+  "sha256": {
+    "cpu.txt": "6b1d4b4a3531496021d7a8160078f93448ac0a7826dd509438e4e5a2ebd1be58",
+    "gpu-base.txt": "b25dfd9e4ec602d97b2932c3b26e0defdff7e9fe9bb0a640abad3ab515f9f7e7",
+    "gpu-u8.txt": "b25dfd9e4ec602d97b2932c3b26e0defdff7e9fe9bb0a640abad3ab515f9f7e7"
+  }
+}

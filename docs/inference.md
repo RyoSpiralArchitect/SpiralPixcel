@@ -20,6 +20,7 @@
 - core-fp16はVulkan 1.1以上の16ビットストレージと実際の機能ビットを確認し、FP16計算を使えるようにする。
 - powervr-mmvは共有メモリでの縮約とワークグループ32・64・128を選べる実験。
 - powervr-rmsは既存のサブグループ正規化をPowerVRでも選べる実験。
+- powervr-u8-mmvqは、Q5_0・Q8_0・Q4_Kの1列mat-vecを符号なしdot積で計算する。`--powervr-u8-mmvq` でビルドし、`--u8-mmvq` で選ぶ。同じランタイムで切り替えた交互測定で、decode tg32が平均8.06から18.74 tok/sになった。[測り方と結果](kernels.md)
 
     pixel-lab run inference --runtime /absolute/new-runtime
     pixel-lab run inference --runtime /absolute/new-runtime --workgroup 64

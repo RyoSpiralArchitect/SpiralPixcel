@@ -1,0 +1,44 @@
+#version 450
+// Read-bandwidth probe for access patterns: each invocation reads CHUNK consecutive
+// elements of WIDTH words, and invocations step through the buffer in a grid-stride loop.
+#extension GL_EXT_control_flow_attributes : enable
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_arithmetic : require
+
+#ifndef WIDTH
+#define WIDTH 1
+#endif
+#ifndef CHUNK
+#define CHUNK 1
+#endif
+#if WIDTH == 1
+#define ELEM uint
+#define FOLD(v) (v)
+#elif WIDTH == 2
+#define ELEM uvec2
+#define FOLD(v) ((v).x ^ (v).y)
+#else
+#define ELEM uvec4
+#define FOLD(v) ((v).x ^ (v).y ^ (v).z ^ (v).w)
+#endif
+
+layout(local_size_x_id = 0) in;
+layout(constant_id = 1) const uint TOTAL_WORDS = 1;
+
+layout(binding = 0) readonly buffer A { ELEM data_a[]; };
+layout(binding = 2) writeonly buffer D { float data_d[]; };
+
+void main() {
+    uint acc = 0;
+    const uint total = TOTAL_WORDS / WIDTH;
+    const uint stride = gl_NumWorkGroups.x * gl_WorkGroupSize.x * CHUNK;
+    for (uint i = gl_GlobalInvocationID.x * CHUNK; i + CHUNK <= total; i += stride) {
+        [[unroll]] for (uint c = 0; c < CHUNK; ++c) {
+            acc ^= FOLD(data_a[i + c]);
+        }
+    }
+    acc = subgroupXor(acc);
+    if (subgroupElect()) {
+        data_d[gl_WorkGroupID.x * gl_NumSubgroups + gl_SubgroupID] = float(acc & 0xffffu);
+    }
+}

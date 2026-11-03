@@ -1,0 +1,56 @@
+#version 450
+// RMS-norm-and-multiply reduction probe for one row (one workgroup): MODE 0 is ggml's
+// shared-memory tree, MODE 1 adds within subgroups first, as ggml's subgroup variant does.
+#extension GL_EXT_control_flow_attributes : enable
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_arithmetic : require
+
+#ifndef MODE
+#define MODE 0
+#endif
+layout(constant_id = 0) const uint BLOCK_SIZE = 512;
+layout(local_size_x_id = 0) in;
+
+layout(binding = 0) readonly buffer A { float weight[]; };
+layout(binding = 1) readonly buffer B { float x[]; };
+layout(binding = 2) writeonly buffer D { float d[]; };
+
+layout(push_constant) uniform parameter { uint ncols; } p;
+
+shared float sumsh[BLOCK_SIZE];
+
+void main() {
+    const uint tid = gl_LocalInvocationID.x;
+    float sum = 0;
+    for (uint col = tid; col < p.ncols; col += BLOCK_SIZE) {
+        sum += x[col] * x[col];
+    }
+#if MODE == 0
+    sumsh[tid] = sum;
+    barrier();
+    [[unroll]] for (uint s = BLOCK_SIZE / 2; s > 0; s >>= 1) {
+        if (tid < s) {
+            sum += sumsh[tid + s];
+            sumsh[tid] = sum;
+        }
+        barrier();
+    }
+    sum = sumsh[0];
+#else
+    sum = subgroupAdd(sum);
+    if (gl_NumSubgroups > 1) {
+        if (subgroupElect()) {
+            sumsh[gl_SubgroupID] = sum;
+        }
+        barrier();
+        sum = 0;
+        for (uint i = 0; i < gl_NumSubgroups; ++i) {
+            sum += sumsh[i];
+        }
+    }
+#endif
+    const float scale = inversesqrt(sum / float(p.ncols) + 1e-6);
+    for (uint col = tid; col < p.ncols; col += BLOCK_SIZE) {
+        d[col] = scale * x[col] * weight[col];
+    }
+}

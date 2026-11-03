@@ -178,6 +178,8 @@ def execute(ssh, args):
             inference_args += ["--workgroup", str(args.workgroup)]
         if args.rms_subgroups:
             inference_args += ["--rms-subgroups"]
+        if args.u8_mmvq:
+            inference_args += ["--u8-mmvq"]
         # The integer GPU check completes in the same guest source snapshot first.
         command = "python3 experiment.py doctor && cp result/result.json result/doctor.json"
         command += " && python3 inference.py " + shlex.join(inference_args)
@@ -237,6 +239,8 @@ def main():
     inference.add_argument("--workgroup", type=int, choices=(32, 64, 128), help="patched PowerVR MMV workgroup")
     inference.add_argument("--flash-attn", choices=("off", "on"), default="off")
     inference.add_argument("--rms-subgroups", action="store_true")
+    inference.add_argument("--u8-mmvq", action="store_true",
+                           help="patched PowerVR Q5_0/Q8_0/Q4_K single-column mat-vec on unsigned 4x8 dots")
     inference.add_argument("--profile", choices=("baseline", "host-memory", "mmvq"), default="baseline")
     diffusion.add_argument("--trace", type=Path, help="replay touch/v1 JSON before the requested free diffusion steps")
     args = parser.parse_args()

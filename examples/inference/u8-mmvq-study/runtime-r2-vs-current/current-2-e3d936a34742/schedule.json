@@ -1,0 +1,112 @@
+{
+  "format": "SpiralPixcel.schedule.v1",
+  "completed": true,
+  "command": [
+    "/home/droid/.local/share/SpiralPixcel/large-study/runtime-completion-wait/llama-bench",
+    "-m",
+    "/home/droid/.local/share/spiral-pixel/models/qwen2.5-0.5b-q4_k_m.gguf",
+    "-p",
+    "0",
+    "-n",
+    "1",
+    "-r",
+    "1",
+    "-b",
+    "16",
+    "-ub",
+    "16",
+    "-t",
+    "4",
+    "-fa",
+    "off",
+    "-ngl",
+    "99",
+    "-dev",
+    "Vulkan0",
+    "--repack",
+    "1",
+    "--no-warmup",
+    "-v",
+    "-o",
+    "json"
+  ],
+  "diagnostic_only": true,
+  "environment_overrides": {
+    "GGML_SCHED_DEBUG": "2"
+  },
+  "disabled_environment_flags": [
+    "GGML_VK_PERF_LOGGER",
+    "GGML_VK_PERF_LOGGER_CONCURRENT"
+  ],
+  "exit_code": 0,
+  "placement_scope": "last graph placement dump in scheduler.log",
+  "logged_graphs": 7,
+  "final_logged_node_count": 613,
+  "nodes_per_backend": {
+    "CPU": 2,
+    "Vulkan0": 611
+  },
+  "cpu_nodes": [
+    {
+      "index": 0,
+      "op": "GET_ROWS",
+      "name": "embd",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "token_embd.weight (  89M) [  CPU         ]           inp_tokens (   0K) [  CPU         ]"
+    },
+    {
+      "index": 1,
+      "op": "GET_ROWS",
+      "name": "node_1",
+      "backend": "CPU",
+      "buffer_label": "CPU",
+      "split": 0,
+      "sources": "token_embd.weight (  89M) [  CPU         ]     inp_mixed_tokens (   0K) [  CPU         ]"
+    }
+  ],
+  "output_nodes": [
+    {
+      "index": 945,
+      "op": "MUL_MAT",
+      "name": "output_mm.chunk.0",
+      "backend": "Vulkan0",
+      "buffer_label": "Vulka",
+      "split": 1,
+      "sources": "output.weight (  59M) [Vulka         ]          result_norm (   3K) [Vulka         ]"
+    },
+    {
+      "index": 947,
+      "op": "MUL_MAT",
+      "name": "output_mm.chunk.6553",
+      "backend": "Vulkan0",
+      "buffer_label": "Vulka",
+      "split": 1,
+      "sources": "output.weight (  59M) [Vulka         ]          result_norm (   3K) [Vulka         ]"
+    },
+    {
+      "index": 950,
+      "op": "MUL_MAT",
+      "name": "output_mm.chunk.1310",
+      "backend": "Vulkan0",
+      "buffer_label": "Vulka",
+      "split": 1,
+      "sources": "output.weight (  18M) [Vulka         ]          result_norm (   3K) [Vulka         ]"
+    },
+    {
+      "index": 951,
+      "op": "CONCAT",
+      "name": "result_output",
+      "backend": "Vulkan0",
+      "buffer_label": "Vulka",
+      "split": 1,
+      "sources": "node_948 ( 512K) [Vulka         ] output_mm.chunk.1310 (  81K) [Vulka         ]"
+    }
+  ],
+  "rejected_weights": [],
+  "sha256": {
+    "scheduler.log": "7411cfbfc5656cd9495b87947d5ddd970d7e026a11e2fa2bfdcfec7952374893",
+    "scheduler-bench.json": "f50d28b9a14f3d864797d9e0662c94cf174024830d02cf4e44323eedb600f7f6"
+  }
+}

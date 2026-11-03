@@ -145,7 +145,7 @@ int main(int argc, char** argv) {
         gpu = ggml_backend_dev_init(gpu_device, nullptr);
         if (!cpu || !gpu) throw std::runtime_error("backend initialization failed");
         int cases = 0, failed = 0;
-        for (auto type : {GGML_TYPE_F32, GGML_TYPE_Q4_K, GGML_TYPE_Q5_0, GGML_TYPE_Q6_K}) {
+        for (auto type : {GGML_TYPE_F32, GGML_TYPE_Q4_K, GGML_TYPE_Q5_0, GGML_TYPE_Q6_K, GGML_TYPE_Q8_0}) {
             for (int64_t k : {768, 896, 1024}) {
                 if (k % ggml_blck_size(type)) continue;
                 for (int64_t m : {128, 896}) {

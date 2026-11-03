@@ -43,6 +43,21 @@ class InferenceReceipt(unittest.TestCase):
         self.assertIsNone(logged_memory("")["peak_device_allocated_mib"])
 
 
+class KernelGate(unittest.TestCase):
+    def records(self, matmuls, status="pass"):
+        rows = [{"op": op, "status": status} for op, count in
+                (("MUL_MAT", matmuls), ("RMS_NORM", 8), ("RMS_NORM_MUL", 8)) for _ in range(count)]
+        rows.append({"status": "pass", "cases": matmuls + 16, "failed": 0})
+        return "\n".join(map(json.dumps, rows))
+
+    def test_accepts_both_layouts_and_requires_q8_0_on_request(self):
+        self.assertEqual(inference.check_kernel_gate(self.records(40))["cases"], 56)
+        self.assertEqual(inference.check_kernel_gate(self.records(52), True)["cases"], 68)
+        for raw, require in ((self.records(40), True), (self.records(44), False), (self.records(52, "fail"), False)):
+            with self.subTest(raw=raw[:40], require=require), self.assertRaises(ValueError):
+                inference.check_kernel_gate(raw, require)
+
+
 class MatchedCoreManifest(unittest.TestCase):
     def make_runtime(self, directory):
         runtime = Path(directory)
@@ -163,9 +178,15 @@ class SplitModelAcceptance(unittest.TestCase):
                 if mode == "bad-readback":
                     records[0].update(mismatched_bytes=64, status="fail")
             elif name == "check-mmv":
+                extended = mode in ("u8", "u8-legacy-gate", "u8-fallback")
+                if mode in ("u8", "u8-legacy-gate"):
+                    for type_name in ("q4_K", "q5_0", "q8_0"):
+                        stderr.write(f"ggml_vulkan: mul_mat_vecq_u8 selected for {type_name}\n".encode())
+                self.assertEqual(env.get("GGML_VK_PWR_U8_MMVQ"), "1" if extended else None)
+                matmuls = 52 if mode in ("u8", "u8-fallback") else 40
                 records = [{"op": op, "status": "pass"} for op, count in
-                           (("MUL_MAT", 40), ("RMS_NORM", 8), ("RMS_NORM_MUL", 8)) for _ in range(count)]
-                records.append({"status": "pass", "cases": 56, "failed": 0})
+                           (("MUL_MAT", matmuls), ("RMS_NORM", 8), ("RMS_NORM_MUL", 8)) for _ in range(count)]
+                records.append({"status": "pass", "cases": matmuls + 16, "failed": 0})
             elif name == "check-large":
                 case = {"status": "pass", "weight_bytes": 129*1024*1024,
                         "reference": "dequantized_q8_0_basis_values", "separate_weight_buffer": True,
@@ -177,6 +198,9 @@ class SplitModelAcceptance(unittest.TestCase):
                 records.append({"status": "pass", "cases": 2, "failed": 0})
             elif name == "check-model":
                 layers = int(command[4])
+                self.assertEqual(env.get("GGML_VK_PWR_U8_MMVQ"), "1" if mode == "u8" else None)
+                if mode == "u8" and layers:
+                    stderr.write(b"ggml_vulkan: mul_mat_vecq_u8 selected for q5_0\n")
                 self.assertEqual(env.get("GGML_VK_SPLIT_OUTPUT", "0"), "0" if layers == 0 or mode == "matching-baseline" else "1")
                 values = [1., 2., 3.]
                 if layers and mode == "zero":
@@ -265,6 +289,52 @@ class SplitModelAcceptance(unittest.TestCase):
             self.assertTrue(receipt["model_check"]["top1_equal"])
             self.assertEqual(receipt["model_check"]["nmse"], 0)
 
+    def test_unsigned_matvec_reaches_timing_on_the_extended_gate(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            runtime, model = self.make_fixture(root)
+            marker_path = runtime / "spiralpixcel-kernel.json"
+            marker_path.write_text(json.dumps({**json.loads(marker_path.read_text()), "powervr_u8_mmvq": True}))
+            output = root / "result"
+            command = ["inference.py", "--runtime", str(runtime), "--model", str(model), "--split-output", "--u8-mmvq"]
+            placement = {"nodes_per_backend": {"Vulkan0": 2}, "cpu_nodes": [], "rejected_weights": [],
+                         "output_nodes": [{"name": f"output_mm.chunk.{i}", "backend": "Vulkan0"} for i in range(2)]}
+            def timed_run(command, environment, timeout):
+                self.assertEqual(environment["GGML_VK_PWR_U8_MMVQ"], "1")
+                (output / "bench.json").write_text(json.dumps(rows()))
+                (output / "bench.log").write_text("")
+                return {"exit_code": 0, "timed_out": False, "sampled_peak_rss_kib": 1}
+
+            with patch.object(inference, "OUT", output), patch.object(sys, "argv", command), \
+                    patch("inference.subprocess.run", side_effect=self.fake_checkers("u8")), \
+                    patch("schedule_report.collect", return_value=placement), \
+                    patch("inference.run_benchmark", side_effect=timed_run) as benchmark, redirect_stdout(io.StringIO()):
+                self.assertEqual(inference.main(), 0)
+            benchmark.assert_called_once()
+            receipt = json.loads((output / "result.json").read_text())
+            self.assertEqual(receipt["kernel_check"]["cases"], 68)
+            self.assertEqual(receipt["u8_mmvq_selected"], {"kernel_check": ["q4_K", "q5_0", "q8_0"],
+                                                           "model_candidate": ["q5_0"], "benchmark": []})
+            self.assertEqual(receipt["model_check"]["environment"]["GGML_VK_PWR_U8_MMVQ"], "1")
+
+    def test_unsigned_matvec_requires_its_patch_and_q8_0_cases(self):
+        for flagged, mode, message in ((False, "u8", "unsigned mat-vec patch"),
+                                       (True, "u8-legacy-gate", "incomplete receipt"),
+                                       (True, "u8-fallback", "did not run for every gated type")):
+            with self.subTest(flagged=flagged), tempfile.TemporaryDirectory() as folder:
+                root = Path(folder)
+                runtime, model = self.make_fixture(root)
+                if flagged:
+                    marker_path = runtime / "spiralpixcel-kernel.json"
+                    marker_path.write_text(json.dumps({**json.loads(marker_path.read_text()), "powervr_u8_mmvq": True}))
+                command = ["inference.py", "--runtime", str(runtime), "--model", str(model), "--split-output", "--u8-mmvq"]
+                with patch.object(inference, "OUT", root / "result"), patch.object(sys, "argv", command), \
+                        patch("inference.subprocess.run", side_effect=self.fake_checkers(mode)), \
+                        patch("inference.run_benchmark") as benchmark, redirect_stdout(io.StringIO()):
+                    self.assertEqual(inference.main(), 1)
+                benchmark.assert_not_called()
+                self.assertIn(message, json.loads((root / "result/result.json").read_text())["error"])
+
     def test_large_gate_requires_exactly_two_case_rows(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
@@ -330,6 +400,12 @@ class SplitModelAcceptance(unittest.TestCase):
     def test_split_output_rejects_cpu_only_request(self):
         with patch.object(sys, "argv", ["inference.py", "--split-output", "--gpu-layers", "0"]), \
                 redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as error:
+            inference.main()
+        self.assertEqual(error.exception.code, 2)
+
+    def test_unsigned_matvec_requires_the_logit_gate(self):
+        with patch.object(sys, "argv", ["inference.py", "--u8-mmvq"]), redirect_stderr(io.StringIO()), \
+                self.assertRaises(SystemExit) as error:
             inference.main()
         self.assertEqual(error.exception.code, 2)
 

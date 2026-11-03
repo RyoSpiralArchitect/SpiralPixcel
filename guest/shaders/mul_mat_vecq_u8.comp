@@ -1,0 +1,249 @@
+#version 450
+// Single-column mat-vec for Q5_0, Q8_0 or Q4_K weights against Q8_1 activations, built on the
+// unsigned 4x8 dot product, which the PowerVR C-Series accelerates (its signed and
+// mixed-sign dots are not). Weights and activations are biased to unsigned bytes and
+// exact integer corrections restore the signed sums.
+//
+// Activations use ggml-vulkan's block_q8_1_x4 layout: four f16vec2 (d, d*sum) words, then
+// four blocks of eight int8x4 words, 144 bytes per 128 values. A cluster of TPR invocations
+// shares one weight row and reads whole aligned words: pairs of 32-value blocks, or Q4_K
+// superblocks. One clustered subgroup add finishes the row without shared memory or barriers.
+#extension GL_EXT_control_flow_attributes : enable
+#extension GL_EXT_integer_dot_product : require
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_arithmetic : require
+#extension GL_KHR_shader_subgroup_clustered : require
+
+layout(local_size_x_id = 0, local_size_y = 1, local_size_z = 1) in;
+layout(constant_id = 0) const uint BLOCK_SIZE = 128;  // equals the required subgroup size
+layout(constant_id = 1) const uint NUM_ROWS = 32;     // rows per workgroup: BLOCK_SIZE / TPR * RPS
+layout(constant_id = 2) const uint NUM_COLS = 1;
+#ifndef TPR
+// Invocations per row: a power of two, fixed at compile time for the clustered add. The host
+// sets NUM_ROWS to match.
+#if defined(DATA_A_Q4_K)
+#define TPR 32
+#else
+#define TPR 4
+#endif
+#endif
+#ifndef RPS
+#define RPS 1  // rows per group of TPR invocations; activations are reused across them
+#endif
+
+#define MAT_VEC_FUSION_FLAGS_BIAS0 0x1
+#define MAT_VEC_FUSION_FLAGS_BIAS1 0x2
+
+layout(binding = 0) readonly buffer A { uint data_a[]; };
+layout(binding = 1) readonly buffer B { uvec4 data_b[]; };
+layout(binding = 2) writeonly buffer D { float data_d[]; };
+layout(binding = 3) readonly buffer Fuse0 { float data_fuse0[]; };
+layout(binding = 4) readonly buffer Fuse1 { float data_fuse1[]; };
+
+layout(push_constant) uniform parameter {
+    uint ncols, stride_a, stride_b, stride_d, batch_stride_a, batch_stride_b, batch_stride_d;
+    uint fusion_flags, base_work_group_y, ne02, ne12, broadcast2, broadcast3;
+} p;
+
+// A unit is the run of weights one invocation reads at a time.
+#if defined(DATA_A_Q5_0)
+#define BLOCK_BYTES 22
+#define UNIT_VALUES 64
+#elif defined(DATA_A_Q8_0)
+#define BLOCK_BYTES 34
+#define UNIT_VALUES 64
+#elif defined(DATA_A_Q4_K)
+#ifndef UNIT_VALUES
+#define UNIT_VALUES 64  // one of the four 64-value groups of a superblock
+#endif
+#else
+#error "unsupported weight type"
+#endif
+
+const uint ONES = 0x01010101u;
+
+struct act_block {
+    uvec4 lo, hi;  // u = y + 128 for values 0-15 and 16-31
+    float d;
+    uint sum;      // sum(u)
+};
+
+act_block load_act(const uint blk) {
+    const uint x4 = blk / 4, inner = blk % 4;
+    act_block a;
+    a.lo = data_b[9 * x4 + 1 + 2 * inner] ^ 0x80808080u;
+    a.hi = data_b[9 * x4 + 2 + 2 * inner] ^ 0x80808080u;
+    a.d = unpackHalf2x16(data_b[9 * x4][inner]).x;
+    a.sum = 0;
+    [[unroll]] for (uint w = 0; w < 4; ++w) {
+        a.sum = dotPacked4x8AccSatEXT(a.lo[w], ONES, a.sum);
+        a.sum = dotPacked4x8AccSatEXT(a.hi[w], ONES, a.sum);
+    }
+    return a;
+}
+
+#if defined(DATA_A_Q5_0)
+// Spread the low four bits of b to bit 4 of each byte.
+uint spread4(const uint b) {
+    return (((b & 0xFu) * 0x00204081u) & 0x01010101u) << 4;
+}
+
+// One 22-byte block (d at bytes 0-1, qh at 2-5, qs at 6-21); w0 holds bytes 0-3. Scalars
+// rather than arrays: the PowerVR compiler keeps them in registers and runs ~20% faster.
+float block_dot(const uint w0, const uint w1, const uint w2, const uint w3, const uint w4, const uint w5,
+                const act_block b) {
+    const float d = unpackHalf2x16(w0).x;
+    const uint qh = (w0 >> 16) | (w1 << 16);
+    const uint qs[4] = uint[4]((w1 >> 16) | (w2 << 16), (w2 >> 16) | (w3 << 16),
+                               (w3 >> 16) | (w4 << 16), (w4 >> 16) | (w5 << 16));
+    uint xu = 0, xs = 0;
+    [[unroll]] for (uint i = 0; i < 4; ++i) {
+        const uint x_lo = (qs[i] & 0x0F0F0F0Fu) | spread4(qh >> (4 * i));
+        const uint x_hi = ((qs[i] >> 4) & 0x0F0F0F0Fu) | spread4(qh >> (4 * i + 16));
+        xu = dotPacked4x8AccSatEXT(x_lo, b.lo[i], xu);
+        xu = dotPacked4x8AccSatEXT(x_hi, b.hi[i], xu);
+        xs = dotPacked4x8AccSatEXT(x_lo, ONES, xs);
+        xs = dotPacked4x8AccSatEXT(x_hi, ONES, xs);
+    }
+    // x in [0,31] stores x - 16 and u = y + 128:
+    // sum((x - 16) * y) = sum(x * u) - 128 * sum(x) - 16 * (sum(u) - 4096)
+    return d * b.d * float(int(xu) - 128 * int(xs) - 16 * (int(b.sum) - 4096));
+}
+
+// An aligned pair of blocks is eleven words.
+float pair_dot(const uint base, const act_block b0, const act_block b1) {
+    const uint p0 = data_a[base], p1 = data_a[base + 1], p2 = data_a[base + 2], p3 = data_a[base + 3];
+    const uint p4 = data_a[base + 4], p5 = data_a[base + 5], p6 = data_a[base + 6], p7 = data_a[base + 7];
+    const uint p8 = data_a[base + 8], p9 = data_a[base + 9], p10 = data_a[base + 10];
+    // The odd block starts at byte 22: realign by one half-word.
+    return block_dot(p0, p1, p2, p3, p4, p5, b0) +
+           block_dot((p5 >> 16) | (p6 << 16), (p6 >> 16) | (p7 << 16), (p7 >> 16) | (p8 << 16),
+                     (p8 >> 16) | (p9 << 16), (p9 >> 16) | (p10 << 16), p10 >> 16, b1);
+}
+#else
+// One 34-byte block: d, then 32 int8 values, given as the scale and eight aligned words.
+float block_dot(const float d, const uint qs[8], const act_block b) {
+    uint xu = 0, xs = 0;
+    [[unroll]] for (uint i = 0; i < 4; ++i) {
+        const uint x_lo = qs[i] ^ 0x80808080u, x_hi = qs[i + 4] ^ 0x80808080u;
+        xu = dotPacked4x8AccSatEXT(x_lo, b.lo[i], xu);
+        xu = dotPacked4x8AccSatEXT(x_hi, b.hi[i], xu);
+        xs = dotPacked4x8AccSatEXT(x_lo, ONES, xs);
+        xs = dotPacked4x8AccSatEXT(x_hi, ONES, xs);
+    }
+    // x = w + 128 and u = y + 128: sum(w * y) = sum(x * u) - 128 * (sum(x) + sum(u)) + 128 * 128 * 32
+    return d * b.d * float(int(xu) - 128 * (int(xs) + int(b.sum)) + 524288);
+}
+
+// An aligned pair of blocks is seventeen words.
+float pair_dot(const uint base, const act_block b0, const act_block b1) {
+    uint w[17];
+    [[unroll]] for (uint i = 0; i < 17; ++i) {
+        w[i] = data_a[base + i];
+    }
+    // The even block's values start at byte 2; the odd block (byte 34) has its values aligned.
+    uint even[8], odd[8];
+    [[unroll]] for (uint i = 0; i < 8; ++i) {
+        even[i] = (w[i] >> 16) | (w[i + 1] << 16);
+        odd[i] = w[i + 9];
+    }
+    return block_dot(unpackHalf2x16(w[0]).x, even, b0) + block_dot(unpackHalf2x16(w[8] >> 16).x, odd, b1);
+}
+#endif
+
+#if defined(DATA_A_Q4_K)
+// Groups of one 144-byte superblock (36 words): d and dmin, twelve bytes of 6-bit scales and
+// mins for eight 32-value sub-blocks, then 128 bytes of 4-bit values. Group j holds sub-blocks
+// 2j and 2j + 1, the low and high nibbles of bytes 32j onwards; sub-block s pairs with
+// activation block act0 + s. Splitting rows into 64-value groups across 32 invocations
+// measured 1.2x the existing kernel on 896x4864, against no gain for whole superblocks.
+// ggml-vulkan places tensors only 4-byte aligned here, so words are read singly.
+float superblock_dot(const uint sb, const uint act0, const uint first_group, const uint group_count) {
+    const uint base = 36 * sb;
+    const vec2 dm = unpackHalf2x16(data_a[base]);
+    const uint s0 = data_a[base + 1], s1 = data_a[base + 2], s2 = data_a[base + 3];
+    // Byte s of these words is the scale or min of sub-block s (s < 4) or s + 4.
+    const uint scales_lo = s0 & 0x3F3F3F3Fu, mins_lo = s1 & 0x3F3F3F3Fu;
+    const uint scales_hi = (s2 & 0x0F0F0F0Fu) | ((s0 >> 2) & 0x30303030u);
+    const uint mins_hi = ((s2 >> 4) & 0x0F0F0F0Fu) | ((s1 >> 2) & 0x30303030u);
+    float acc_scale = 0, acc_min = 0;
+    [[unroll]] for (uint g = 0; g < group_count; ++g) {
+        const uint j = first_group + g;
+        const uint q = base + 4 + 8 * j;
+        const uvec4 q0 = uvec4(data_a[q], data_a[q + 1], data_a[q + 2], data_a[q + 3]);
+        const uvec4 q1 = uvec4(data_a[q + 4], data_a[q + 5], data_a[q + 6], data_a[q + 7]);
+        [[unroll]] for (uint h = 0; h < 2; ++h) {
+            const uint s = 2 * j + h;
+            const act_block b = load_act(act0 + s);
+            const uvec4 n0 = (q0 >> (4 * h)) & 0x0F0F0F0Fu, n1 = (q1 >> (4 * h)) & 0x0F0F0F0Fu;
+            uint nu = 0, ns = 0;
+            [[unroll]] for (uint i = 0; i < 4; ++i) {
+                nu = dotPacked4x8AccSatEXT(n0[i], b.lo[i], nu);
+                nu = dotPacked4x8AccSatEXT(n1[i], b.hi[i], nu);
+                ns = dotPacked4x8AccSatEXT(n0[i], ONES, ns);
+                ns = dotPacked4x8AccSatEXT(n1[i], ONES, ns);
+            }
+            const uint scale = ((s < 4 ? scales_lo : scales_hi) >> (8 * (s % 4))) & 0xFFu;
+            const uint mn = ((s < 4 ? mins_lo : mins_hi) >> (8 * (s % 4))) & 0xFFu;
+            // value = d * scale * n - dmin * mn with n in [0,15] and u = y + 128:
+            // sum(n * y) = sum(n * u) - 128 * sum(n), sum(y) = sum(u) - 4096
+            acc_scale += b.d * float(int(scale) * (int(nu) - 128 * int(ns)));
+            acc_min += b.d * float(int(mn) * (int(b.sum) - 4096));
+        }
+    }
+    return dm.x * acc_scale - dm.y * acc_min;
+}
+#endif
+
+void main() {
+    // Clusters are defined over subgroup invocation ids, which Vulkan does not tie to local ids.
+    // The pipeline requires one full 128-wide subgroup per workgroup, so this covers every row.
+    const uint tid = gl_SubgroupInvocationID;
+    const uint lane = tid % TPR;
+    const uint slot = tid / TPR;
+    const uint slots = BLOCK_SIZE / TPR;
+    const uint first_row = NUM_ROWS * (gl_WorkGroupID.x + gl_NumWorkGroups.x * gl_WorkGroupID.z);
+    const uint blocks = p.ncols / 32;
+    const uint units = p.ncols / UNIT_VALUES;
+
+    // The row loop has the same trip count in every invocation, which keeps the clustered
+    // add uniform; a per-invocation row loop around it measured ~20% slower.
+    float sum[RPS];
+    [[unroll]] for (uint r = 0; r < RPS; ++r) {
+        sum[r] = 0;
+    }
+    for (uint unit = lane; unit < units; unit += TPR) {
+#if defined(DATA_A_Q4_K)
+        // A unit is a whole superblock or one of its 64-value groups.
+        const uint per_sb = 256 / UNIT_VALUES, sb = unit / per_sb;
+        [[unroll]] for (uint r = 0; r < RPS; ++r) {
+            const uint row = first_row + slot + r * slots;
+            if (row < p.stride_d) {
+                sum[r] += superblock_dot(row * (units / per_sb) + sb, 8 * sb, (unit % per_sb) * (4 / per_sb), 4 / per_sb);
+            }
+        }
+#else
+        const act_block b0 = load_act(2 * unit), b1 = load_act(2 * unit + 1);
+        [[unroll]] for (uint r = 0; r < RPS; ++r) {
+            const uint row = first_row + slot + r * slots;
+            if (row < p.stride_d) {
+                // Rows hold an even number of blocks, so every pair starts on a 4-byte boundary.
+                sum[r] += pair_dot((row * blocks + 2 * unit) * BLOCK_BYTES / 4, b0, b1);
+            }
+        }
+#endif
+    }
+    [[unroll]] for (uint r = 0; r < RPS; ++r) {
+        const uint row = first_row + slot + r * slots;
+        float total = subgroupClusteredAdd(sum[r], TPR);
+        if (lane == 0 && row < p.stride_d) {
+            if ((p.fusion_flags & MAT_VEC_FUSION_FLAGS_BIAS0) != 0) {
+                total += data_fuse0[row];
+            }
+            if ((p.fusion_flags & MAT_VEC_FUSION_FLAGS_BIAS1) != 0) {
+                total += data_fuse1[row];
+            }
+            data_d[row] = total;
+        }
+    }
+}
