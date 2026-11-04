@@ -1,0 +1,23 @@
+# Q5_0 and Q8_0 mat-vec study
+
+Measurements behind the shape variants of the unsigned-dot mat-vec ([write-up](../../../docs/matvec-variants.md)), taken on the Pixel 11 Pro Debian VM on 2026-11-04 with `guest/kernel_bench.cpp`. The end-to-end comparison of the r6 and r7 runtimes is in [`../../inference/q50-study/`](../../inference/q50-study/).
+
+Every line of a `sweeps/*.jsonl` file times one shader on ggml-quantized random weights as the marginal cost between a run of `reps` dispatches and one of `5 * reps`. Dispatches are separated by a compute-to-compute memory barrier, weights rotate across 8 device-local copies (2 for the largest Q8_0 shapes), and activations and outputs are device-local (`--io-memory device`), as with `GGML_VK_PREFER_DEVICE_LOCAL`. `pass` and `nmse` compare the result with a double-precision reference on the same Q8_1 activations. Labels are `r<round>/<variant>/<rows>`; every shape has 896 columns.
+
+## Files
+
+- `exp/mul_mat_vecq_u8.exp.comp`: the shader as measured, with the experimental switches: `Q50_ALU` (the arithmetic rewrite, now the only Q5_0 path in `guest/shaders/mul_mat_vecq_u8.comp`), `ACT_SHARED` with `MAX_ACT_BLOCKS` (shared activation stage), `W_SHARED` (weights copied through shared memory), and two diagnostics that do not compute the product, so their check fails by design: `DIAG_LOADS` (the kernel's loads with trivial arithmetic) and `DIAG_ALU` (the kernel's arithmetic on words from a hot 1 KiB region).
+- `exp/q50-sweep.sh` to `exp/q50-sweep4.sh`: the sweeps, run as `sh q50-sweepN.sh WORKDIR OUT ROUNDS` in a memory-limited user scope; `WORKDIR` held `kernel_bench` (built against the r6 runtime's `libggml-base.so`) and `guest/`.
+- `exp/q50-summary.py`, `exp/q50-summary2.py`: the tables in the write-up (median over rounds).
+- `sweeps/sweep1.jsonl` (2 rounds): invocations per row (`TPR` 2 to 16), rows per invocation group (`RPS` 2), and the shared activation stage at 160 blocks (`sh_*`), with streaming-read floors.
+- `sweeps/sweep2.jsonl` (3 rounds): the diagnostics, the shared stage at 28 blocks, `W_SHARED`, with floors. `freq2.txt` samples the GPU clock (`/sys/class/devfreq/34f00000.gpu0/cur_freq` over adb): most samples read 460 MHz, so compare rows only within a round.
+- `sweeps/sweep3.jsonl` (3 rounds): `Q50_ALU` alone and with the 28-block stage, the diagnostics with and without it, `TPR 16`. Repetitions were raised four-fold so each process keeps the GPU busy for about 200 ms; `freq3.txt` shows the clock at 1286 MHz for most of the measured time.
+- `sweeps/sweep4.jsonl` (3 rounds): the confirmation on a fresh VM boot: stage sizes 28, 32 and 64 blocks, and the same variants on Q8_0 (65536-, 20864- and 128-row shapes). `freq4.txt`: 39 of 51 samples at 1286 MHz.
+- `end-to-end/`: the r6 and r7 runtimes in the full model, with every decode switch on. `q50r6-*` and `q50r7-*` come from `kernel-study/ab.sh`: 32- and 160-token `llama-bench` runs (one CPU thread) under the timing shim with a GPU timestamp at both ends of every command buffer, three rounds alternating the runtimes. `*-summary.jsonl` gives per-token GPU time as the difference over 128 tokens; its wall time includes model-load variation and is not a throughput measure. `tg128/`: ungated `llama-bench -p 0 -n 128 -r 3 -t 4` alternating the runtimes, logs gzipped. `hostcpu/`: for two runs per runtime, `exp/hostcpu.sh` read utime and stime (clock ticks) of every thread of the Android-side `crosvm_debian` process twice, 8.5 to 9 s apart, during a 480-token decode.
+- `exp/q50_u8_edit.py`: the edit that adds the variants to a llama.cpp tree at the u8 patch, from which `patches/llama-b11960-powervr-u8-mmvq.patch` was regenerated (the decode patch was re-applied on top with only its context lines changing).
+- `sha256.json`: hashes of every file here except itself and this README.
+- `exp/prun`, `exp/ab-r7.sh`, `exp/export_q50_study.py`: the end-to-end runs and their export. `prun` uploads `guest/`, runs `experiment.py doctor` and `inference.py` in a memory-limited unit and collects with `pixel-lab collect`; it expects the SSH helper `px` beside it, which is not included.
+
+## Reading the numbers
+
+The GPU's clock governor leaves short runs at 460 MHz: `sweep1` and `sweep2` were taken before the repetitions were raised, and their absolute times (including the read floors, which varied by up to 1.6x between rounds) are not comparable with `sweep3` and `sweep4`. Within a round, kernels ran back to back on the same clock history. The first `sweep4` attempt was cut short when the Terminal app went to the background and Android stopped the VM; its partial rows are not included.

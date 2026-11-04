@@ -7,7 +7,11 @@
 // Activations use ggml-vulkan's block_q8_1_x4 layout: four f16vec2 (d, d*sum) words, then
 // four blocks of eight int8x4 words, 144 bytes per 128 values. A cluster of TPR invocations
 // shares one weight row and reads whole aligned words: pairs of 32-value blocks, or Q4_K
-// superblocks. One clustered subgroup add finishes the row without shared memory or barriers.
+// superblocks. One clustered subgroup add finishes the row.
+//
+// The host picks a variant per shape: TPR 16 for short matrices, and ACT_SHARED for tall ones,
+// which stages the activations and their sums in shared memory once per workgroup. Shared memory
+// costs occupancy on this GPU, so the stage is sized to the activations it holds (MAX_ACT_BLOCKS).
 #extension GL_EXT_control_flow_attributes : enable
 #extension GL_EXT_integer_dot_product : require
 #extension GL_KHR_shader_subgroup_basic : require
@@ -84,10 +88,31 @@ act_block load_act(const uint blk) {
     return a;
 }
 
+#ifdef ACT_SHARED
+#ifndef MAX_ACT_BLOCKS
+#define MAX_ACT_BLOCKS 32  // the host selects this variant only for rows of at most this many blocks
+#endif
+shared uvec4 act_lo_sh[MAX_ACT_BLOCKS], act_hi_sh[MAX_ACT_BLOCKS];
+shared float act_d_sh[MAX_ACT_BLOCKS];
+shared uint act_sum_sh[MAX_ACT_BLOCKS];
+
+act_block get_act(const uint blk) {
+    act_block a;
+    a.lo = act_lo_sh[blk];
+    a.hi = act_hi_sh[blk];
+    a.d = act_d_sh[blk];
+    a.sum = act_sum_sh[blk];
+    return a;
+}
+#else
+#define get_act load_act
+#endif
+
 #if defined(DATA_A_Q5_0)
-// Spread the low four bits of b to bit 4 of each byte.
+// Bit j of the low four bits of b to bit 8j + 4. The four partial products land on distinct
+// bits, so no carry reaches another byte.
 uint spread4(const uint b) {
-    return (((b & 0xFu) * 0x00204081u) & 0x01010101u) << 4;
+    return ((b & 0xFu) * 0x02040810u) & 0x10101010u;
 }
 
 // One 22-byte block (d at bytes 0-1, qh at 2-5, qs at 6-21); w0 holds bytes 0-3. Scalars
@@ -98,15 +123,16 @@ float block_dot(const uint w0, const uint w1, const uint w2, const uint w3, cons
     const uint qh = (w0 >> 16) | (w1 << 16);
     const uint qs[4] = uint[4]((w1 >> 16) | (w2 << 16), (w2 >> 16) | (w3 << 16),
                                (w3 >> 16) | (w4 << 16), (w4 >> 16) | (w5 << 16));
-    uint xu = 0, xs = 0;
+    // sum(x) adds the eight words bytewise before a single dot: each byte stays below 8 * 32.
+    uint xu = 0, xbytes = 0;
     [[unroll]] for (uint i = 0; i < 4; ++i) {
         const uint x_lo = (qs[i] & 0x0F0F0F0Fu) | spread4(qh >> (4 * i));
         const uint x_hi = ((qs[i] >> 4) & 0x0F0F0F0Fu) | spread4(qh >> (4 * i + 16));
         xu = dotPacked4x8AccSatEXT(x_lo, b.lo[i], xu);
         xu = dotPacked4x8AccSatEXT(x_hi, b.hi[i], xu);
-        xs = dotPacked4x8AccSatEXT(x_lo, ONES, xs);
-        xs = dotPacked4x8AccSatEXT(x_hi, ONES, xs);
+        xbytes += x_lo + x_hi;
     }
+    const uint xs = dotPacked4x8AccSatEXT(xbytes, ONES, 0u);
     // x in [0,31] stores x - 16 and u = y + 128:
     // sum((x - 16) * y) = sum(x * u) - 128 * sum(x) - 16 * (sum(u) - 4096)
     return d * b.d * float(int(xu) - 128 * int(xs) - 16 * (int(b.sum) - 4096));
@@ -176,7 +202,7 @@ float superblock_dot(const uint sb, const uint act0, const uint first_group, con
         const uvec4 q1 = uvec4(data_a[q + 4], data_a[q + 5], data_a[q + 6], data_a[q + 7]);
         [[unroll]] for (uint h = 0; h < 2; ++h) {
             const uint s = 2 * j + h;
-            const act_block b = load_act(act0 + s);
+            const act_block b = get_act(act0 + s);
             const uvec4 n0 = (q0 >> (4 * h)) & 0x0F0F0F0Fu, n1 = (q1 >> (4 * h)) & 0x0F0F0F0Fu;
             uint nu = 0, ns = 0;
             [[unroll]] for (uint i = 0; i < 4; ++i) {
@@ -234,7 +260,7 @@ float q6k_unit_dot(const uint sb_byte, const uint j, const uint act0) {
     float acc = 0;
     [[unroll]] for (uint t = 0; t < 2; ++t) {
         const uint g = g0 + 2 * t;
-        const act_block b = load_act(act0 + 4 * h + g);
+        const act_block b = get_act(act0 + 4 * h + g);
         uint q[8];
         [[unroll]] for (uint i = 0; i < 8; ++i) {
             q[i] = ((ql[i] >> (4 * t)) & 0x0F0F0F0Fu) | (((qh[i] >> (2 * g)) & 0x03030303u) << 4);
@@ -272,6 +298,16 @@ void main() {
     const uint first_row = NUM_ROWS * (gl_WorkGroupID.x + gl_NumWorkGroups.x * gl_WorkGroupID.z);
     const uint blocks = p.ncols / 32;
     const uint units = p.ncols / UNIT_VALUES;
+#ifdef ACT_SHARED
+    for (uint blk = gl_LocalInvocationID.x; blk < blocks; blk += BLOCK_SIZE) {
+        const act_block a = load_act(blk);
+        act_lo_sh[blk] = a.lo;
+        act_hi_sh[blk] = a.hi;
+        act_d_sh[blk] = a.d;
+        act_sum_sh[blk] = a.sum;
+    }
+    barrier();
+#endif
 
     // The row loop has the same trip count in every invocation, which keeps the clustered
     // add uniform; a per-invocation row loop around it measured ~20% slower.
@@ -299,7 +335,7 @@ void main() {
             }
         }
 #else
-        const act_block b0 = load_act(2 * unit), b1 = load_act(2 * unit + 1);
+        const act_block b0 = get_act(2 * unit), b1 = get_act(2 * unit + 1);
         [[unroll]] for (uint r = 0; r < RPS; ++r) {
             const uint row = first_row + slot + r * slots;
             if (row < p.stride_d) {
