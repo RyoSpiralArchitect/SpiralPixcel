@@ -118,7 +118,7 @@ index 66b7557..e537aa5 100644
  void ggml_vk_wait_events(vk_context& ctx, std::vector<vk::Event>&& events);
  vk_subbuffer ggml_vk_tensor_subbuffer(const ggml_backend_vk_context * ctx, const ggml_tensor * tensor, bool allow_misalign = false);
 diff --git a/ggml/src/ggml-vulkan/ggml-vulkan-types.h b/ggml/src/ggml-vulkan/ggml-vulkan-types.h
-index 460e621..3ee69e5 100644
+index 44121b4..e70f5c3 100644
 --- a/ggml/src/ggml-vulkan/ggml-vulkan-types.h
 +++ b/ggml/src/ggml-vulkan/ggml-vulkan-types.h
 @@ -357,6 +357,10 @@ struct vk_queue {
@@ -140,18 +140,18 @@ index 460e621..3ee69e5 100644
      bool float_controls_rte_fp16;
      bool float_controls_denorm_preserve_fp16;
      bool subgroup_basic;
-@@ -721,6 +726,9 @@ struct vk_device_struct {
-     // PowerVR: single-column Q5_0/Q8_0/Q4_K mat-vec on unsigned 4x8 dots (GGML_VK_PWR_U8_MMVQ=1)
+@@ -722,6 +727,9 @@ struct vk_device_struct {
      bool pvr_u8_mmvq;
      std::atomic<uint32_t> pvr_u8_mmvq_logged_types {};  // bit per ggml_type, for the one-time log
+     std::atomic<uint32_t> pvr_u8_mmvq_logged_variants {};  // bit per type and shape variant
 +    bool pvr_attn;             // mul_mat_vec_p021_pvr for single-token attention scores
 +    std::atomic<bool> pvr_attn_logged {};
 +    bool pvr_compute_barrier;  // compute-only destination scope for ggml_vk_sync_buffers
      // 0: default, 1: force mmvq, -1: disable mmvq
      int32_t mmvq_mode;
  
-@@ -804,6 +812,7 @@ struct vk_device_struct {
-     vk_pipeline pipeline_mul_mat_vecq_u8_f32[GGML_TYPE_COUNT];
+@@ -809,6 +817,7 @@ struct vk_device_struct {
+     vk_pipeline pipeline_mul_mat_vecq_u8_tpr16_f32[GGML_TYPE_COUNT];
  
      vk_pipeline pipeline_mul_mat_vec_p021_f16_f32[p021_max_gqa_ratio];
 +    vk_pipeline pipeline_mul_mat_vec_p021_pvr_f16_f32[p021_max_gqa_ratio];
@@ -159,7 +159,7 @@ index 460e621..3ee69e5 100644
      vk_pipeline pipeline_get_rows[GGML_TYPE_COUNT];
      vk_pipeline pipeline_get_rows_f32[GGML_TYPE_COUNT];
 diff --git a/ggml/src/ggml-vulkan/ggml-vulkan.cpp b/ggml/src/ggml-vulkan/ggml-vulkan.cpp
-index 9bcd2b1..bc106b0 100644
+index 221fa84..0e56a0d 100644
 --- a/ggml/src/ggml-vulkan/ggml-vulkan.cpp
 +++ b/ggml/src/ggml-vulkan/ggml-vulkan.cpp
 @@ -1053,6 +1053,7 @@ std::unique_ptr<vk_queue> ggml_vk_create_queue(vk_device& device, uint32_t queue
@@ -225,7 +225,7 @@ index 9bcd2b1..bc106b0 100644
  static void ggml_vk_reset_event(vk_context& ctx, vk::Event& event) {
      VK_LOG_DEBUG("ggml_vk_set_event()");
  
-@@ -3276,6 +3311,13 @@ void ggml_vk_load_shaders(vk_device& device, vk_pipeline requested) {
+@@ -3282,6 +3317,13 @@ void ggml_vk_load_shaders(vk_device& device, vk_pipeline requested) {
              ggml_vk_create_pipeline2(device, device->pipeline_mul_mat_vec_p021_f16_f32[i], "mul_mat_vec_p021_f16_f32"+std::to_string(i+1), mul_mat_vec_p021_f16_f32_len,              mul_mat_vec_p021_f16_f32_data,              "main", mul_mat_vec_num_bindings, sizeof(vk_mat_vec_p021_push_constants), {1, 1, 1}, {device->subgroup_size, i + 1}, 1, true);
          }
      }
@@ -239,7 +239,7 @@ index 9bcd2b1..bc106b0 100644
      ggml_vk_create_pipeline(device, device->pipeline_mul_mat_vec_nc_f16_f32, "mul_mat_vec_nc_f16_f32", mul_mat_vec_nc_f16_f32_len, mul_mat_vec_nc_f16_f32_data, "main", mul_mat_vec_num_bindings, sizeof(vk_mat_vec_nc_push_constants), {1, 1, 1}, {}, 1);
  
      ggml_vk_create_pipeline(device, device->pipeline_norm_f32, "norm_f32", norm_f32_len, norm_f32_data, "main", 2, sizeof(vk_op_unary_push_constants), {1, 1, 1}, {}, 1);
-@@ -4069,6 +4111,11 @@ vk_device ggml_vk_get_device(size_t idx) {
+@@ -4075,6 +4117,11 @@ vk_device ggml_vk_get_device(size_t idx) {
          const char* GGML_VK_PREFER_HOST_MEMORY = getenv("GGML_VK_PREFER_HOST_MEMORY");
          device->prefer_host_memory = GGML_VK_PREFER_HOST_MEMORY != nullptr;
  
@@ -251,7 +251,7 @@ index 9bcd2b1..bc106b0 100644
          const char* GGML_VK_DISABLE_HOST_VISIBLE_VIDMEM = getenv("GGML_VK_DISABLE_HOST_VISIBLE_VIDMEM");
          device->disable_host_visible_vidmem = GGML_VK_DISABLE_HOST_VISIBLE_VIDMEM != nullptr;
  
-@@ -4173,6 +4220,7 @@ vk_device ggml_vk_get_device(size_t idx) {
+@@ -4179,6 +4226,7 @@ vk_device ggml_vk_get_device(size_t idx) {
          const bool pvr_u8_candidate = getenv("GGML_VK_PWR_U8_MMVQ") != nullptr && base_props.vendorID == 0x1010 &&
                                        base_props.apiVersion >= VK_API_VERSION_1_3 &&
                                        vk::enumerateInstanceVersion() >= VK_API_VERSION_1_3;
@@ -259,7 +259,7 @@ index 9bcd2b1..bc106b0 100644
  
          vk::PhysicalDeviceProperties2 props2;
          vk::PhysicalDeviceMaintenance3Properties props3;
-@@ -4598,6 +4646,13 @@ vk_device ggml_vk_get_device(size_t idx) {
+@@ -4604,6 +4652,13 @@ vk_device ggml_vk_get_device(size_t idx) {
                                device->subgroup_arithmetic && device->subgroup_clustered &&
                                device->subgroup_size_control && device->subgroup_require_full_support &&
                                device->subgroup_min_size <= 128 && device->subgroup_max_size >= 128;
@@ -273,7 +273,7 @@ index 9bcd2b1..bc106b0 100644
  
  #if defined(VK_KHR_cooperative_matrix)
          device->coopmat_support = device->coopmat_support && coopmat_features.cooperativeMatrix;
-@@ -7128,6 +7183,20 @@ static void ggml_vk_mul_mat_vec_p021_f16_f32(ggml_backend_vk_context * ctx, vk_c
+@@ -7150,6 +7205,20 @@ static void ggml_vk_mul_mat_vec_p021_f16_f32(ggml_backend_vk_context * ctx, vk_c
  
      init_pushconst_tensor_offsets(ctx, pc, src0, src1, nullptr, nullptr, cgraph->nodes[node_idx + ctx->num_additional_fused_ops]);
  
@@ -294,7 +294,7 @@ index 9bcd2b1..bc106b0 100644
      uint32_t workgroups_z = (uint32_t)ne12;
      // When gqa_ratio > 1, each invocation does multiple rows and we can launch fewer workgroups
      if (gqa_ratio > 1) {
-@@ -7760,6 +7829,7 @@ static void ggml_vk_mul_mat_id_q_f16(ggml_backend_vk_context * ctx, vk_context&
+@@ -7782,6 +7851,7 @@ static void ggml_vk_mul_mat_id_q_f16(ggml_backend_vk_context * ctx, vk_context&
              if (y_needs_k_padding) {
                  GGML_ASSERT(y_sz % 4 == 0);
                  // Zero B padding because clamping only A can produce 0 * Inf or NaN.
@@ -302,7 +302,7 @@ index 9bcd2b1..bc106b0 100644
                  subctx->s->buffer->buf.fillBuffer(d_Y->buffer, 0, y_sz, 0);
                  ggml_vk_sync_buffers(ctx, subctx);
                  const ggml_tensor y_staged_dst = make_y_staged_dst();
-@@ -13460,6 +13530,7 @@ static void ggml_backend_vk_set_tensor_2d_async(ggml_backend_t backend, ggml_ten
+@@ -13482,6 +13552,7 @@ static void ggml_backend_vk_set_tensor_2d_async(ggml_backend_t backend, ggml_ten
              }
          }
  
@@ -310,7 +310,7 @@ index 9bcd2b1..bc106b0 100644
          cpy_ctx->s->buffer->buf.copyBuffer(ctx->sync_staging->buffer, buf->buffer, slices);
  
          if (size == stride_data) {
-@@ -13516,6 +13587,7 @@ static void ggml_backend_vk_get_tensor_2d_async(ggml_backend_t backend, const gg
+@@ -13538,6 +13609,7 @@ static void ggml_backend_vk_get_tensor_2d_async(ggml_backend_t backend, const gg
              }
          }
  
@@ -431,10 +431,10 @@ index 0000000..cf10281
 +    }
 +}
 diff --git a/ggml/src/ggml-vulkan/vulkan-shaders/vulkan-shaders-gen.cpp b/ggml/src/ggml-vulkan/vulkan-shaders/vulkan-shaders-gen.cpp
-index b6c18a6..94ad3c7 100644
+index e246546..6934bb4 100644
 --- a/ggml/src/ggml-vulkan/vulkan-shaders/vulkan-shaders-gen.cpp
 +++ b/ggml/src/ggml-vulkan/vulkan-shaders/vulkan-shaders-gen.cpp
-@@ -852,6 +852,7 @@ void process_shaders() {
+@@ -856,6 +856,7 @@ void process_shaders() {
  
      string_to_spv("mul_mat_vec_p021_f16_f32_subgroup_add", "mul_mat_vec_p021.comp", {{"A_TYPE", "float16_t"}, {"A_TYPEV4", "f16vec4"}, {"B_TYPE", "float"}, {"B_TYPEV4", "vec4"}, {"D_TYPE", "float"}, {"USE_SUBGROUP_ADD", "1"}});
      string_to_spv("mul_mat_vec_p021_f16_f32",              "mul_mat_vec_p021.comp", {{"A_TYPE", "float16_t"}, {"A_TYPEV4", "f16vec4"}, {"B_TYPE", "float"}, {"B_TYPEV4", "vec4"}, {"D_TYPE", "float"}});

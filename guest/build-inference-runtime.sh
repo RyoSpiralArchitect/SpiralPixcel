@@ -215,6 +215,7 @@ if sys.argv[4] == "1":
     data["patches"] += ["powervr-u8-mmvq"]
     data["powervr_u8_mmvq"] = True
     data["powervr_u8_mmvq_types"] = ["q4_K", "q5_0", "q6_K", "q8_0"]
+    data["powervr_u8_mmvq_variants"] = ["q5_0/act_shared", "q5_0/tpr16", "q8_0/act_shared", "q8_0/tpr16"]
 if sys.argv[7] == "1":
     data["patches"] += ["powervr-decode"]
     data["powervr_decode"] = True
@@ -241,6 +242,15 @@ if [ "$u8_mmvq" -eq 1 ]; then
             echo "The unsigned mat-vec kernel did not run for $type_name; see kernel-check-u8.log" >&2
             exit 1
         fi
+    done
+    # The shape variants are picked by row count; the 4864- and 128-row cases reach both.
+    for type_name in q5_0 q8_0; do
+        for variant in act_shared tpr16; do
+            if ! grep -q "ggml_vulkan: mul_mat_vecq_u8 variant $variant selected for $type_name\$" "$stage/kernel-check-u8.log"; then
+                echo "The unsigned mat-vec kernel's $variant variant did not run for $type_name; see kernel-check-u8.log" >&2
+                exit 1
+            fi
+        done
     done
 fi
 if [ "$decode" -eq 1 ]; then

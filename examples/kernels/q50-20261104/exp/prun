@@ -1,0 +1,26 @@
+#!/bin/zsh
+# prun -- inference.py args...
+# Same guest job as `pixel-lab run inference` (doctor, then inference.py on the same source
+# snapshot), but run inside a memory-limited user unit with swap allowed, so the Terminal VM
+# stays under Android's 4 GiB MemoryLimiter while in the background. Collects with
+# `pixel-lab collect` into ~/SpiralPixcel/runs/<id>/.
+set -e
+SP=${0:A:h}
+[[ "$1" == "--" ]] && shift
+run_id=$(date -u +%Y%m%dT%H%M%SZ)-$(openssl rand -hex 6)
+base=".local/share/SpiralPixcel/runs/$run_id"
+cd ~/SpiralPixcel
+(cd guest && find . -type f \( -name '*.comp' -o -name '*.cpp' -o -name '*.py' \) | sort | COPYFILE_DISABLE=1 tar --no-xattrs -czf - -T -) |
+  $SP/px -t 60 "umask 077 && mkdir -p ~/.local/share/SpiralPixcel/runs && mkdir $base && cd $base && mkdir result && tar -xzf - 2>/dev/null"
+args="$*"  # plain paths and flags only
+$SP/px -t 60 "sudo sh -c 'sync; echo 3 > /proc/sys/vm/drop_caches'; systemd-run --user --unit=spx-run-${run_id##*-} --collect \
+  -p MemoryHigh=1900M -p MemoryMax=2100M -p MemorySwapMax=2500M --working-directory=\$HOME/$base \
+  sh -c '{ python3 experiment.py doctor && cp result/result.json result/doctor.json && python3 inference.py $args; } > result/build-run.log 2>&1' >/dev/null 2>&1; echo $run_id" </dev/null
+while true; do
+  sleep 15
+  state=$($SP/px -t 20 "systemctl --user is-active spx-run-${run_id##*-} 2>/dev/null || true" </dev/null 2>/dev/null)
+  host=$(perl -e 'alarm 12; exec @ARGV' adb -d shell 'for p in $(pidof crosvm_debian); do grep VmRSS /proc/$p/status; done' 2>/dev/null | awk '{printf "%d", $2/1024}')
+  echo "$(date +%H:%M:%S) $run_id ${state:-unreachable} host=${host}MiB"
+  [[ "$state" == "active" || "$state" == "activating" ]] || break
+done
+./pixel-lab collect "$run_id"

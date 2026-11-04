@@ -190,7 +190,8 @@ int main(int argc, char** argv) {
         for (auto type : {GGML_TYPE_F32, GGML_TYPE_Q4_K, GGML_TYPE_Q5_0, GGML_TYPE_Q6_K, GGML_TYPE_Q8_0}) {
             for (int64_t k : {768, 896, 1024}) {
                 if (k % ggml_blck_size(type)) continue;
-                for (int64_t m : {128, 896}) {
+                // 4864 rows reach the tall-matrix variant of the unsigned PowerVR kernel.
+                for (int64_t m : {128, 896, 4864}) {
                     for (int64_t n : {1, 2}) {
                         if (!check_case(cpu, gpu, type, k, m, n)) ++failed;
                         ++cases;
