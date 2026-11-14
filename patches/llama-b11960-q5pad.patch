@@ -1,0 +1,188 @@
+diff --git a/ggml/src/ggml-vulkan/ggml-vulkan-types.h b/ggml/src/ggml-vulkan/ggml-vulkan-types.h
+index 6194ade..4717571 100644
+--- a/ggml/src/ggml-vulkan/ggml-vulkan-types.h
++++ b/ggml/src/ggml-vulkan/ggml-vulkan-types.h
+@@ -731,6 +731,9 @@ struct vk_device_struct {
+     bool pvr_u8_mmvq;
+     std::atomic<uint32_t> pvr_u8_mmvq_logged_types {};  // bit per ggml_type, for the one-time log
+     std::atomic<uint32_t> pvr_u8_mmvq_logged_variants {};  // bit per type and shape variant
++    bool pvr_q5pad;  // repack Q5_0 weights to 24-byte blocks at upload (GGML_VK_PWR_Q5_PAD)
++    std::unordered_map<const ggml_tensor *, vk_buffer> q5pad_buffers;
++    std::atomic<bool> pvr_q5pad_logged {};
+     bool pvr_attn;             // mul_mat_vec_p021_pvr for single-token attention scores
+     std::atomic<bool> pvr_attn_logged {};
+     bool pvr_compute_barrier;  // compute-only destination scope for ggml_vk_sync_buffers
+@@ -820,6 +823,10 @@ struct vk_device_struct {
+     vk_pipeline pipeline_mul_mat_vecq_u8_act_shared_f32[GGML_TYPE_COUNT];
+     vk_pipeline pipeline_mul_mat_vecq_u8_tpr16_f32[GGML_TYPE_COUNT];
+ 
++    vk_pipeline pipeline_mul_mat_vecq_u8_q5pad_f32;
++    vk_pipeline pipeline_mul_mat_vecq_u8_q5pad_act_shared_f32;
++    vk_pipeline pipeline_mul_mat_vecq_u8_q5pad_tpr16_f32;
++
+     vk_pipeline pipeline_mul_mat_vec_p021_f16_f32[p021_max_gqa_ratio];
+     vk_pipeline pipeline_mul_mat_vec_p021_pvr_f16_f32[p021_max_gqa_ratio];
+     vk_pipeline pipeline_mul_mat_vec_nc_f16_f32;
+diff --git a/ggml/src/ggml-vulkan/ggml-vulkan.cpp b/ggml/src/ggml-vulkan/ggml-vulkan.cpp
+index 420af4d..b17b67f 100644
+--- a/ggml/src/ggml-vulkan/ggml-vulkan.cpp
++++ b/ggml/src/ggml-vulkan/ggml-vulkan.cpp
+@@ -2970,6 +2970,10 @@ void ggml_vk_load_shaders(vk_device& device, vk_pipeline requested) {
+         ggml_vk_create_pipeline(device, device->pipeline_mul_mat_vecq_u8_tpr16_f32[GGML_TYPE_Q5_0], "mul_mat_vecq_u8_q5_0_tpr16_f32", mul_mat_vecq_u8_q5_0_tpr16_f32_len, mul_mat_vecq_u8_q5_0_tpr16_f32_data, "main", mul_mat_vec_num_bindings, sizeof(vk_mat_vec_push_constants), {8, 1, 1}, {128, 8, 1}, 1, true, true, 128);
+         ggml_vk_create_pipeline(device, device->pipeline_mul_mat_vecq_u8_act_shared_f32[GGML_TYPE_Q8_0], "mul_mat_vecq_u8_q8_0_act_shared_f32", mul_mat_vecq_u8_q8_0_act_shared_f32_len, mul_mat_vecq_u8_q8_0_act_shared_f32_data, "main", mul_mat_vec_num_bindings, sizeof(vk_mat_vec_push_constants), {32, 1, 1}, {128, 32, 1}, 1, true, true, 128);
+         ggml_vk_create_pipeline(device, device->pipeline_mul_mat_vecq_u8_tpr16_f32[GGML_TYPE_Q8_0], "mul_mat_vecq_u8_q8_0_tpr16_f32", mul_mat_vecq_u8_q8_0_tpr16_f32_len, mul_mat_vecq_u8_q8_0_tpr16_f32_data, "main", mul_mat_vec_num_bindings, sizeof(vk_mat_vec_push_constants), {8, 1, 1}, {128, 8, 1}, 1, true, true, 128);
++        // Q5_0 repacked to 24-byte blocks; same workgroup shapes as the unpacked variants.
++        ggml_vk_create_pipeline(device, device->pipeline_mul_mat_vecq_u8_q5pad_f32, "mul_mat_vecq_u8_q5pad_f32", mul_mat_vecq_u8_q5pad_f32_len, mul_mat_vecq_u8_q5pad_f32_data, "main", mul_mat_vec_num_bindings, sizeof(vk_mat_vec_push_constants), {32, 1, 1}, {128, 32, 1}, 1, true, true, 128);
++        ggml_vk_create_pipeline(device, device->pipeline_mul_mat_vecq_u8_q5pad_act_shared_f32, "mul_mat_vecq_u8_q5pad_act_shared_f32", mul_mat_vecq_u8_q5pad_act_shared_f32_len, mul_mat_vecq_u8_q5pad_act_shared_f32_data, "main", mul_mat_vec_num_bindings, sizeof(vk_mat_vec_push_constants), {32, 1, 1}, {128, 32, 1}, 1, true, true, 128);
++        ggml_vk_create_pipeline(device, device->pipeline_mul_mat_vecq_u8_q5pad_tpr16_f32, "mul_mat_vecq_u8_q5pad_tpr16_f32", mul_mat_vecq_u8_q5pad_tpr16_f32_len, mul_mat_vecq_u8_q5pad_tpr16_f32_data, "main", mul_mat_vec_num_bindings, sizeof(vk_mat_vec_push_constants), {8, 1, 1}, {128, 8, 1}, 1, true, true, 128);
+     }
+ #endif
+ 
+@@ -4659,6 +4663,8 @@ vk_device ggml_vk_get_device(size_t idx) {
+                            device->subgroup_min_size <= 128 && device->subgroup_max_size >= 128;
+         device->pvr_compute_barrier = getenv("GGML_VK_PWR_BARRIER") != nullptr &&
+                                       device->driver_id == vk::DriverId::eImaginationProprietary;
++        // Repack Q5_0 weights into 24-byte blocks so the u8 mat-vec never crosses a word.
++        device->pvr_q5pad = device->pvr_u8_mmvq && getenv("GGML_VK_PWR_Q5_PAD") != nullptr;
+ 
+ #if defined(VK_KHR_cooperative_matrix)
+         device->coopmat_support = device->coopmat_support && coopmat_features.cooperativeMatrix;
+@@ -6908,6 +6914,7 @@ static void ggml_vk_mul_mat_vec_q_f16(ggml_backend_vk_context * ctx, vk_context&
+     // single-column Q5_0/Q8_0/Q4_K/Q6_K products use the unsigned kernel on Q8_1 activations instead.
+     // Q6_K superblocks are 210 bytes; the kernel reads d through whole words, so the tensor must end on one.
+     vk_pipeline dmmv_u8 = nullptr;
++    vk_buffer q5pad_buf;
+     if (ctx->device->pvr_u8_mmvq && !swap_inputs && ne11 == 1 && ne12 * ne13 == 1 && ne00 % 64 == 0 &&
+         (src0->type == GGML_TYPE_Q5_0 || src0->type == GGML_TYPE_Q8_0 || src0->type == GGML_TYPE_Q4_K ||
+          (src0->type == GGML_TYPE_Q6_K && ggml_nbytes(src0) % 4 == 0)) &&
+@@ -6926,6 +6933,18 @@ static void ggml_vk_mul_mat_vec_q_f16(ggml_backend_vk_context * ctx, vk_context&
+             variant = "tpr16";
+             variant_index = 1;
+         }
++        // Repacked Q5_0 (24-byte blocks) uses the same variants on the padded layout.
++        const auto q5pad_it = ctx->device->q5pad_buffers.find(src0);
++        // Keyed by tensor pointer, so also check the size in case a freed tensor's address was reused.
++        const bool use_q5pad = src0->type == GGML_TYPE_Q5_0 && q5pad_it != ctx->device->q5pad_buffers.end() &&
++                               q5pad_it->second->size == ggml_nbytes(src0) / 22 * 24;
++        if (use_q5pad) {
++            q5pad_buf = q5pad_it->second;
++            dmmv_u8 = variant == nullptr ? ctx->device->pipeline_mul_mat_vecq_u8_q5pad_f32
++                    : variant_index == 1  ? ctx->device->pipeline_mul_mat_vecq_u8_q5pad_tpr16_f32
++                                          : ctx->device->pipeline_mul_mat_vecq_u8_q5pad_act_shared_f32;
++            variant = variant == nullptr ? "q5pad" : variant_index == 1 ? "tpr16+q5pad" : "act_shared+q5pad";
++        }
+         quantize_y = dmmv_u8 != nullptr;
+         // Checkers look for these lines to confirm the kernel ran rather than a silent fallback.
+         const uint32_t bit = 1u << (src0->type % 32);
+@@ -7008,6 +7027,8 @@ static void ggml_vk_mul_mat_vec_q_f16(ggml_backend_vk_context * ctx, vk_context&
+ 
+     if (qx_needs_dequant) {
+         d_X = { ctx->prealloc_x, 0, ctx->prealloc_x->size };
++    } else if (q5pad_buf) {
++        d_X = { q5pad_buf, 0, q5pad_buf->size };
+     } else {
+         d_X = d_Qx;
+         GGML_ASSERT(qx_sz == x_sz);
+@@ -13307,6 +13328,28 @@ void ggml_backend_vk_buffer_set_tensor(ggml_backend_buffer_t buffer, ggml_tensor
+         return;
+     }
+ 
++    // Q5_0 repack: keep the standard upload, and also build a 24-byte-block copy that the
++    // u8 mat-vec binds directly. Only whole contiguous tensors repack; views keep the old path.
++    if (buf_ctx->device->pvr_q5pad && tensor->type == GGML_TYPE_Q5_0 && !tensor->view_src &&
++        offset == 0 && size == ggml_nbytes(tensor) && ggml_is_contiguous(tensor) && tensor->ne[0] % 64 == 0) {
++        const size_t nblocks = size / 22;
++        std::vector<char> repacked(nblocks * 24);
++        const char * src = (const char *)data;
++        for (size_t i = 0; i < nblocks; ++i) {
++            char * dst = &repacked[i * 24];
++            memcpy(dst,     src + i * 22,     2);   // d
++            dst[2] = 0; dst[3] = 0;
++            memcpy(dst + 4, src + i * 22 + 2, 4);   // qh
++            memcpy(dst + 8, src + i * 22 + 6, 16);  // qs
++        }
++        vk_buffer padbuf = ggml_vk_create_buffer_device(buf_ctx->device, repacked.size());
++        ggml_vk_buffer_write(padbuf, 0, repacked.data(), repacked.size());
++        buf_ctx->device->q5pad_buffers[tensor] = padbuf;
++        if (!buf_ctx->device->pvr_q5pad_logged.exchange(true)) {
++            GGML_LOG_INFO("ggml_vulkan: q5pad repack enabled for q5_0 weights (24-byte blocks)\n");
++        }
++    }
++
+     ggml_vk_buffer_write(buf, vk_tensor_offset(tensor) + tensor->view_offs + offset, data, size);
+ }
+ 
+diff --git a/ggml/src/ggml-vulkan/vulkan-shaders/mul_mat_vecq_u8.comp b/ggml/src/ggml-vulkan/vulkan-shaders/mul_mat_vecq_u8.comp
+index 7fb1c01..1eb4c7c 100644
+--- a/ggml/src/ggml-vulkan/vulkan-shaders/mul_mat_vecq_u8.comp
++++ b/ggml/src/ggml-vulkan/vulkan-shaders/mul_mat_vecq_u8.comp
+@@ -51,7 +51,11 @@ layout(push_constant) uniform parameter {
+ 
+ // A unit is the run of weights one invocation reads at a time.
+ #if defined(DATA_A_Q5_0)
++#ifdef Q5PAD
++#define BLOCK_BYTES 24
++#else
+ #define BLOCK_BYTES 22
++#endif
+ #define UNIT_VALUES 64
+ #elif defined(DATA_A_Q8_0)
+ #define BLOCK_BYTES 34
+@@ -117,6 +121,7 @@ uint spread4(const uint b) {
+ 
+ // One 22-byte block (d at bytes 0-1, qh at 2-5, qs at 6-21); w0 holds bytes 0-3. Scalars
+ // rather than arrays: the PowerVR compiler keeps them in registers and runs ~20% faster.
++#ifndef Q5PAD
+ float block_dot(const uint w0, const uint w1, const uint w2, const uint w3, const uint w4, const uint w5,
+                 const act_block b) {
+     const float d = unpackHalf2x16(w0).x;
+@@ -149,6 +154,33 @@ float pair_dot(const uint base, const act_block b0, const act_block b1) {
+                      (p8 >> 16) | (p9 << 16), (p9 >> 16) | (p10 << 16), p10 >> 16, b1);
+ }
+ #else
++// Repacked 24-byte blocks: {f16 d; u16 pad; u32 qh; u8 qs[16]}, so every block starts on a
++// word boundary and a pair is twelve aligned words. The dot is identical to the Q5_0 path.
++float block_dot(const uint w0, const uint w1, const uint w2, const uint w3, const uint w4, const uint w5,
++                const act_block b) {
++    const float d = unpackHalf2x16(w0).x;
++    const uint qh = w1;
++    const uint qs[4] = uint[4](w2, w3, w4, w5);
++    uint xu = 0, xbytes = 0;
++    [[unroll]] for (uint i = 0; i < 4; ++i) {
++        const uint x_lo = (qs[i] & 0x0F0F0F0Fu) | spread4(qh >> (4 * i));
++        const uint x_hi = ((qs[i] >> 4) & 0x0F0F0F0Fu) | spread4(qh >> (4 * i + 16));
++        xu = dotPacked4x8AccSatEXT(x_lo, b.lo[i], xu);
++        xu = dotPacked4x8AccSatEXT(x_hi, b.hi[i], xu);
++        xbytes += x_lo + x_hi;
++    }
++    const uint xs = dotPacked4x8AccSatEXT(xbytes, ONES, 0u);
++    return d * b.d * float(int(xu) - 128 * int(xs) - 16 * (int(b.sum) - 4096));
++}
++
++float pair_dot(const uint base, const act_block b0, const act_block b1) {
++    return block_dot(data_a[base], data_a[base + 1], data_a[base + 2], data_a[base + 3],
++                     data_a[base + 4], data_a[base + 5], b0) +
++           block_dot(data_a[base + 6], data_a[base + 7], data_a[base + 8], data_a[base + 9],
++                     data_a[base + 10], data_a[base + 11], b1);
++}
++#endif
++#else
+ // One 34-byte block: d, then 32 int8 values, given as the scale and eight aligned words.
+ float block_dot(const float d, const uint qs[8], const act_block b) {
+     uint xu = 0, xs = 0;
+diff --git a/ggml/src/ggml-vulkan/vulkan-shaders/vulkan-shaders-gen.cpp b/ggml/src/ggml-vulkan/vulkan-shaders/vulkan-shaders-gen.cpp
+index 6934bb4..3d84074 100644
+--- a/ggml/src/ggml-vulkan/vulkan-shaders/vulkan-shaders-gen.cpp
++++ b/ggml/src/ggml-vulkan/vulkan-shaders/vulkan-shaders-gen.cpp
+@@ -830,6 +830,11 @@ void process_shaders() {
+                 string_to_spv("mul_mat_vecq_u8_" + tname + "_act_shared_f32", "mul_mat_vecq_u8.comp", {{data_a_key, "1"}, {"ACT_SHARED", "1"}});
+                 string_to_spv("mul_mat_vecq_u8_" + tname + "_tpr16_f32", "mul_mat_vecq_u8.comp", {{data_a_key, "1"}, {"TPR", "16"}});
+             }
++            if (tname == "q5_0") {
++                string_to_spv("mul_mat_vecq_u8_q5pad_f32", "mul_mat_vecq_u8.comp", {{data_a_key, "1"}, {"Q5PAD", "1"}});
++                string_to_spv("mul_mat_vecq_u8_q5pad_act_shared_f32", "mul_mat_vecq_u8.comp", {{data_a_key, "1"}, {"Q5PAD", "1"}, {"ACT_SHARED", "1"}});
++                string_to_spv("mul_mat_vecq_u8_q5pad_tpr16_f32", "mul_mat_vecq_u8.comp", {{data_a_key, "1"}, {"Q5PAD", "1"}, {"TPR", "16"}});
++            }
+         }
+ #endif
+ 

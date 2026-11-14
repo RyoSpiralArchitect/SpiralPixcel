@@ -311,6 +311,8 @@ def main():
     parser.add_argument("--powervr-decode", action="store_true",
                         help="patched PowerVR decode path: attention-score kernel, compute-only barriers, "
                              "device-local buffers")
+    parser.add_argument("--q5pad", action="store_true",
+                        help="experimental: run the unsigned mat-vec on Q5_0 repacked to 24-byte blocks")
     parser.add_argument("--flash-attn", choices=("off", "on"), default="off")
     parser.add_argument("--decode-only", action="store_true")
     parser.add_argument("--repack", type=int, choices=(0, 1), default=1)
@@ -334,6 +336,8 @@ def main():
     if args.powervr_decode and args.profile == "host-memory":
         # The decode path places device buffers in device-local memory, which would override the profile.
         parser.error("--powervr-decode cannot be combined with --profile host-memory")
+    if args.q5pad and not args.powervr_decode:
+        parser.error("--q5pad requires --powervr-decode, the runtime it is built into")
     if (args.split_output or args.sync_transfers) and args.repack != 1:
         parser.error("checked transfer profiles require --repack 1 to match the pinned model checker's default")
     OUT.mkdir(exist_ok=True)
@@ -359,7 +363,7 @@ def main():
     environment = os.environ.copy()
     for key in ("GGML_VK_PREFER_HOST_MEMORY", "GGML_VK_FORCE_MMVQ", "GGML_VK_DISABLE_MMVQ",
                 "GGML_VK_PWR_MMV_WG", "GGML_VK_PWR_RMS_SUBGROUPS", "GGML_VK_PWR_U8_MMVQ", "GGML_VK_PERF_LOGGER", "GGML_VK_DISABLE_F16", "GGML_VK_SPLIT_OUTPUT", "GGML_VK_DISABLE_ASYNC", "GGML_VK_SERIALIZE_SUBMISSIONS", "GGML_VK_WAIT_IDLE",
-                "GGML_VK_PWR_ATTN", "GGML_VK_PWR_BARRIER", "GGML_VK_PREFER_DEVICE_LOCAL"):
+                "GGML_VK_PWR_ATTN", "GGML_VK_PWR_BARRIER", "GGML_VK_PREFER_DEVICE_LOCAL", "GGML_VK_PWR_Q5_PAD"):
         environment.pop(key, None)
     environment.pop("GGML_SCHED_DEBUG", None)
     environment["GGML_VK_MEMORY_LOGGER"] = "1"
@@ -384,6 +388,8 @@ def main():
     if args.powervr_decode:
         for key in ("GGML_VK_PWR_ATTN", "GGML_VK_PWR_BARRIER", "GGML_VK_PREFER_DEVICE_LOCAL"):
             environment[key] = "1"
+    if args.q5pad:
+        environment["GGML_VK_PWR_Q5_PAD"] = "1"
     paths = [str(args.runtime), *map(str, args.library_path)]
     if environment.get("LD_LIBRARY_PATH"):
         paths.append(environment["LD_LIBRARY_PATH"])
@@ -407,6 +413,8 @@ def main():
                 raise ValueError("runtime lacks the PowerVR unsigned mat-vec patch; rebuild with --powervr-u8-mmvq")
             if args.powervr_decode and marker.get("powervr_decode") is not True:
                 raise ValueError("runtime lacks the PowerVR decode patch; rebuild with --powervr-decode")
+            if args.q5pad and marker.get("powervr_q5pad") is not True:
+                raise ValueError("runtime lacks the Q5_0 repack patch; rebuild with --powervr-q5pad")
             if marker.get("libggml-vulkan_sha256") != sha256(args.runtime / "libggml-vulkan.so"):
                 raise ValueError("patched runtime identity differs from its build receipt")
             if marker.get("check-mmv_sha256") != sha256(args.runtime / "check-mmv"):
@@ -421,6 +429,10 @@ def main():
                 subprocess.run([str(args.runtime / "check-mmv"), str(args.runtime)], env=environment,
                                stdout=out, stderr=err, check=True, timeout=180)
             variants = marker.get("powervr_u8_mmvq_variants") if args.u8_mmvq else None
+            if args.q5pad and variants:
+                # Repacked Q5_0 logs its variant with a q5pad suffix; a missing suffix means the
+                # repack did not happen and the gate should fail.
+                variants = [v + "+q5pad" if v.startswith("q5_0/") else v for v in variants]
             result["kernel_check"] = check_kernel_gate((OUT / "kernel-check.jsonl").read_text(), args.u8_mmvq,
                                                        args.powervr_decode, bool(variants))
             if args.u8_mmvq:

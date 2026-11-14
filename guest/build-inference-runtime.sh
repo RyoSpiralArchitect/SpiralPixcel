@@ -7,9 +7,10 @@ set -eu
 # Each check below sets the switches it means to test; inherited ones would change the path.
 unset GGML_VK_PWR_U8_MMVQ GGML_VK_PWR_MMV_WG GGML_VK_PWR_RMS_SUBGROUPS GGML_VK_FORCE_MMVQ GGML_VK_DISABLE_MMVQ \
     GGML_VK_DISABLE_F16 GGML_VK_PREFER_HOST_MEMORY GGML_VK_SPLIT_OUTPUT GGML_VK_DISABLE_ASYNC GGML_VK_WAIT_IDLE \
-    GGML_VK_SERIALIZE_SUBMISSIONS GGML_VK_PERF_LOGGER GGML_VK_PWR_ATTN GGML_VK_PWR_BARRIER GGML_VK_PREFER_DEVICE_LOCAL
-if [ "$#" -lt 3 ] || [ "$#" -gt 7 ]; then
-    echo "Usage: $0 SOURCE STOCK_RUNTIME NEW_RUNTIME [--output-row-split] [--powervr-u8-mmvq] [--powervr-decode] [--resume]" >&2
+    GGML_VK_SERIALIZE_SUBMISSIONS GGML_VK_PERF_LOGGER GGML_VK_PWR_ATTN GGML_VK_PWR_BARRIER GGML_VK_PREFER_DEVICE_LOCAL \
+    GGML_VK_PWR_Q5_PAD
+if [ "$#" -lt 3 ] || [ "$#" -gt 8 ]; then
+    echo "Usage: $0 SOURCE STOCK_RUNTIME NEW_RUNTIME [--output-row-split] [--powervr-u8-mmvq] [--powervr-decode] [--powervr-q5pad] [--resume]" >&2
     exit 2
 fi
 src=$(realpath "$1")
@@ -19,12 +20,14 @@ shift 3
 split_output=0
 u8_mmvq=0
 decode=0
+q5pad=0
 resume=0
 for option in "$@"; do
     case "$option" in
         --output-row-split) split_output=1 ;;
         --powervr-u8-mmvq) u8_mmvq=1 ;;
         --powervr-decode) decode=1 ;;
+        --powervr-q5pad) q5pad=1 ;;
         --resume) resume=1 ;;
         *) echo "Unknown option: $option" >&2; exit 2 ;;
     esac
@@ -33,6 +36,12 @@ repo=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
 if [ "$decode" -eq 1 ] && { [ "$split_output" -eq 0 ] || [ "$u8_mmvq" -eq 0 ]; }; then
     # The decode patch applies on top of both: it edits their staging copies and device flags.
     echo "--powervr-decode needs --output-row-split and --powervr-u8-mmvq" >&2
+    exit 2
+fi
+if [ "$q5pad" -eq 1 ] && [ "$decode" -eq 0 ]; then
+    # q5pad repacks weights only for the unsigned mat-vec kernel, and its patch context is the
+    # post-decode device setup.
+    echo "--powervr-q5pad needs --powervr-decode" >&2
     exit 2
 fi
 if [ -e "$out" ] || [ -L "$out" ]; then
@@ -54,6 +63,11 @@ if [ "$decode" -eq 1 ]; then
     # host-overhead records per-token input uploads instead of doing a blocking submit per
     # tensor, and drops the per-submission command buffer and pool resets.
     patch_names="$patch_names powervr-decode attn-out-view host-overhead invalidate-range"
+fi
+if [ "$q5pad" -eq 1 ]; then
+    # Experimental, opt-in at run time with GGML_VK_PWR_Q5_PAD=1: repacks Q5_0 weights into
+    # 24-byte blocks at upload so the u8 mat-vec never realigns an odd block across words.
+    patch_names="$patch_names q5pad"
 fi
 patch_list=""
 for patch_name in $patch_names; do
@@ -180,7 +194,7 @@ if [ "$split_output" -eq 1 ]; then
     c++ -std=c++17 -O1 -I "$src/include" -I "$src/ggml/include" "$repo/guest/check_model.cpp" \
         -L "$stage" -lllama -lggml -lggml-base -o "$stage/check-model"
 fi
-python3 - "$stage" "$source_hash" "$split_output" "$u8_mmvq" "$resume" "$patch_list" "$decode" <<'PY'
+python3 - "$stage" "$source_hash" "$split_output" "$u8_mmvq" "$resume" "$patch_list" "$decode" "$q5pad" <<'PY'
 import hashlib
 import json
 from pathlib import Path
@@ -223,6 +237,9 @@ if sys.argv[4] == "1":
 if sys.argv[7] == "1":
     data["patches"] += ["powervr-decode", "attn-out-view", "host-overhead", "invalidate-range"]
     data["powervr_decode"] = True
+if sys.argv[8] == "1":
+    data["patches"] += ["q5pad"]
+    data["powervr_q5pad"] = True
 (p / "spiralpixcel-kernel.json").write_text(json.dumps(data, indent=2) + "\n")
 PY
 if [ "$split_output" -eq 1 ]; then
