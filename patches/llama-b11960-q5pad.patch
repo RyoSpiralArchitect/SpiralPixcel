@@ -24,7 +24,7 @@ index 6194ade..4717571 100644
      vk_pipeline pipeline_mul_mat_vec_p021_pvr_f16_f32[p021_max_gqa_ratio];
      vk_pipeline pipeline_mul_mat_vec_nc_f16_f32;
 diff --git a/ggml/src/ggml-vulkan/ggml-vulkan.cpp b/ggml/src/ggml-vulkan/ggml-vulkan.cpp
-index 420af4d..6505fab 100644
+index 420af4d..59a2133 100644
 --- a/ggml/src/ggml-vulkan/ggml-vulkan.cpp
 +++ b/ggml/src/ggml-vulkan/ggml-vulkan.cpp
 @@ -2970,6 +2970,10 @@ void ggml_vk_load_shaders(vk_device& device, vk_pipeline requested) {
@@ -89,7 +89,7 @@ index 420af4d..6505fab 100644
  
 +    // Q5_0 repack: keep the standard upload, and also build a 24-byte-block copy that the
 +    // u8 mat-vec binds directly. Only whole contiguous tensors repack; views keep the old path.
-+    const vk_device buf_device = buf_ctx->device.lock();
++    vk_device buf_device = buf_ctx->device.lock();
 +    if (buf_device && buf_device->pvr_q5pad && tensor->type == GGML_TYPE_Q5_0 && !tensor->view_src &&
 +        offset == 0 && size == ggml_nbytes(tensor) && ggml_is_contiguous(tensor) && tensor->ne[0] % 64 == 0) {
 +        const size_t nblocks = size / 22;
