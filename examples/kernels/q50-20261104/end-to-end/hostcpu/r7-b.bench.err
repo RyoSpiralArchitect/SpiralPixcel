@@ -1,0 +1,6 @@
+ggml_vulkan: Found 1 Vulkan devices:
+ggml_vulkan: 0 = PowerVR C-Series CXTP-48-1536 MC1 (PowerVR C-Series Vulkan Driver) | uma: 1 | fp16: 1 | bf16: 0 | fp4: 0 | warp size: 128 | shared memory: 32768 | int dot: 0 | matrix cores: none
+load_backend: loaded Vulkan backend from /home/droid/.local/share/SpiralPixcel/runtimes/llama-b11960-pvr-decode-r7/libggml-vulkan.so
+load_backend: loaded CPU backend from /home/droid/.local/share/SpiralPixcel/runtimes/llama-b11960-pvr-decode-r7/libggml-cpu.so
+MESA: error: Failed to allocate coherent memory: failed to allocate on the host: -1.
+MESA: error: Failed to allocate coherent memory: failed to allocate on the host: -1.

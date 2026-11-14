@@ -1,0 +1,93 @@
+{
+  "source_vulkan_cpp_before_sha256": "47f42dd8978358e173da55665406b35dfae4b80a5a256077b0811ddd0060389c",
+  "libggml-vulkan_sha256": "59c4dbf0c52b1e822e062ad1b12a0720817f6e81a79720b40e35834d6a3931b7",
+  "check-mmv_sha256": "23bbedf34bfe370f685d25c37ed3d5af42be5756a3cbe9c63753a872b3e4f243",
+  "core_library_sha256": {
+    "libggml.so": "b83cba2a91e29e22543b7b701e6bdbd51e29b114ae4bf5ab6bc4cd169dbcf420",
+    "libggml.so.0": "b83cba2a91e29e22543b7b701e6bdbd51e29b114ae4bf5ab6bc4cd169dbcf420",
+    "libggml.so.0.28.0": "b83cba2a91e29e22543b7b701e6bdbd51e29b114ae4bf5ab6bc4cd169dbcf420",
+    "libggml-base.so": "12ccd554b1270d6778279ae8b9896e9ef5dce3d7370b90ed36ae9da2ee6d9b34",
+    "libggml-base.so.0": "12ccd554b1270d6778279ae8b9896e9ef5dce3d7370b90ed36ae9da2ee6d9b34",
+    "libggml-base.so.0.28.0": "12ccd554b1270d6778279ae8b9896e9ef5dce3d7370b90ed36ae9da2ee6d9b34"
+  },
+  "patches": [
+    "core16",
+    "core-fp16",
+    "powervr-mmv-wg",
+    "powervr-rms-subgroups",
+    "output-row-split",
+    "metadata-views",
+    "bounded-upload",
+    "host-read-barrier",
+    "coherent-readback",
+    "completion-wait",
+    "powervr-u8-mmvq",
+    "powervr-decode"
+  ],
+  "build_cxx_optimization": "O1",
+  "jobs": 1,
+  "resumed_build": false,
+  "patch_sha256": {
+    "core16": "6f1da061a8d0c7cdd84b26b135de64c50a2a9c5c7f369f2a81add92021df556c",
+    "powervr-mmv": "9ed6ff3f7b44eef13a5a5348be1644d2153d6156dd339ca6c5ff113a70bf6f46",
+    "powervr-rms": "137115f5e3cac5a9907ea975d7c7a36437804e95b0946a859842e39de3014e7e",
+    "core-fp16": "22104942d2e89eeac595958daef91e067082c49d70abfbc555a3af80d147928a",
+    "output-row-split": "a17677018f3a80742b0434e75bb117545a503665200d2d8f8aa129f699d7197e",
+    "metadata-views": "1de4a958b59373f705d8cc692e38b45821d0aa4e6d41c0eae33f24cde8661592",
+    "bounded-upload": "0d8855ac30fc7b00e13eb07ce0696bbbb76813a7dd718d1227ca4e1d6587bee1",
+    "host-read-barrier": "63c05b3d13587f8127ea965da405b6fbdec52e7aa4e6bac1fa410b1ab1034316",
+    "coherent-readback": "a82e466564af1dc5208b94248a9dc2853cf37c9f519f55c9be478cd9cbb90fc1",
+    "completion-wait": "b8af8eff4383988b5d0f952540a325ed8134fa23865891c92f085c357f98e3cb",
+    "powervr-u8-mmvq": "75942386e046f69098af97447bf2aa3364a58538c6c65ad5871b2240b4a1108b",
+    "powervr-decode": "bf4316a6b7b15913eb5cb4c34b21d8f133adf313e8aad35b9190c5b8292a6642"
+  },
+  "output_row_split": true,
+  "experimental": true,
+  "validation_status": "experimental_not_model_validated",
+  "model_correctness_validated": false,
+  "queue_idle_completion": true,
+  "validation_transfer_mode": "GGML_VK_DISABLE_ASYNC=1 GGML_VK_WAIT_IDLE=1",
+  "libllama_sha256": "812136e2f3c215132f0a8792b0469aee37dd070a20e949cf85fcc5dd26cc9f2d",
+  "runtime_library_sha256": {
+    "libggml-base.so": "12ccd554b1270d6778279ae8b9896e9ef5dce3d7370b90ed36ae9da2ee6d9b34",
+    "libggml-base.so.0": "12ccd554b1270d6778279ae8b9896e9ef5dce3d7370b90ed36ae9da2ee6d9b34",
+    "libggml-base.so.0.28.0": "12ccd554b1270d6778279ae8b9896e9ef5dce3d7370b90ed36ae9da2ee6d9b34",
+    "libggml-cpu.so": "762faedf5623f106df2372258fb7c349996947486c109898c7bac494a7e04b3d",
+    "libggml-vulkan.so": "59c4dbf0c52b1e822e062ad1b12a0720817f6e81a79720b40e35834d6a3931b7",
+    "libggml.so": "b83cba2a91e29e22543b7b701e6bdbd51e29b114ae4bf5ab6bc4cd169dbcf420",
+    "libggml.so.0": "b83cba2a91e29e22543b7b701e6bdbd51e29b114ae4bf5ab6bc4cd169dbcf420",
+    "libggml.so.0.28.0": "b83cba2a91e29e22543b7b701e6bdbd51e29b114ae4bf5ab6bc4cd169dbcf420",
+    "libllama-bench-impl.so": "a98eaeaad1be64c66e0270f6067b5caf3e8ef7f89c942c3eddc3e71567d80b08",
+    "libllama-common.so": "2ea0f6c918db4518f046e91e213ef8b089ac66d070dcd18361c0086ae5baf259",
+    "libllama-common.so.0": "2ea0f6c918db4518f046e91e213ef8b089ac66d070dcd18361c0086ae5baf259",
+    "libllama-common.so.0.8.0": "2ea0f6c918db4518f046e91e213ef8b089ac66d070dcd18361c0086ae5baf259",
+    "libllama-completion-impl.so": "2e44125019f5e6f68dc4681b53f5370ff1ce7777b59b4162b298fbcc5e66630d",
+    "libllama.so": "812136e2f3c215132f0a8792b0469aee37dd070a20e949cf85fcc5dd26cc9f2d",
+    "libllama.so.0": "812136e2f3c215132f0a8792b0469aee37dd070a20e949cf85fcc5dd26cc9f2d",
+    "libllama.so.0.8.0": "812136e2f3c215132f0a8792b0469aee37dd070a20e949cf85fcc5dd26cc9f2d"
+  },
+  "runtime_executable_sha256": {
+    "llama-bench": "cf21818bdae151b4e06b8b2952d33845ac5b890101b9b51d87e3fa600c977b8d",
+    "llama-completion": "b71dd77159884f0afab724a25b4875eed795e708e8d467a201f948e6f09457fe",
+    "check-mmv": "23bbedf34bfe370f685d25c37ed3d5af42be5756a3cbe9c63753a872b3e4f243",
+    "check-large": "95d89db3561657e4aeca61432d00aa849caf8bc9c61bdd72e4e6db27dc15a642",
+    "check-model": "fb01000404d4e276a7105c5481909fb9c24a1148680596a1144aca9b62c0c929",
+    "check-readback": "033d4eb7f57ed0930101b0975610710ff38e542dd39a1b07f5f00f78fae36468"
+  },
+  "check-large_sha256": "95d89db3561657e4aeca61432d00aa849caf8bc9c61bdd72e4e6db27dc15a642",
+  "check-model_sha256": "fb01000404d4e276a7105c5481909fb9c24a1148680596a1144aca9b62c0c929",
+  "powervr_u8_mmvq": true,
+  "powervr_u8_mmvq_types": [
+    "q4_K",
+    "q5_0",
+    "q6_K",
+    "q8_0"
+  ],
+  "powervr_u8_mmvq_variants": [
+    "q5_0/act_shared",
+    "q5_0/tpr16",
+    "q8_0/act_shared",
+    "q8_0/tpr16"
+  ],
+  "powervr_decode": true
+}

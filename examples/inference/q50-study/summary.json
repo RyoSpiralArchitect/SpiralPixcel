@@ -1,0 +1,438 @@
+{
+  "date_local": "2026-11-04",
+  "timezone": "Asia/Tokyo",
+  "format": "SpiralPixcel.q50-study.v1",
+  "model_scope": "Qwen2.5-0.5B-Instruct Q4_K_M, one fixed 33-token prompt for the logit gate; short timings",
+  "vm_boot_ids": [
+    "2014be07-86aa-4abd-aad4-e166eb7b99cd"
+  ],
+  "runs": [
+    {
+      "label": "r6-1",
+      "runtime_label": "r6",
+      "run_id": "20261104T084647Z-f6fb3221b8ac",
+      "runtime": "/home/droid/.local/share/SpiralPixcel/runtimes/llama-b11960-pvr-decode-r6",
+      "status": "pass",
+      "decode_tg32_tokens_s": 28.207642,
+      "tg32_samples": [
+        24.1018,
+        29.7492,
+        30.7719
+      ],
+      "steady_tg32_tokens_s": 30.26055,
+      "prefill_pp64_tokens_s": 45.869095,
+      "pp64_samples": [
+        19.0212,
+        60.5954,
+        57.9907
+      ],
+      "steady_pp64_tokens_s": 59.293049999999994,
+      "vm": {
+        "boot_id": "2014be07-86aa-4abd-aad4-e166eb7b99cd",
+        "uptime_seconds": 833.36
+      },
+      "model_sha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+      "libggml_vulkan_sha256": "b1985926c4a4c27b647f300a5a5a8d64c9466ec96f89f55c029302fb31b878fc",
+      "model_nmse": 0.00235991740718096,
+      "model_max_abs_error": 0.9277904033660889,
+      "top1_equal": true,
+      "candidate_sha256": "13197ed7b99bd4e8dab32684ccd98ddbd4bb29a8fc7f43a1096ba86840be0b43",
+      "reference_sha256": "433c8bc1f161564b8a8b6ae2ec73d17623e5541335cc39ebb3b0e77258b1ac00",
+      "kernel_check_cases": 76,
+      "readback_cases": 27,
+      "large_check_cases": 2,
+      "nodes_per_backend": {
+        "CPU": 2,
+        "Vulkan0": 611
+      },
+      "sampled_peak_rss_kib": 223244,
+      "peak_device_allocated_mib": 404.48,
+      "u8_mmvq_selected": {
+        "kernel_check": [
+          "q4_K",
+          "q5_0",
+          "q6_K",
+          "q8_0"
+        ],
+        "model_candidate": [
+          "q4_K",
+          "q5_0",
+          "q6_K",
+          "q8_0"
+        ],
+        "benchmark": []
+      },
+      "u8_mmvq_variants_selected": null,
+      "attention_kernel_selected": {
+        "kernel_check": true,
+        "model_candidate": true
+      }
+    },
+    {
+      "label": "r7-1",
+      "runtime_label": "r7",
+      "run_id": "20261104T084722Z-6928bdaf8eda",
+      "runtime": "/home/droid/.local/share/SpiralPixcel/runtimes/llama-b11960-pvr-decode-r7",
+      "status": "pass",
+      "decode_tg32_tokens_s": 28.185637,
+      "tg32_samples": [
+        23.5394,
+        28.278,
+        32.7395
+      ],
+      "steady_tg32_tokens_s": 30.50875,
+      "prefill_pp64_tokens_s": 46.065063,
+      "pp64_samples": [
+        19.413,
+        59.8787,
+        58.9035
+      ],
+      "steady_pp64_tokens_s": 59.3911,
+      "vm": {
+        "boot_id": "2014be07-86aa-4abd-aad4-e166eb7b99cd",
+        "uptime_seconds": 867.34
+      },
+      "model_sha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+      "libggml_vulkan_sha256": "59c4dbf0c52b1e822e062ad1b12a0720817f6e81a79720b40e35834d6a3931b7",
+      "model_nmse": 0.00235991740718096,
+      "model_max_abs_error": 0.9277904033660889,
+      "top1_equal": true,
+      "candidate_sha256": "13197ed7b99bd4e8dab32684ccd98ddbd4bb29a8fc7f43a1096ba86840be0b43",
+      "reference_sha256": "433c8bc1f161564b8a8b6ae2ec73d17623e5541335cc39ebb3b0e77258b1ac00",
+      "kernel_check_cases": 102,
+      "readback_cases": 27,
+      "large_check_cases": 2,
+      "nodes_per_backend": {
+        "CPU": 2,
+        "Vulkan0": 611
+      },
+      "sampled_peak_rss_kib": 223424,
+      "peak_device_allocated_mib": 404.48,
+      "u8_mmvq_selected": {
+        "kernel_check": [
+          "q4_K",
+          "q5_0",
+          "q6_K",
+          "q8_0"
+        ],
+        "model_candidate": [
+          "q4_K",
+          "q5_0",
+          "q6_K",
+          "q8_0"
+        ],
+        "benchmark": []
+      },
+      "u8_mmvq_variants_selected": {
+        "kernel_check": [
+          "q5_0/act_shared",
+          "q5_0/tpr16",
+          "q8_0/act_shared",
+          "q8_0/tpr16"
+        ],
+        "model_candidate": [
+          "q5_0/act_shared",
+          "q5_0/tpr16",
+          "q8_0/act_shared",
+          "q8_0/tpr16"
+        ]
+      },
+      "attention_kernel_selected": {
+        "kernel_check": true,
+        "model_candidate": true
+      }
+    },
+    {
+      "label": "r7-2",
+      "runtime_label": "r7",
+      "run_id": "20261104T084756Z-a7d2ba66c9d6",
+      "runtime": "/home/droid/.local/share/SpiralPixcel/runtimes/llama-b11960-pvr-decode-r7",
+      "status": "pass",
+      "decode_tg32_tokens_s": 27.624921,
+      "tg32_samples": [
+        23.046,
+        31.045,
+        28.7837
+      ],
+      "steady_tg32_tokens_s": 29.91435,
+      "prefill_pp64_tokens_s": 44.799287,
+      "pp64_samples": [
+        16.1171,
+        58.3255,
+        59.9554
+      ],
+      "steady_pp64_tokens_s": 59.14045,
+      "vm": {
+        "boot_id": "2014be07-86aa-4abd-aad4-e166eb7b99cd",
+        "uptime_seconds": 901.65
+      },
+      "model_sha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+      "libggml_vulkan_sha256": "59c4dbf0c52b1e822e062ad1b12a0720817f6e81a79720b40e35834d6a3931b7",
+      "model_nmse": 0.00235991740718096,
+      "model_max_abs_error": 0.9277904033660889,
+      "top1_equal": true,
+      "candidate_sha256": "13197ed7b99bd4e8dab32684ccd98ddbd4bb29a8fc7f43a1096ba86840be0b43",
+      "reference_sha256": "433c8bc1f161564b8a8b6ae2ec73d17623e5541335cc39ebb3b0e77258b1ac00",
+      "kernel_check_cases": 102,
+      "readback_cases": 27,
+      "large_check_cases": 2,
+      "nodes_per_backend": {
+        "CPU": 2,
+        "Vulkan0": 611
+      },
+      "sampled_peak_rss_kib": 223424,
+      "peak_device_allocated_mib": 404.48,
+      "u8_mmvq_selected": {
+        "kernel_check": [
+          "q4_K",
+          "q5_0",
+          "q6_K",
+          "q8_0"
+        ],
+        "model_candidate": [
+          "q4_K",
+          "q5_0",
+          "q6_K",
+          "q8_0"
+        ],
+        "benchmark": []
+      },
+      "u8_mmvq_variants_selected": {
+        "kernel_check": [
+          "q5_0/act_shared",
+          "q5_0/tpr16",
+          "q8_0/act_shared",
+          "q8_0/tpr16"
+        ],
+        "model_candidate": [
+          "q5_0/act_shared",
+          "q5_0/tpr16",
+          "q8_0/act_shared",
+          "q8_0/tpr16"
+        ]
+      },
+      "attention_kernel_selected": {
+        "kernel_check": true,
+        "model_candidate": true
+      }
+    },
+    {
+      "label": "r6-2",
+      "runtime_label": "r6",
+      "run_id": "20261104T084845Z-1f4fb6c0c845",
+      "runtime": "/home/droid/.local/share/SpiralPixcel/runtimes/llama-b11960-pvr-decode-r6",
+      "status": "pass",
+      "decode_tg32_tokens_s": 24.047713,
+      "tg32_samples": [
+        21.7252,
+        25.4011,
+        25.0168
+      ],
+      "steady_tg32_tokens_s": 25.20895,
+      "prefill_pp64_tokens_s": 46.492072,
+      "pp64_samples": [
+        18.8992,
+        61.001,
+        59.576
+      ],
+      "steady_pp64_tokens_s": 60.2885,
+      "vm": {
+        "boot_id": "2014be07-86aa-4abd-aad4-e166eb7b99cd",
+        "uptime_seconds": 951.17
+      },
+      "model_sha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+      "libggml_vulkan_sha256": "b1985926c4a4c27b647f300a5a5a8d64c9466ec96f89f55c029302fb31b878fc",
+      "model_nmse": 0.00235991740718096,
+      "model_max_abs_error": 0.9277904033660889,
+      "top1_equal": true,
+      "candidate_sha256": "13197ed7b99bd4e8dab32684ccd98ddbd4bb29a8fc7f43a1096ba86840be0b43",
+      "reference_sha256": "433c8bc1f161564b8a8b6ae2ec73d17623e5541335cc39ebb3b0e77258b1ac00",
+      "kernel_check_cases": 76,
+      "readback_cases": 27,
+      "large_check_cases": 2,
+      "nodes_per_backend": {
+        "CPU": 2,
+        "Vulkan0": 611
+      },
+      "sampled_peak_rss_kib": 226408,
+      "peak_device_allocated_mib": 404.48,
+      "u8_mmvq_selected": {
+        "kernel_check": [
+          "q4_K",
+          "q5_0",
+          "q6_K",
+          "q8_0"
+        ],
+        "model_candidate": [
+          "q4_K",
+          "q5_0",
+          "q6_K",
+          "q8_0"
+        ],
+        "benchmark": []
+      },
+      "u8_mmvq_variants_selected": null,
+      "attention_kernel_selected": {
+        "kernel_check": true,
+        "model_candidate": true
+      }
+    },
+    {
+      "label": "r6-3",
+      "runtime_label": "r6",
+      "run_id": "20261104T084919Z-56e0da6168d9",
+      "runtime": "/home/droid/.local/share/SpiralPixcel/runtimes/llama-b11960-pvr-decode-r6",
+      "status": "pass",
+      "decode_tg32_tokens_s": 28.455292,
+      "tg32_samples": [
+        25.0787,
+        30.941,
+        29.3462
+      ],
+      "steady_tg32_tokens_s": 30.1436,
+      "prefill_pp64_tokens_s": 45.569342,
+      "pp64_samples": [
+        17.5381,
+        59.498,
+        59.672
+      ],
+      "steady_pp64_tokens_s": 59.584999999999994,
+      "vm": {
+        "boot_id": "2014be07-86aa-4abd-aad4-e166eb7b99cd",
+        "uptime_seconds": 985.41
+      },
+      "model_sha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+      "libggml_vulkan_sha256": "b1985926c4a4c27b647f300a5a5a8d64c9466ec96f89f55c029302fb31b878fc",
+      "model_nmse": 0.00235991740718096,
+      "model_max_abs_error": 0.9277904033660889,
+      "top1_equal": true,
+      "candidate_sha256": "13197ed7b99bd4e8dab32684ccd98ddbd4bb29a8fc7f43a1096ba86840be0b43",
+      "reference_sha256": "433c8bc1f161564b8a8b6ae2ec73d17623e5541335cc39ebb3b0e77258b1ac00",
+      "kernel_check_cases": 76,
+      "readback_cases": 27,
+      "large_check_cases": 2,
+      "nodes_per_backend": {
+        "CPU": 2,
+        "Vulkan0": 611
+      },
+      "sampled_peak_rss_kib": 223240,
+      "peak_device_allocated_mib": 404.48,
+      "u8_mmvq_selected": {
+        "kernel_check": [
+          "q4_K",
+          "q5_0",
+          "q6_K",
+          "q8_0"
+        ],
+        "model_candidate": [
+          "q4_K",
+          "q5_0",
+          "q6_K",
+          "q8_0"
+        ],
+        "benchmark": []
+      },
+      "u8_mmvq_variants_selected": null,
+      "attention_kernel_selected": {
+        "kernel_check": true,
+        "model_candidate": true
+      }
+    },
+    {
+      "label": "r7-3",
+      "runtime_label": "r7",
+      "run_id": "20261104T084953Z-cc448c727176",
+      "runtime": "/home/droid/.local/share/SpiralPixcel/runtimes/llama-b11960-pvr-decode-r7",
+      "status": "pass",
+      "decode_tg32_tokens_s": 28.249895,
+      "tg32_samples": [
+        24.5652,
+        32.4147,
+        27.7698
+      ],
+      "steady_tg32_tokens_s": 30.09225,
+      "prefill_pp64_tokens_s": 45.584284,
+      "pp64_samples": [
+        17.0724,
+        60.1543,
+        59.5262
+      ],
+      "steady_pp64_tokens_s": 59.84025,
+      "vm": {
+        "boot_id": "2014be07-86aa-4abd-aad4-e166eb7b99cd",
+        "uptime_seconds": 1019.48
+      },
+      "model_sha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+      "libggml_vulkan_sha256": "59c4dbf0c52b1e822e062ad1b12a0720817f6e81a79720b40e35834d6a3931b7",
+      "model_nmse": 0.00235991740718096,
+      "model_max_abs_error": 0.9277904033660889,
+      "top1_equal": true,
+      "candidate_sha256": "13197ed7b99bd4e8dab32684ccd98ddbd4bb29a8fc7f43a1096ba86840be0b43",
+      "reference_sha256": "433c8bc1f161564b8a8b6ae2ec73d17623e5541335cc39ebb3b0e77258b1ac00",
+      "kernel_check_cases": 102,
+      "readback_cases": 27,
+      "large_check_cases": 2,
+      "nodes_per_backend": {
+        "CPU": 2,
+        "Vulkan0": 611
+      },
+      "sampled_peak_rss_kib": 223424,
+      "peak_device_allocated_mib": 404.48,
+      "u8_mmvq_selected": {
+        "kernel_check": [
+          "q4_K",
+          "q5_0",
+          "q6_K",
+          "q8_0"
+        ],
+        "model_candidate": [
+          "q4_K",
+          "q5_0",
+          "q6_K",
+          "q8_0"
+        ],
+        "benchmark": []
+      },
+      "u8_mmvq_variants_selected": {
+        "kernel_check": [
+          "q5_0/act_shared",
+          "q5_0/tpr16",
+          "q8_0/act_shared",
+          "q8_0/tpr16"
+        ],
+        "model_candidate": [
+          "q5_0/act_shared",
+          "q5_0/tpr16",
+          "q8_0/act_shared",
+          "q8_0/tpr16"
+        ]
+      },
+      "attention_kernel_selected": {
+        "kernel_check": true,
+        "model_candidate": true
+      }
+    }
+  ],
+  "means": {
+    "decode_tg32_tokens_s": {
+      "r6": 26.903548999999998,
+      "r7": 28.020151,
+      "ratio": 1.0415038922931692
+    },
+    "steady_tg32_tokens_s": {
+      "r6": 28.5377,
+      "r7": 30.171783333333334,
+      "ratio": 1.0572605127019112
+    },
+    "prefill_pp64_tokens_s": {
+      "r6": 45.97683633333333,
+      "r7": 45.482878,
+      "ratio": 0.9892563653194378
+    },
+    "steady_pp64_tokens_s": {
+      "r6": 59.72218333333333,
+      "r7": 59.45726666666667,
+      "ratio": 0.9955641831580729
+    }
+  }
+}

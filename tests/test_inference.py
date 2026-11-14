@@ -58,6 +58,13 @@ class KernelGate(unittest.TestCase):
             with self.subTest(raw=raw[:40], require=require), self.assertRaises(ValueError):
                 inference.check_kernel_gate(raw, require)
 
+    def test_tall_layout_is_required_for_shape_variants(self):
+        self.assertEqual(inference.check_kernel_gate(self.records(78, attention=8), True, True, True)["cases"], 102)
+        self.assertEqual(inference.check_kernel_gate(self.records(78, attention=8), True, True)["cases"], 102)
+        for raw in (self.records(52, attention=8), self.records(78), self.records(78, "fail", attention=8)):
+            with self.subTest(raw=raw[:40]), self.assertRaises(ValueError):
+                inference.check_kernel_gate(raw, True, True, True)
+
     def test_attention_layout_is_required_for_the_decode_path(self):
         self.assertEqual(inference.check_kernel_gate(self.records(52, attention=8), True, True)["cases"], 76)
         self.assertEqual(inference.check_kernel_gate(self.records(52, attention=8), True)["cases"], 76)
@@ -187,17 +194,22 @@ class SplitModelAcceptance(unittest.TestCase):
                     records[0].update(mismatched_bytes=64, status="fail")
             elif name == "check-mmv":
                 decode = mode.startswith("decode")
+                tall = mode.startswith("decode-tall")
                 extended = mode in ("u8", "u8-legacy-gate", "u8-fallback") or decode
                 if mode in ("u8", "u8-legacy-gate") or decode:
                     for type_name in ("q4_K", "q5_0", "q8_0"):
                         stderr.write(f"ggml_vulkan: mul_mat_vecq_u8 selected for {type_name}\n".encode())
-                if mode in ("decode", "decode-legacy-gate"):
+                if mode in ("decode", "decode-legacy-gate") or tall:
                     stderr.write(b"ggml_vulkan: mul_mat_vec_p021_pvr selected\n")
+                if tall:
+                    for variant in ("act_shared",) if mode == "decode-tall-fallback" else ("act_shared", "tpr16"):
+                        stderr.write(f"ggml_vulkan: mul_mat_vecq_u8 variant {variant} selected for q5_0\n".encode())
                 self.assertEqual(env.get("GGML_VK_PWR_U8_MMVQ"), "1" if extended else None)
                 for key in ("GGML_VK_PWR_ATTN", "GGML_VK_PWR_BARRIER", "GGML_VK_PREFER_DEVICE_LOCAL"):
                     self.assertEqual(env.get(key), "1" if decode else None)
-                matmuls = 52 if mode in ("u8", "u8-fallback") or decode else 40
-                attention = 8 if mode in ("decode", "decode-fallback") else 0
+                matmuls = 78 if mode in ("decode-tall", "decode-tall-fallback") else \
+                    52 if mode in ("u8", "u8-fallback") or decode else 40
+                attention = 8 if mode in ("decode", "decode-fallback") or tall else 0
                 records = [{"op": op, "status": "pass"} for op, count in
                            (("MUL_MAT", matmuls), ("ATTN_SCORES", attention), ("RMS_NORM", 8), ("RMS_NORM_MUL", 8))
                            for _ in range(count)]
@@ -213,11 +225,14 @@ class SplitModelAcceptance(unittest.TestCase):
                 records.append({"status": "pass", "cases": 2, "failed": 0})
             elif name == "check-model":
                 layers = int(command[4])
-                self.assertEqual(env.get("GGML_VK_PWR_U8_MMVQ"), "1" if mode in ("u8", "decode") else None)
-                if mode in ("u8", "decode") and layers:
+                full = mode in ("u8", "decode", "decode-tall")
+                self.assertEqual(env.get("GGML_VK_PWR_U8_MMVQ"), "1" if full else None)
+                if full and layers:
                     stderr.write(b"ggml_vulkan: mul_mat_vecq_u8 selected for q5_0\n")
-                if mode == "decode" and layers:
+                if mode in ("decode", "decode-tall") and layers:
                     stderr.write(b"ggml_vulkan: mul_mat_vec_p021_pvr selected\n")
+                if mode == "decode-tall" and layers:
+                    stderr.write(b"ggml_vulkan: mul_mat_vecq_u8 variant act_shared selected for q5_0\n")
                 self.assertEqual(env.get("GGML_VK_SPLIT_OUTPUT", "0"), "0" if layers == 0 or mode == "matching-baseline" else "1")
                 values = [1., 2., 3.]
                 if layers and mode == "zero":
@@ -393,6 +408,53 @@ class SplitModelAcceptance(unittest.TestCase):
             with self.subTest(flagged=flagged, mode=mode), tempfile.TemporaryDirectory() as folder:
                 root = Path(folder)
                 runtime, model = self.decode_fixture(root, flagged)
+                command = ["inference.py", "--runtime", str(runtime), "--model", str(model), "--split-output",
+                           "--u8-mmvq", "--powervr-decode"]
+                with patch.object(inference, "OUT", root / "result"), patch.object(sys, "argv", command), \
+                        patch("inference.subprocess.run", side_effect=self.fake_checkers(mode)), \
+                        patch("inference.run_benchmark") as benchmark, redirect_stdout(io.StringIO()):
+                    self.assertEqual(inference.main(), 1)
+                benchmark.assert_not_called()
+                self.assertIn(message, json.loads((root / "result/result.json").read_text())["error"])
+
+    def variant_fixture(self, root):
+        runtime, model = self.decode_fixture(root)
+        marker_path = runtime / "spiralpixcel-kernel.json"
+        marker_path.write_text(json.dumps({**json.loads(marker_path.read_text()),
+                                           "powervr_u8_mmvq_variants": ["q5_0/act_shared", "q5_0/tpr16"]}))
+        return runtime, model
+
+    def test_shape_variants_reach_timing_on_the_tall_gate(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            runtime, model = self.variant_fixture(root)
+            output = root / "result"
+            command = ["inference.py", "--runtime", str(runtime), "--model", str(model), "--split-output",
+                       "--u8-mmvq", "--powervr-decode"]
+            placement = {"nodes_per_backend": {"Vulkan0": 2}, "cpu_nodes": [], "rejected_weights": [],
+                         "output_nodes": [{"name": f"output_mm.chunk.{i}", "backend": "Vulkan0"} for i in range(2)]}
+            def timed_run(command, environment, timeout):
+                (output / "bench.json").write_text(json.dumps(rows()))
+                (output / "bench.log").write_text("")
+                return {"exit_code": 0, "timed_out": False, "sampled_peak_rss_kib": 1}
+
+            with patch.object(inference, "OUT", output), patch.object(sys, "argv", command), \
+                    patch("inference.subprocess.run", side_effect=self.fake_checkers("decode-tall")), \
+                    patch("schedule_report.collect", return_value=placement), \
+                    patch("inference.run_benchmark", side_effect=timed_run) as benchmark, redirect_stdout(io.StringIO()):
+                self.assertEqual(inference.main(), 0)
+            benchmark.assert_called_once()
+            receipt = json.loads((output / "result.json").read_text())
+            self.assertEqual(receipt["kernel_check"]["cases"], 102)
+            self.assertEqual(receipt["u8_mmvq_variants_selected"],
+                             {"kernel_check": ["q5_0/act_shared", "q5_0/tpr16"], "model_candidate": ["q5_0/act_shared"]})
+
+    def test_shape_variants_require_the_tall_gate_and_every_variant(self):
+        for mode, message in (("decode-tall-short", "incomplete receipt"),
+                              ("decode-tall-fallback", "shape variant of the unsigned mat-vec kernel did not run")):
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as folder:
+                root = Path(folder)
+                runtime, model = self.variant_fixture(root)
                 command = ["inference.py", "--runtime", str(runtime), "--model", str(model), "--split-output",
                            "--u8-mmvq", "--powervr-decode"]
                 with patch.object(inference, "OUT", root / "result"), patch.object(sys, "argv", command), \

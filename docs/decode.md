@@ -17,9 +17,9 @@
     sh guest/build-inference-runtime.sh /absolute/fresh/llama.cpp-0.8.0 /absolute/stock-runtime /absolute/new-runtime --output-row-split --powervr-u8-mmvq --powervr-decode
     ./pixel-lab run inference --runtime /absolute/new-runtime --gpu-layers 99 --split-output --u8-mmvq --powervr-decode
 
-`--powervr-decode` は上の3つの環境変数を設定する。分割出力の全logit照合（`--split-output`）が必要で、ランタイムの記録に `powervr_decode` があること、76件のカーネル照合（attentionスコアの8件を含む）、カーネル照合とモデル照合のログに `ggml_vulkan: mul_mat_vec_p021_pvr selected` があることを確かめる。モデル照合は33トークンを16・16・1トークンに分けて計算するので、最後の1トークンで新しいシェーダーを通る。
+`--powervr-decode` は上の3つの環境変数を設定する。分割出力の全logit照合（`--split-output`）が必要で、ランタイムの記録に `powervr_decode` があること、attentionスコアの8件を含むカーネル照合（76件、現在のビルドでは[形ごとの変種](matvec-variants.md)の分を加えた102件）、カーネル照合とモデル照合のログに `ggml_vulkan: mul_mat_vec_p021_pvr selected` があることを確かめる。モデル照合は33トークンを16・16・1トークンに分けて計算するので、最後の1トークンで新しいシェーダーを通る。
 
-ビルドの `--powervr-decode` は `--output-row-split` と `--powervr-u8-mmvq` を必要とする（両者の変更の上に当たる）。ビルド時に、3つの切り替えと符号なしmat-vecをすべて有効にして、転送27件、カーネル76件、大行列2件をもう一度照合し、`readback-check-decode.jsonl`・`kernel-check-decode.jsonl`・`large-check-decode.jsonl` と選択記録を残す。
+ビルドの `--powervr-decode` は `--output-row-split` と `--powervr-u8-mmvq` を必要とする（両者の変更の上に当たる）。ビルド時に、3つの切り替えと符号なしmat-vecをすべて有効にして、転送27件、カーネル76件（現在のビルドでは102件）、大行列2件をもう一度照合し、`readback-check-decode.jsonl`・`kernel-check-decode.jsonl`・`large-check-decode.jsonl` と選択記録を残す。
 
 ## 実機の数値と速度
 
@@ -165,7 +165,7 @@ Q6_Kの値は下位4ビットと上位2ビットを合わせた0〜63なので�
 
 ## 残っていること
 
-- GPU時間（1トークン約28 ms）の最大はQ5_0のmat-vec（約8 ms）。符号なしカーネルは読み出し上限の4割程度で、詰めるには重みの並べ替えなど配置からの変更が要る。
+- GPU時間（1トークン約28 ms）の最大はQ5_0のmat-vec（約8 ms）。符号なしカーネルは読み出し上限の4割程度で、詰めるには重みの並べ替えなど配置からの変更が要る。→ [形ごとの変種](matvec-variants.md)で1トークンのGPU時間を約2.6 ms減らしたが、decodeの速度は揺れの範囲を出なかった。
 - 2回にした測定で、attentionのf16 mat-vec（新しいスコアと重み付き和の合計）は約4.9 ms、RMS normは約2 ms、CONTは約1.9 ms。スコアは単体で1回約48 µs（24回で約1.2 ms）なので、残りの大半は重み付き和と考えられるが、分けては測っていない。CONTは重み付き和の出力を並べ替えるだけで、出力先を直接書けば消せる。
 - トークンの間のホスト側の空き（数ms）。入力の同期アップロードと、コマンドプールのリセットがVMの往復になっている。
 - 全logitの照合は1位置だけ。長いcontext、他のモデル、持続負荷は未評価。

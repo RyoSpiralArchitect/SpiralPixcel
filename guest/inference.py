@@ -94,11 +94,13 @@ def validate_runtime_files(runtime, marker):
 
 
 # check-mmv layouts: the original 56 cases, 68 with Q8_0 mat-vec cases added for the unsigned
-# PowerVR kernel, and 76 with single-token attention-score cases for the PowerVR decode path.
-# Each switch must be checked on a layout that covers it.
+# PowerVR kernel, 76 with single-token attention-score cases for the PowerVR decode path, and 102
+# with 4864-row mat-vecs for the unsigned kernel's tall-matrix variant. Each switch must be checked
+# on a layout that covers it.
 KERNEL_GATES = {56: {"MUL_MAT": 40, "RMS_NORM": 8, "RMS_NORM_MUL": 8},
                 68: {"MUL_MAT": 52, "RMS_NORM": 8, "RMS_NORM_MUL": 8},
-                76: {"MUL_MAT": 52, "ATTN_SCORES": 8, "RMS_NORM": 8, "RMS_NORM_MUL": 8}}
+                76: {"MUL_MAT": 52, "ATTN_SCORES": 8, "RMS_NORM": 8, "RMS_NORM_MUL": 8},
+                102: {"MUL_MAT": 78, "ATTN_SCORES": 8, "RMS_NORM": 8, "RMS_NORM_MUL": 8}}
 
 
 # The u8 patch logs the first use of its kernel per weight type. The extended gate layout
@@ -106,6 +108,8 @@ KERNEL_GATES = {56: {"MUL_MAT": 40, "RMS_NORM": 8, "RMS_NORM_MUL": 8},
 U8_SELECTED = re.compile(r"ggml_vulkan: mul_mat_vecq_u8 selected for (\S+)")
 # Runtimes built before the Q6_K kernel do not list their types in the receipt.
 U8_GATE_TYPES = {"q4_K", "q5_0", "q8_0"}
+# Runtimes whose receipt lists shape variants of the kernel log the first use of each.
+U8_VARIANT_SELECTED = re.compile(r"ggml_vulkan: mul_mat_vecq_u8 variant (\S+) selected for (\S+)")
 # The decode patch logs the first use of its attention-score kernel in the same way.
 ATTN_SELECTED = "ggml_vulkan: mul_mat_vec_p021_pvr selected"
 
@@ -114,17 +118,23 @@ def u8_selected_types(log_path):
     return sorted(set(U8_SELECTED.findall(Path(log_path).read_text(errors="replace"))))
 
 
+def u8_selected_variants(log_path):
+    found = U8_VARIANT_SELECTED.findall(Path(log_path).read_text(errors="replace"))
+    return sorted({f"{type_name}/{variant}" for variant, type_name in found})
+
+
 def attention_kernel_selected(log_path):
     return ATTN_SELECTED in Path(log_path).read_text(errors="replace").splitlines()
 
 
-def check_kernel_gate(raw, require_q8_0=False, require_attention=False):
+def check_kernel_gate(raw, require_q8_0=False, require_attention=False, require_tall=False):
     checks = [json.loads(line) for line in raw.splitlines()]
     if not checks or any(not isinstance(row, dict) for row in checks):
         raise ValueError("CPU vs Vulkan numerical gate has an incomplete receipt")
     gate, rows = checks[-1], checks[:-1]
     expected = KERNEL_GATES.get(len(rows))
-    if expected is None or (require_q8_0 and len(rows) < 68) or (require_attention and "ATTN_SCORES" not in expected):
+    if (expected is None or (require_q8_0 and len(rows) < 68) or (require_attention and "ATTN_SCORES" not in expected)
+            or (require_tall and expected["MUL_MAT"] < 78)):
         raise ValueError("CPU vs Vulkan numerical gate has an incomplete receipt")
     operations = {}
     for row in rows:
@@ -380,6 +390,7 @@ def main():
     environment["LD_LIBRARY_PATH"] = ":".join(paths)
     result["environment"] = {key: value for key, value in environment.items()
                              if key.startswith("GGML_VK_") or key == "LD_LIBRARY_PATH"}
+    variants = None
     try:
         if (args.split_output or args.sync_transfers or args.workgroup or args.rms_subgroups or args.u8_mmvq
                 or args.powervr_decode or (args.runtime / "spiralpixcel-kernel.json").exists()):
@@ -409,13 +420,19 @@ def main():
             with (OUT / "kernel-check.jsonl").open("wb") as out, (OUT / "kernel-check.log").open("wb") as err:
                 subprocess.run([str(args.runtime / "check-mmv"), str(args.runtime)], env=environment,
                                stdout=out, stderr=err, check=True, timeout=180)
+            variants = marker.get("powervr_u8_mmvq_variants") if args.u8_mmvq else None
             result["kernel_check"] = check_kernel_gate((OUT / "kernel-check.jsonl").read_text(), args.u8_mmvq,
-                                                       args.powervr_decode)
+                                                       args.powervr_decode, bool(variants))
             if args.u8_mmvq:
                 selected = u8_selected_types(OUT / "kernel-check.log")
                 if not set(marker.get("powervr_u8_mmvq_types", U8_GATE_TYPES)) <= set(selected):
                     raise ValueError("the unsigned mat-vec kernel did not run for every gated type; see kernel-check.log")
                 result["u8_mmvq_selected"] = {"kernel_check": selected}
+            if variants:
+                selected = u8_selected_variants(OUT / "kernel-check.log")
+                if not set(variants) <= set(selected):
+                    raise ValueError("a shape variant of the unsigned mat-vec kernel did not run; see kernel-check.log")
+                result["u8_mmvq_variants_selected"] = {"kernel_check": selected}
             if args.powervr_decode:
                 if not attention_kernel_selected(OUT / "kernel-check.log"):
                     raise ValueError("the attention-score kernel did not run in the kernel gate; see kernel-check.log")
@@ -460,6 +477,9 @@ def main():
                 result["u8_mmvq_selected"]["model_candidate"] = u8_selected_types(OUT / "model-candidate.log")
                 if not result["u8_mmvq_selected"]["model_candidate"]:
                     raise ValueError("the unsigned mat-vec kernel did not run in the full-model gate")
+            if variants:
+                # Which variants a model reaches depends on its shapes; the kernel gate covers them all.
+                result["u8_mmvq_variants_selected"]["model_candidate"] = u8_selected_variants(OUT / "model-candidate.log")
             if args.powervr_decode:
                 # The checker's last ubatch is a single token, which takes the attention-score kernel.
                 if not attention_kernel_selected(OUT / "model-candidate.log"):
