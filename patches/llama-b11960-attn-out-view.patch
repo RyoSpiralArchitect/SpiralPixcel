@@ -1,0 +1,18 @@
+diff --git a/src/llama-graph.cpp b/src/llama-graph.cpp
+index cffd083..7522740 100644
+--- a/src/llama-graph.cpp
++++ b/src/llama-graph.cpp
+@@ -3092,7 +3092,12 @@ ggml_tensor * llm_graph_context::build_attn_mha(
+         cur = ggml_permute(ctx0, kqv, 0, 2, 1, 3);
+ 
+         // recombine streams
+-        cur = ggml_cont_2d(ctx0, cur, cur->ne[0]*cur->ne[1], cur->ne[2]*cur->ne[3]);
++        if (kqv->ne[2] == 1 && ggml_is_contiguous(kqv)) {
++            // single token: the permuted order matches the contiguous order of kqv
++            cur = ggml_reshape_2d(ctx0, kqv, cur->ne[0]*cur->ne[1], cur->ne[2]*cur->ne[3]);
++        } else {
++            cur = ggml_cont_2d(ctx0, cur, cur->ne[0]*cur->ne[1], cur->ne[2]*cur->ne[3]);
++        }
+ 
+         if (!cparams.offload_kqv) {
+             // all nodes between the KV store and the attention output are run on the CPU
