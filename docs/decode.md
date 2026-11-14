@@ -165,10 +165,10 @@ Q6_Kの値は下位4ビットと上位2ビットを合わせた0〜63なので�
 
 ## 残っていること
 
-- GPU時間（1トークン約28 ms）の最大はQ5_0のmat-vec（約8 ms）。符号なしカーネルは読み出し上限の4割程度で、詰めるには重みの並べ替えなど配置からの変更が要る。→ [形ごとの変種](matvec-variants.md)で1トークンのGPU時間を約2.6 ms減らしたが、decodeの速度は揺れの範囲を出なかった。
-- 2回にした測定で、attentionのf16 mat-vec（新しいスコアと重み付き和の合計）は約4.9 ms、RMS normは約2 ms、CONTは約1.9 ms。スコアは単体で1回約48 µs（24回で約1.2 ms）なので、残りの大半は重み付き和と考えられるが、分けては測っていない。CONTは重み付き和の出力を並べ替えるだけで、出力先を直接書けば消せる。
-- トークンの間のホスト側の空き（数ms）。入力の同期アップロードと、コマンドプールのリセットがVMの往復になっている。
+- GPU時間（1トークン約28 ms）の最大はQ5_0のmat-vec（約8 ms）。符号なしカーネルは読み出し上限の4割程度で、詰めるには重みの並べ替えなど配置からの変更が要る（候補: Vulkanのextra_buftsで読み出し順にrepackしたQ5_0配置。extra buffer typeの実装が先に必要）。→ [形ごとの変種](matvec-variants.md)で1トークンのGPU時間を約2.6 ms減らしたが、decodeの速度は揺れの範囲を出なかった。
+- 2回にした測定で、attentionのf16 mat-vec（新しいスコアと重み付き和の合計）は約4.9 ms、RMS normは約2 ms、CONTは約1.9 ms。スコアは単体で1回約48 µs（24回で約1.2 ms）なので、残りの大半は重み付き和と考えられるが、分けては測っていない。CONTは重み付き和の出力を並べ替えるだけで、出力先を直接書けば消せる。→ `--powervr-decode` のビルドに `attn-out-view` を足した: 1トークンでは並べ替え後の並びがkqvの連続した並びと同じなので、コピーがリシェイプ（ビュー）に変わり、層ごとのdispatchとコピーがなくなる。実機の照合と速度は未測定。
+- トークンの間のホスト側の空き（数ms）。入力の同期アップロードと、コマンドプールのリセットがVMの往復になっている。→ `--powervr-decode` のビルドに `host-overhead` を足した: FLAG_INPUTのコピーを `cpy_tensor_async` 経由（未ピン留めの入力はstagingへdeferred memcpy、waitなし）に変え、submissionごとの `vkResetCommandBuffer` とグラフごとの `vkResetCommandPool`（64回に1回に間引き）をbeginの暗黙リセットに任せた。実機の照合と速度は未測定。
 - 全logitの照合は1位置だけ。長いcontext、他のモデル、持続負荷は未評価。
 - UMAの既定の配置（device-localなし）では、`ggml_vk_buffer_read_2d` がGPUの書いたホスト可視メモリを、無効化なしで `src->ptr` から読む。logitsもこの経路を通る。失敗は見ていないが、`check-readback` はこの配置ではGPUを通らず、GPUが書いた内容を同じ場所から繰り返し読む照合はまだない。
-- ピン留めメモリの無効化は確保全体（`VK_WHOLE_SIZE`）にかけている。読んだ範囲だけに絞る方が、同じ確保の中のCPUの書き込みに触れない。
+- ピン留めメモリの無効化は確保全体（`VK_WHOLE_SIZE`）にかけている。読んだ範囲だけに絞る方が、同じ確保の中のCPUの書き込みに触れない。→ `--powervr-decode` のビルドに `invalidate-range` を足した: ピン留め先とstagingの無効化を、nonCoherentAtomSizeで整列した書き込み範囲に絞った。実機の照合は未測定。
 - device-localの配置では、`ggml_backend_vk_buffer_clear` の0以外の値が32ビット語として書かれる（上流の動作。1バイトの値をそのまま `vkCmdFillBuffer` に渡す）。このモデルの経路のclearは0だけ。

@@ -49,7 +49,11 @@ if [ "$u8_mmvq" -eq 1 ]; then
 fi
 if [ "$decode" -eq 1 ]; then
     # Opt-in at run time with GGML_VK_PWR_ATTN=1, GGML_VK_PWR_BARRIER=1 and GGML_VK_PREFER_DEVICE_LOCAL=1.
-    patch_names="$patch_names powervr-decode"
+    # attn-out-view applies unconditionally: for a single token the post-attention permute already
+    # matches the contiguous order, so the copy reduces to a reshape on every backend.
+    # host-overhead records per-token input uploads instead of doing a blocking submit per
+    # tensor, and drops the per-submission command buffer and pool resets.
+    patch_names="$patch_names powervr-decode attn-out-view host-overhead invalidate-range"
 fi
 patch_list=""
 for patch_name in $patch_names; do
@@ -217,7 +221,7 @@ if sys.argv[4] == "1":
     data["powervr_u8_mmvq_types"] = ["q4_K", "q5_0", "q6_K", "q8_0"]
     data["powervr_u8_mmvq_variants"] = ["q5_0/act_shared", "q5_0/tpr16", "q8_0/act_shared", "q8_0/tpr16"]
 if sys.argv[7] == "1":
-    data["patches"] += ["powervr-decode"]
+    data["patches"] += ["powervr-decode", "attn-out-view", "host-overhead", "invalidate-range"]
     data["powervr_decode"] = True
 (p / "spiralpixcel-kernel.json").write_text(json.dumps(data, indent=2) + "\n")
 PY

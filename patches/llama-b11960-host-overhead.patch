@@ -1,0 +1,96 @@
+diff --git a/ggml/src/ggml-backend.cpp b/ggml/src/ggml-backend.cpp
+index 22e5fd9..f729190 100644
+--- a/ggml/src/ggml-backend.cpp
++++ b/ggml/src/ggml-backend.cpp
+@@ -1833,7 +1833,12 @@ static void ggml_backend_sched_copy_input(ggml_backend_sched_t sched, struct ggm
+         } else {
+             ggml_backend_synchronize(split_backend);
+         }
+-        ggml_backend_tensor_copy(input, input_cpy);
++        // the scheduled input tensor stays valid until the graph is submitted, so the
++        // backend may record the copy; fall back to the synchronous copy otherwise
++        if (!split_backend->iface.cpy_tensor_async ||
++            !split_backend->iface.cpy_tensor_async(input_backend, split_backend, input, input_cpy)) {
++            ggml_backend_tensor_copy(input, input_cpy);
++        }
+         return;
+     }
+ 
+diff --git a/ggml/src/ggml-vulkan/ggml-vulkan-types.h b/ggml/src/ggml-vulkan/ggml-vulkan-types.h
+index e70f5c3..6194ade 100644
+--- a/ggml/src/ggml-vulkan/ggml-vulkan-types.h
++++ b/ggml/src/ggml-vulkan/ggml-vulkan-types.h
+@@ -318,6 +318,10 @@ struct vk_command_pool {
+ 
+     vk_queue *q;
+ 
++    // Graph cleanups since the last resetCommandPool; buffers reset implicitly at
++    // begin(), so pool resets only bound memory growth.
++    uint32_t cleanups_since_reset = 0;
++
+     size_t buffers_in_use() const {
+         return std::count_if(cmd_buffers.begin(), cmd_buffers.end(),
+             [](const auto& cb) { return cb.in_use; });
+diff --git a/ggml/src/ggml-vulkan/ggml-vulkan.cpp b/ggml/src/ggml-vulkan/ggml-vulkan.cpp
+index 0e56a0d..420af4d 100644
+--- a/ggml/src/ggml-vulkan/ggml-vulkan.cpp
++++ b/ggml/src/ggml-vulkan/ggml-vulkan.cpp
+@@ -13158,9 +13158,17 @@ void ggml_vk_graph_cleanup(ggml_backend_vk_context * ctx) {
+     ctx->unsynced_nodes_read.clear();
+     ctx->prealloc_x_need_sync = ctx->prealloc_y_need_sync = ctx->prealloc_split_k_need_sync = false;
+ 
+-    ggml_vk_command_pool_cleanup(ctx->device, ctx->compute_cmd_pool);
+-    if (ctx->device->async_use_transfer_queue) {
+-        ggml_vk_command_pool_cleanup(ctx->device, ctx->transfer_cmd_pool);
++    // Command buffers reset implicitly at the next begin(), so they can be handed out
++    // again without a driver call. Resetting the pool only reclaims its memory; doing it
++    // every Nth cleanup keeps that bounded without a per-graph round trip.
++    for (auto* pool : { &ctx->compute_cmd_pool, &ctx->transfer_cmd_pool }) {
++        for (auto& cmd_buffer : pool->cmd_buffers) {
++            cmd_buffer.in_use = false;
++        }
++        if (pool->pool && ++pool->cleanups_since_reset >= 64) {
++            pool->cleanups_since_reset = 0;
++            ctx->device->device.resetCommandPool(pool->pool);
++        }
+     }
+ 
+     for (size_t i = 0; i < ctx->gc.semaphores.size(); i++) {
+@@ -13669,7 +13677,17 @@ static bool ggml_backend_vk_cpy_tensor_async(ggml_backend_t backend_src, ggml_ba
+         size_t pinned_offset = 0;
+         ggml_vk_host_get(ctx->device, src->data, pinned_buf, pinned_offset);
+         if (pinned_buf == nullptr) {
+-            return false;
++            // Unpinned host data still goes through staging with a deferred memcpy; the
++            // recorded copy keeps queue order with the ops that consume the tensor.
++            vk_context cpy_ctx;
++            if (ctx->device->async_use_transfer_queue) {
++                cpy_ctx = ggml_vk_get_transfer_ctx(ctx);
++            } else {
++                cpy_ctx = ggml_vk_get_compute_ctx(ctx);
++            }
++            return ggml_vk_buffer_write_async(cpy_ctx, dst_buf,
++                                              vk_tensor_offset(dst) + dst->view_offs,
++                                              src->data, ggml_nbytes(src), true);
+         }
+ 
+         // If the backend is idle, use a CPU copy to avoid GPU synchronization overhead.
+@@ -13773,8 +13791,9 @@ void ggml_vk_synchronize(ggml_backend_vk_context * ctx) {
+         }
+         ctx->submit_pending = false;
+         if (cmd_buf) {
++            // The pool has RESET_COMMAND_BUFFER, so the next begin() resets the buffer;
++            // the explicit reset costs one driver call per submission.
+             cmd_buf->in_use = false;
+-            cmd_buf->buf.reset();
+         }
+     }
+ 
+@@ -16441,7 +16460,6 @@ static void ggml_backend_vk_device_event_synchronize(ggml_backend_dev_t dev, ggm
+             // Only flag for reuse if it hasn't been reused already
+             if (vkev->cmd_buffer_use_counter == vkev->cmd_buffer->use_counter) {
+                 vkev->cmd_buffer->in_use = false;
+-                vkev->cmd_buffer->buf.reset();
+             }
+             vkev->cmd_buffer = nullptr;
+         }
