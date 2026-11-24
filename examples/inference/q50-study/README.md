@@ -8,12 +8,12 @@ Every run used `--u8-mmvq --powervr-decode` with the split output head and queue
 
 | Order | Directory | Runtime | tg32 tok/s | tg32 samples | tg32 steady | pp64 tok/s | Logit NMSE | top1 |
 | ---: | --- | --- | ---: | --- | ---: | ---: | ---: | --- |
-| 1 | `runs/r6-1-f6fb3221b8ac` | r6 | 28.208 | 24.10 / 29.75 / 30.77 | 30.26 | 45.87 | 0.002360 | equal |
-| 2 | `runs/r7-1-6928bdaf8eda` | r7 | 28.186 | 23.54 / 28.28 / 32.74 | 30.51 | 46.07 | 0.002360 | equal |
-| 3 | `runs/r7-2-a7d2ba66c9d6` | r7 | 27.625 | 23.05 / 31.05 / 28.78 | 29.91 | 44.80 | 0.002360 | equal |
-| 4 | `runs/r6-2-1f4fb6c0c845` | r6 | 24.048 | 21.73 / 25.40 / 25.02 | 25.21 | 46.49 | 0.002360 | equal |
-| 5 | `runs/r6-3-56e0da6168d9` | r6 | 28.455 | 25.08 / 30.94 / 29.35 | 30.14 | 45.57 | 0.002360 | equal |
-| 6 | `runs/r7-3-cc448c727176` | r7 | 28.250 | 24.57 / 32.41 / 27.77 | 30.09 | 45.58 | 0.002360 | equal |
+| 1 | `gated-runs/r6-1-f6fb3221b8ac` | r6 | 28.208 | 24.10 / 29.75 / 30.77 | 30.26 | 45.87 | 0.002360 | equal |
+| 2 | `gated-runs/r7-1-6928bdaf8eda` | r7 | 28.186 | 23.54 / 28.28 / 32.74 | 30.51 | 46.07 | 0.002360 | equal |
+| 3 | `gated-runs/r7-2-a7d2ba66c9d6` | r7 | 27.625 | 23.05 / 31.05 / 28.78 | 29.91 | 44.80 | 0.002360 | equal |
+| 4 | `gated-runs/r6-2-1f4fb6c0c845` | r6 | 24.048 | 21.73 / 25.40 / 25.02 | 25.21 | 46.49 | 0.002360 | equal |
+| 5 | `gated-runs/r6-3-56e0da6168d9` | r6 | 28.455 | 25.08 / 30.94 / 29.35 | 30.14 | 45.57 | 0.002360 | equal |
+| 6 | `gated-runs/r7-3-cc448c727176` | r7 | 28.250 | 24.57 / 32.41 / 27.77 | 30.09 | 45.58 | 0.002360 | equal |
 
 The means are tg32 26.90 → 28.02 tok/s and steady 28.54 → 30.17, but the difference comes from the fourth run, which was slower throughout. Without it, r6 averages 28.33 (steady 30.20) against r7's 28.02 (30.17). Ungated 128-token runs alternating the two runtimes (`../../kernels/q50-20261104/end-to-end/tg128/`) gave steady decode 28.38 against 28.55 tok/s. The variants did not change decode throughput beyond the noise of these runs. pp64 is unchanged (46.0 against 45.5).
 
