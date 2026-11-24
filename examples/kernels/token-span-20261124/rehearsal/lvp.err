@@ -1,0 +1,5 @@
+ggml_vulkan: Found 1 Vulkan devices:
+ggml_vulkan: 0 = llvmpipe (LLVM 19.1.7, 128 bits) (llvmpipe) | uma: 0 | fp16: 1 | bf16: 0 | fp4: 0 | warp size: 4 | shared memory: 32768 | int dot: 0 | matrix cores: none
+ggml_vulkan: Warning: Device type is CPU. This is probably not the device you want.
+load_backend: loaded Vulkan backend from /home/droid/.local/share/SpiralPixcel/runtimes/llama-b11960-pvr-decode-r7/libggml-vulkan.so
+load_backend: loaded CPU backend from /home/droid/.local/share/SpiralPixcel/runtimes/llama-b11960-pvr-decode-r7/libggml-cpu.so
