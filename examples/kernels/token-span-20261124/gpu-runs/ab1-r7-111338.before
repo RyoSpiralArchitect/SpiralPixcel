@@ -1,0 +1,56 @@
+1795486419.864182597
+     From  :   To
+           : 150000000 300000000 460000000 499000000 556000000 614000000 691000000 748000000 825000000 883000000 9400000001017000000109400000011900000001286000000   time(ms)
+  150000000:         0         0         0         0         0         0         0         0         0         0         0         0         0         0         1         0
+  300000000:         0         0         0         0         0         0         0         0         0         0         0         0         0         0         0         0
+* 460000000:         0         0         0        32         0         0         1         0      1119         1         0         0         0         0       399  96578056
+  499000000:         0         0        69         0         0         0         0         0         3         1         0         0         0         0        13      3776
+  556000000:         0         0        46         5         0         0         0         0         2         0         0         0         0         0         9      1584
+  614000000:         0         0        27         5         6         0         0         0         2         0         0         0         0         0        12      1028
+  691000000:         0         0        27         6         7         1         0         0         0         0         0         0         0         0        13       932
+  748000000:         0         0        16         1         1         2         1         0         0         0         0         0         0         0        17       884
+  825000000:         0         0      1123        15        18        19        20         9         0        36         0         0         0         0       109    232848
+  883000000:         0         0         8         3         1         1         2         2        41         0         0         0         0         0        16      1376
+  940000000:         0         0         8         0         3         2         3         1         5         4         0         0         0         0        14       972
+ 1017000000:         0         0         3         1         0         2         1         2         8         4         5         0         0         0        12       936
+ 1094000000:         0         0         5         0         0         1         1         1         3         4         6         5         0         0        11       832
+ 1190000000:         0         0        10         1         1         0         1         2         2         0         2         8         6         0         9      1012
+ 1286000000:         0         0       211        17        25        24        24        21       164        24        27        25        31        42         0    635868
+Total transition : 4060
+Thermal Status: 0
+	Temperature{mValue=28.231653, mType=-1, mName=VIRTUAL-SKIN-SPEAKER-MODEL, mStatus=0}
+	Temperature{mValue=35.103947, mType=-1, mName=VIRTUAL-SKIN-CHARGE-PERSIST, mStatus=0}
+	Temperature{mValue=35.103947, mType=-1, mName=VIRTUAL-SKIN-CHARGE, mStatus=0}
+	Temperature{mValue=35.318573, mType=-1, mName=VIRTUAL-SKIN-LEGACY, mStatus=0}
+	Temperature{mValue=20.507986, mType=-1, mName=VIRTUAL-SKIN-AMBIENT-MODEL, mStatus=0}
+	Temperature{mValue=35.103947, mType=-1, mName=VIRTUAL-SKIN-CHARGE-BOOST, mStatus=0}
+	Temperature{mValue=35.103947, mType=-1, mName=VIRTUAL-SKIN-CHARGE-WIRED, mStatus=1}
+	Temperature{mValue=35.104664, mType=-1, mName=VIRTUAL-SKIN-PREDICTION-MODEL, mStatus=0}
+	Temperature{mValue=35.103947, mType=3, mName=VIRTUAL-SKIN, mStatus=0}
+	Temperature{mValue=35.123405, mType=-1, mName=VIRTUAL-SKIN-ODPM-MODEL, mStatus=0}
+	Temperature{mValue=35.095963, mType=-1, mName=VIRTUAL-SKIN-MODEL, mStatus=0}
+	Temperature{mValue=28.200974, mType=-1, mName=VIRTUAL-SKIN-SPEAKER, mStatus=0}
+	Temperature{mValue=17.428421, mType=-1, mName=VIRTUAL-SKIN-AMBIENT-MODEL, mStatus=0}
+	Temperature{mValue=23.48206, mType=-1, mName=VIRTUAL-SKIN-ODPM-MODEL, mStatus=0}
+	Temperature{mValue=24.138744, mType=-1, mName=VIRTUAL-SKIN-MODEL, mStatus=0}
+	Temperature{mValue=24.052095, mType=-1, mName=VIRTUAL-SKIN-CHARGE-BOOST, mStatus=0}
+	Temperature{mValue=24.052095, mType=3, mName=VIRTUAL-SKIN, mStatus=0}
+	Temperature{mValue=22.183691, mType=-1, mName=VIRTUAL-SKIN-SPEAKER, mStatus=0}
+	Temperature{mValue=21.719717, mType=-1, mName=VIRTUAL-SKIN-PREDICTION-MODEL, mStatus=0}
+	Temperature{mValue=25.13656, mType=-1, mName=VIRTUAL-SKIN-LEGACY, mStatus=0}
+	Temperature{mValue=24.052095, mType=-1, mName=VIRTUAL-SKIN-CHARGE, mStatus=0}
+	Temperature{mValue=22.183691, mType=-1, mName=VIRTUAL-SKIN-SPEAKER-MODEL, mStatus=0}
+	Temperature{mValue=24.052095, mType=-1, mName=VIRTUAL-SKIN-CHARGE-WIRED, mStatus=0}
+	Temperature{mValue=24.052095, mType=-1, mName=VIRTUAL-SKIN-CHARGE-PERSIST, mStatus=0}
+	TemperatureThreshold{mType=-1, mName=VIRTUAL-SKIN-AMBIENT-MODEL, mHotThrottlingThresholds=[NaN, NaN, NaN, NaN, NaN, NaN, NaN], mColdThrottlingThresholds=[NaN, NaN, NaN, NaN, NaN, NaN, NaN]}
+	TemperatureThreshold{mType=-1, mName=VIRTUAL-SKIN-ODPM-MODEL, mHotThrottlingThresholds=[NaN, NaN, NaN, NaN, NaN, NaN, NaN], mColdThrottlingThresholds=[NaN, NaN, NaN, NaN, NaN, NaN, NaN]}
+	TemperatureThreshold{mType=-1, mName=VIRTUAL-SKIN-MODEL, mHotThrottlingThresholds=[NaN, NaN, NaN, NaN, NaN, NaN, NaN], mColdThrottlingThresholds=[NaN, NaN, NaN, NaN, NaN, NaN, NaN]}
+	TemperatureThreshold{mType=-1, mName=VIRTUAL-SKIN-CHARGE-BOOST, mHotThrottlingThresholds=[NaN, 37.0, 39.0, 41.0, 42.0, 43.0, 45.0], mColdThrottlingThresholds=[NaN, NaN, NaN, NaN, NaN, NaN, NaN]}
+	TemperatureThreshold{mType=3, mName=VIRTUAL-SKIN, mHotThrottlingThresholds=[NaN, 39.0, 43.0, 45.0, 46.5, 52.0, 65.0], mColdThrottlingThresholds=[NaN, NaN, NaN, NaN, NaN, NaN, NaN]}
+	TemperatureThreshold{mType=-1, mName=VIRTUAL-SKIN-SPEAKER, mHotThrottlingThresholds=[NaN, 37.0, NaN, NaN, NaN, NaN, NaN], mColdThrottlingThresholds=[NaN, NaN, NaN, NaN, NaN, NaN, NaN]}
+	TemperatureThreshold{mType=-1, mName=VIRTUAL-SKIN-PREDICTION-MODEL, mHotThrottlingThresholds=[NaN, NaN, NaN, NaN, NaN, NaN, NaN], mColdThrottlingThresholds=[NaN, NaN, NaN, NaN, NaN, NaN, NaN]}
+	TemperatureThreshold{mType=-1, mName=VIRTUAL-SKIN-LEGACY, mHotThrottlingThresholds=[NaN, NaN, NaN, NaN, NaN, NaN, NaN], mColdThrottlingThresholds=[NaN, NaN, NaN, NaN, NaN, NaN, NaN]}
+	TemperatureThreshold{mType=-1, mName=VIRTUAL-SKIN-CHARGE, mHotThrottlingThresholds=[NaN, NaN, NaN, NaN, NaN, NaN, NaN], mColdThrottlingThresholds=[NaN, NaN, NaN, NaN, NaN, NaN, NaN]}
+	TemperatureThreshold{mType=-1, mName=VIRTUAL-SKIN-SPEAKER-MODEL, mHotThrottlingThresholds=[NaN, NaN, NaN, NaN, NaN, NaN, NaN], mColdThrottlingThresholds=[NaN, NaN, NaN, NaN, NaN, NaN, NaN]}
+	TemperatureThreshold{mType=-1, mName=VIRTUAL-SKIN-CHARGE-WIRED, mHotThrottlingThresholds=[NaN, 34.0, 38.0, 43.0, 45.0, 47.0, 55.0], mColdThrottlingThresholds=[NaN, NaN, NaN, NaN, NaN, NaN, NaN]}
+	TemperatureThreshold{mType=-1, mName=VIRTUAL-SKIN-CHARGE-PERSIST, mHotThrottlingThresholds=[NaN, 37.0, 41.0, 43.0, 45.0, 47.0, 55.0], mColdThrottlingThresholds=[NaN, NaN, NaN, NaN, NaN, NaN, NaN]}

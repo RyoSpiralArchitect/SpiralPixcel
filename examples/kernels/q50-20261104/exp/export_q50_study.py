@@ -40,7 +40,7 @@ def copy_tree(src, dst):
 
 
 def export_run(label, run_id, args, order):
-    src, dst = RUNS / run_id, OUT / "runs" / f"{label}-{run_id.rsplit('-', 1)[1]}"
+    src, dst = RUNS / run_id, OUT / "gated-runs" / f"{label}-{run_id.rsplit('-', 1)[1]}"
     dst.mkdir(parents=True)
     refs = {}
     for path in sorted(src.iterdir()):

@@ -1,8 +1,9 @@
 // LD_PRELOAD timing shim for Vulkan calls made through vkGet*ProcAddr (vulkan-hpp dynamic dispatch).
 // Build: gcc -O2 -shared -fPIC vkshim.c -o vkshim.so -ldl. Run any ggml-vulkan program with
-// LD_PRELOAD=vkshim.so VKSHIM_OUT=summary.json [VKSHIM_GPU_TS=1] [VKSHIM_TRACE_FROM=N ...].
+// LD_PRELOAD=vkshim.so VKSHIM_OUT=summary.json [VKSHIM_GPU_TS=1 | VKSHIM_TOKEN_TS=1] [VKSHIM_TRACE_FROM=N ...].
 // Counts and times selected entry points; optionally records a trace window between two
-// vkQueueWaitIdle calls. Output goes to $VKSHIM_OUT (summary) and $VKSHIM_TRACE (events).
+// vkQueueWaitIdle calls. Output goes to $VKSHIM_OUT (summary), $VKSHIM_TRACE (events) and, with
+// VKSHIM_TOKEN_TS, $VKSHIM_TOKEN_OUT (one line per token span).
 #define _GNU_SOURCE
 #include <dlfcn.h>
 #include <stdint.h>
@@ -196,6 +197,187 @@ static void resolve_pending(void) {
     npend = 0;
 }
 
+// VKSHIM_TOKEN_TS=1: a span opens with a timestamp before the first submission to the waited queue after
+// any wait (vkWaitForFences, or vkQueueWaitIdle on that queue) and closes with a timestamp before the next
+// vkQueueWaitIdle on it, each timestamp in a command buffer of its own, so the work between them runs
+// unsplit. The span includes any gaps inside that work. With ggml's completion wait, each decode step
+// gives one span per input upload and one for the graph; submissions to other queues get no spans.
+// Spans run only on the queue of the first vkQueueWaitIdle. Any vkWaitForFences closes an open span
+// without recording it, so a fence wait inside a graph would shorten its span: check that openings equal
+// spans in the summary. Every opening uses its own pair of command buffers from a ring that is reused only
+// after that queue is idle: resubmitting a command buffer that is still pending is invalid, and an earlier
+// version that did so hung the GPU of the test phone. t_busy marks each buffer from its submission until
+// the queue is idle; submitting a marked buffer turns the mode off instead. The command pool takes the
+// waited queue's family, recorded by vkGetDeviceQueue or vkGetDeviceQueue2, and the mode stays off unless
+// that family supports compute or graphics (needed by vkCmdResetQueryPool) and timestamps. The state is
+// not synchronized: it assumes one thread submits to the waited queue, as in llama-bench.
+// $VKSHIM_TOKEN_OUT gets one line per span: GPU ticks, the submissions inside the span, and host
+// nanoseconds since load at its opening and after the wait.
+#ifndef TSLOTS
+#define TSLOTS 16  // build with -DTSLOTS=1 to exercise the pause path
+#endif
+static int token_ts, t_state, t_learned, t_open, t_cur, t_next;
+static VkQueue t_queue;
+static VkDevice t_dev;
+static VkQueryPool t_pool;
+static VkCommandPool t_cpool;
+static VkCommandBuffer t_cbs[2 * TSLOTS];  // pair i: start 2i, end 2i + 1
+static unsigned char t_busy[2 * TSLOTS];
+static uint32_t t_family, t_flags, t_bits, t_nsub;
+static float t_period;
+static uint64_t t_open_ns, t_paused, t_notready;
+typedef struct { uint64_t ticks, open_ns, done_ns; uint32_t submits; } tspan_t;
+static tspan_t * t_spans;
+static size_t nt_spans, cap_tspans = 1 << 16;
+static PFN_vkQueueSubmit real_QueueSubmit;
+
+// t_state: 1 active; -1 no physical device recorded for the queue's device, -2 queue family unknown,
+// -3 family without compute/graphics or timestamps, -4 object creation failed, -5 a pending buffer would
+// have been resubmitted, -6 a token submission failed.
+static void token_off(int why) {
+    token_ts = 0;
+    t_state = why;
+    t_open = 0;
+}
+
+typedef struct { VkPhysicalDevice pd; VkDevice d; } devmap_t;
+static devmap_t devs[4];
+static int ndevs;
+static PFN_vkCreateDevice real_CreateDevice;
+static VKAPI_ATTR VkResult VKAPI_CALL w_CreateDevice(VkPhysicalDevice pd, const VkDeviceCreateInfo * ci,
+                                                     const VkAllocationCallbacks * a, VkDevice * d) {
+    VkResult r = real_CreateDevice(pd, ci, a, d);
+    if (r == VK_SUCCESS && ndevs < 4) devs[ndevs++] = (devmap_t){ pd, *d };
+    return r;
+}
+
+// ggml retrieves its queues with vkGetDeviceQueue2; both entry points record the queue's family.
+typedef struct { VkQueue q; VkDevice d; uint32_t family; } qfam_t;
+static qfam_t qfams[16];
+static int nqfams;
+static void note_queue(VkDevice d, uint32_t family, VkQueue q) {
+    if (!q) return;
+    for (int i = 0; i < nqfams; i++)
+        if (qfams[i].q == q) return;
+    if (nqfams < 16) qfams[nqfams++] = (qfam_t){ q, d, family };
+}
+static PFN_vkGetDeviceQueue real_GetDeviceQueue;
+static VKAPI_ATTR void VKAPI_CALL w_GetDeviceQueue(VkDevice d, uint32_t family, uint32_t index, VkQueue * q) {
+    real_GetDeviceQueue(d, family, index, q);
+    note_queue(d, family, *q);
+}
+static PFN_vkGetDeviceQueue2 real_GetDeviceQueue2;
+static VKAPI_ATTR void VKAPI_CALL w_GetDeviceQueue2(VkDevice d, const VkDeviceQueueInfo2 * info, VkQueue * q) {
+    real_GetDeviceQueue2(d, info, q);
+    note_queue(d, info->queueFamilyIndex, *q);
+}
+
+static int token_ts_ready(void) {
+    if (!token_ts) return 0;
+    if (t_state == 1) return 1;
+    // A command pool of another family than the waited queue's would make the submissions invalid.
+    int family = -1;
+    for (int i = 0; i < nqfams; i++)
+        if (qfams[i].q == t_queue) {
+            family = (int)qfams[i].family;
+            t_dev = qfams[i].d;
+        }
+    if (family < 0) {
+        token_off(-2);
+        return 0;
+    }
+    VkPhysicalDevice pd = VK_NULL_HANDLE;
+    for (int i = 0; i < ndevs; i++)
+        if (devs[i].d == t_dev) pd = devs[i].pd;
+    if (!pd) {
+        token_off(-1);
+        return 0;
+    }
+    PFN_vkGetPhysicalDeviceQueueFamilyProperties get_qfp =
+        (PFN_vkGetPhysicalDeviceQueueFamilyProperties)real_sym("vkGetPhysicalDeviceQueueFamilyProperties");
+    PFN_vkGetPhysicalDeviceProperties get_props = (PFN_vkGetPhysicalDeviceProperties)real_sym("vkGetPhysicalDeviceProperties");
+    VkQueueFamilyProperties fp[16];
+    uint32_t nf = 16;
+    get_qfp(pd, &nf, fp);
+    VkPhysicalDeviceProperties props;
+    get_props(pd, &props);
+    t_family = (uint32_t)family;
+    t_period = props.limits.timestampPeriod;
+    if (t_family >= nf) {
+        token_off(-3);
+        return 0;
+    }
+    t_flags = fp[t_family].queueFlags;
+    t_bits = fp[t_family].timestampValidBits;
+    if (!(t_flags & (VK_QUEUE_COMPUTE_BIT | VK_QUEUE_GRAPHICS_BIT)) || !t_bits) {
+        token_off(-3);
+        return 0;
+    }
+    if (!real_gdpa) real_gdpa = (PFN_vkGetDeviceProcAddr)real_sym("vkGetDeviceProcAddr");
+    PFN_vkCreateQueryPool create_qp = (PFN_vkCreateQueryPool)real_gdpa(t_dev, "vkCreateQueryPool");
+    PFN_vkCreateCommandPool create_cp = (PFN_vkCreateCommandPool)real_gdpa(t_dev, "vkCreateCommandPool");
+    PFN_vkAllocateCommandBuffers alloc = (PFN_vkAllocateCommandBuffers)real_gdpa(t_dev, "vkAllocateCommandBuffers");
+    PFN_vkBeginCommandBuffer begin = (PFN_vkBeginCommandBuffer)real_gdpa(t_dev, "vkBeginCommandBuffer");
+    PFN_vkEndCommandBuffer end = (PFN_vkEndCommandBuffer)real_gdpa(t_dev, "vkEndCommandBuffer");
+    PFN_vkCmdResetQueryPool reset = (PFN_vkCmdResetQueryPool)real_gdpa(t_dev, "vkCmdResetQueryPool");
+    PFN_vkCmdWriteTimestamp write = (PFN_vkCmdWriteTimestamp)real_gdpa(t_dev, "vkCmdWriteTimestamp");
+    p_get_qp = (PFN_vkGetQueryPoolResults)real_gdpa(t_dev, "vkGetQueryPoolResults");
+    VkQueryPoolCreateInfo qi = { VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO, NULL, 0, VK_QUERY_TYPE_TIMESTAMP, 2 * TSLOTS, 0 };
+    VkCommandPoolCreateInfo pi = { VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO, NULL, 0, t_family };
+    if (!create_qp || !create_cp || !alloc || !begin || !end || !reset || !write || !p_get_qp ||
+        create_qp(t_dev, &qi, NULL, &t_pool) != VK_SUCCESS || create_cp(t_dev, &pi, NULL, &t_cpool) != VK_SUCCESS) {
+        token_off(-4);
+        return 0;
+    }
+    VkCommandBufferAllocateInfo ai = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO, NULL, t_cpool, VK_COMMAND_BUFFER_LEVEL_PRIMARY, 2 * TSLOTS };
+    if (alloc(t_dev, &ai, t_cbs) != VK_SUCCESS) {
+        token_off(-4);
+        return 0;
+    }
+    // Recorded once and only ever resubmitted; pair i owns queries 2i (start) and 2i + 1 (end).
+    VkCommandBufferBeginInfo bi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, NULL, 0, NULL };
+    for (int i = 0; i < TSLOTS; i++) {
+        VkCommandBuffer s = t_cbs[2 * i], e = t_cbs[2 * i + 1];
+        if (begin(s, &bi) != VK_SUCCESS) {
+            token_off(-4);
+            return 0;
+        }
+        reset(s, t_pool, 2 * i, 2);
+        write(s, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, t_pool, 2 * i);
+        if (end(s) != VK_SUCCESS || begin(e, &bi) != VK_SUCCESS) {
+            token_off(-4);
+            return 0;
+        }
+        write(e, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, t_pool, 2 * i + 1);
+        if (end(e) != VK_SUCCESS) {
+            token_off(-4);
+            return 0;
+        }
+    }
+    t_spans = calloc(cap_tspans, sizeof(tspan_t));
+    if (!t_spans) {
+        token_off(-4);
+        return 0;
+    }
+    t_state = 1;
+    return 1;
+}
+
+// Submits token buffer idx (2i start, 2i + 1 end) to the waited queue, never while it may be pending.
+static int token_submit(VkQueue q, int idx) {
+    if (t_busy[idx]) {
+        token_off(-5);
+        return 0;
+    }
+    VkSubmitInfo si = { VK_STRUCTURE_TYPE_SUBMIT_INFO, NULL, 0, NULL, NULL, 1, &t_cbs[idx], 0, NULL };
+    if (real_QueueSubmit(q, 1, &si, VK_NULL_HANDLE) != VK_SUCCESS) {
+        token_off(-6);
+        return 0;
+    }
+    t_busy[idx] = 1;
+    return 1;
+}
+
 static PFN_vkBeginCommandBuffer real_BeginCommandBuffer;
 static VKAPI_ATTR VkResult VKAPI_CALL w_BeginCommandBuffer(VkCommandBuffer b, const VkCommandBufferBeginInfo * i) {
     uint64_t t0 = now_ns();
@@ -233,11 +415,26 @@ static VKAPI_ATTR void VKAPI_CALL w_CmdDispatch(VkCommandBuffer b, uint32_t x, u
     }
     rec(F_CmdDispatch, t0, x);
 }
-static PFN_vkQueueSubmit real_QueueSubmit;
 static VKAPI_ATTR VkResult VKAPI_CALL w_QueueSubmit(VkQueue q, uint32_t n, const VkSubmitInfo * s, VkFence f) {
+    // A span opens at the first submission to the waited queue after a wait, with the next pair of the
+    // ring; while that pair is still marked busy the ring is used up, and spans pause until the queue idles.
+    if (token_ts && t_learned && q == t_queue && !t_open && token_ts_ready()) {
+        const int slot = t_next % TSLOTS;
+        const uint64_t t_try = now_ns();
+        if (t_busy[2 * slot] || t_busy[2 * slot + 1])
+            t_paused++;
+        else if (token_submit(q, 2 * slot)) {
+            t_cur = slot;
+            t_next++;
+            t_open = 1;
+            t_nsub = 0;
+            t_open_ns = t_try;
+        }
+    }
     uint64_t t0 = now_ns();
     VkResult res_ = real_QueueSubmit(q, n, s, f);
     rec(F_QueueSubmit, t0, n ? s[0].commandBufferCount : 0);
+    if (t_open && q == t_queue) t_nsub++;
     if (gpu_ts && g_pool)
         for (uint32_t i = 0; i < n; i++)
             for (uint32_t j = 0; j < s[i].commandBufferCount; j++) {
@@ -251,6 +448,7 @@ static VKAPI_ATTR VkResult VKAPI_CALL w_WaitForFences(VkDevice d, uint32_t n, co
     uint64_t t0 = now_ns();
     VkResult res_ = real_WaitForFences(d, n, f, a, t);
     rec(F_WaitForFences, t0, n);
+    t_open = 0;  // the next submission starts the span again
     if (res_ == VK_SUCCESS && gpu_ts && g_pool) resolve_pending();
     return res_;
 }
@@ -279,13 +477,50 @@ static VKAPI_ATTR void VKAPI_CALL w_GetPhysicalDeviceMemoryProperties2(VkPhysica
 static PFN_vkQueueWaitIdle real_QueueWaitIdle;
 static VKAPI_ATTR VkResult VKAPI_CALL w_QueueWaitIdle(VkQueue q) {
     if (trace_from >= 0 && waitidle_seen == trace_from) tracing = 1;
+    if (token_ts && !t_learned) {
+        t_queue = q;
+        t_learned = 1;
+    }
+    // The end stamp of an open span goes in just before the wait.
+    const int span = token_ts && t_open && q == t_queue && token_submit(q, 2 * t_cur + 1);
     uint64_t t0 = now_ns();
     VkResult r = real_QueueWaitIdle(q);
     rec(F_QueueWaitIdle, t0, 0);
+    if (t_learned && q == t_queue) {
+        if (span && r == VK_SUCCESS) {
+            // No WAIT_BIT: the idle queue has written both stamps, and a missing one must not block.
+            uint64_t v[2];
+            if (p_get_qp(t_dev, t_pool, 2 * t_cur, 2, sizeof(v), v, 8, VK_QUERY_RESULT_64_BIT) == VK_SUCCESS) {
+                if (nt_spans < cap_tspans)
+                    t_spans[nt_spans++] = (tspan_t){ v[1] - v[0], t_open_ns - first_ns, now_ns() - first_ns, t_nsub };
+            } else
+                t_notready++;
+        }
+        t_open = 0;
+        // Idle: every token buffer submitted to this queue has completed and may be submitted again.
+        if (r == VK_SUCCESS) memset(t_busy, 0, sizeof(t_busy));
+    }
     if (r == VK_SUCCESS && gpu_ts && g_pool) resolve_pending();
     waitidle_seen++;
     if (tracing && waitidle_seen >= trace_from + trace_len) tracing = 0;
     return r;
+}
+
+// The token objects are children of the device: let their last submissions finish, then destroy them.
+static PFN_vkDestroyDevice real_DestroyDevice;
+static VKAPI_ATTR void VKAPI_CALL w_DestroyDevice(VkDevice d, const VkAllocationCallbacks * a) {
+    if (d == t_dev && (t_pool || t_cpool)) {
+        if (t_queue && real_QueueWaitIdle) real_QueueWaitIdle(t_queue);
+        PFN_vkDestroyCommandPool destroy_cp = (PFN_vkDestroyCommandPool)real_gdpa(d, "vkDestroyCommandPool");
+        PFN_vkDestroyQueryPool destroy_qp = (PFN_vkDestroyQueryPool)real_gdpa(d, "vkDestroyQueryPool");
+        if (t_cpool && destroy_cp) destroy_cp(d, t_cpool, NULL);
+        if (t_pool && destroy_qp) destroy_qp(d, t_pool, NULL);
+        t_cpool = VK_NULL_HANDLE;
+        t_pool = VK_NULL_HANDLE;
+        token_ts = 0;
+        t_open = 0;
+    }
+    real_DestroyDevice(d, a);
 }
 
 // Lookups made by the Vulkan loader itself must stay unwrapped.
@@ -303,6 +538,7 @@ static PFN_vkVoidFunction lookup(const char * name, PFN_vkVoidFunction p) {
     }
     FUNCS(X)
     X(GetPhysicalDeviceMemoryProperties) X(GetPhysicalDeviceMemoryProperties2)
+    X(GetDeviceQueue) X(GetDeviceQueue2) X(CreateDevice) X(DestroyDevice)
     if (!strcmp(name, "vkGetPhysicalDeviceMemoryProperties2KHR")) {
         real_GetPhysicalDeviceMemoryProperties2 = (PFN_vkGetPhysicalDeviceMemoryProperties2)p;
         return (PFN_vkVoidFunction)w_GetPhysicalDeviceMemoryProperties2;
@@ -352,6 +588,7 @@ VKAPI_ATTR void VKAPI_CALL vkCmdCopyBuffer(VkCommandBuffer b, VkBuffer s, VkBuff
 __attribute__((constructor)) static void init(void) {
     first_ns = now_ns();
     gpu_ts = getenv("VKSHIM_GPU_TS") && atoi(getenv("VKSHIM_GPU_TS"));
+    token_ts = !gpu_ts && getenv("VKSHIM_TOKEN_TS") && atoi(getenv("VKSHIM_TOKEN_TS"));
     const char * from = getenv("VKSHIM_TRACE_FROM");
     const char * len = getenv("VKSHIM_TRACE_LEN");
     if (from) {
@@ -377,8 +614,13 @@ __attribute__((destructor)) static void fini(void) {
                 (unsigned long long)tot[i], (unsigned long long)mx[i]);
         first = 0;
     }
-    fprintf(f, "}, \"gpu_batches\": %llu, \"gpu_busy_ticks\": %llu}\n", (unsigned long long)gpu_batches,
-            (unsigned long long)gpu_busy_ticks);
+    fprintf(f,
+            "}, \"gpu_batches\": %llu, \"gpu_busy_ticks\": %llu, \"token\": {\"state\": %d, \"family\": %u, "
+            "\"queue_flags\": %u, \"timestamp_bits\": %u, \"period_ns\": %.4f, \"spans\": %zu, \"openings\": %d, "
+            "\"paused\": %llu, \"not_ready\": %llu, \"queues_seen\": %d, \"devices_seen\": %d}}\n",
+            (unsigned long long)gpu_batches, (unsigned long long)gpu_busy_ticks, t_state, t_family, t_flags, t_bits,
+            (double)t_period, nt_spans, t_next, (unsigned long long)t_paused, (unsigned long long)t_notready, nqfams,
+            ndevs);
     if (f != stderr) fclose(f);
     const char * gout = getenv("VKSHIM_GPU_TRACE");
     if (gtrace && gout) {
@@ -387,6 +629,16 @@ __attribute__((destructor)) static void fini(void) {
             for (size_t i = 0; i < ngtrace; i++)
                 fprintf(g, "%llu %llu %llu %u\n", (unsigned long long)gtrace[i].cpu_ns, (unsigned long long)gtrace[i].g0,
                         (unsigned long long)gtrace[i].g1, gtrace[i].dispatches);
+            fclose(g);
+        }
+    }
+    const char * sout = getenv("VKSHIM_TOKEN_OUT");
+    if (t_spans && sout) {
+        FILE * g = fopen(sout, "w");
+        if (g) {
+            for (size_t i = 0; i < nt_spans; i++)
+                fprintf(g, "%llu %u %llu %llu\n", (unsigned long long)t_spans[i].ticks, t_spans[i].submits,
+                        (unsigned long long)t_spans[i].open_ns, (unsigned long long)t_spans[i].done_ns);
             fclose(g);
         }
     }
