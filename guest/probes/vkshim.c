@@ -197,18 +197,25 @@ static void resolve_pending(void) {
     npend = 0;
 }
 
-// VKSHIM_TOKEN_TS=1: one timestamp before the first submission after a fence wait and one before each
-// vkQueueWaitIdle, each in a command buffer of its own, so the work between them (a decode graph, after
-// the input uploads and their fence waits) runs unsplit. The span includes any gaps inside that work.
-// Spans run only on the queue of the first vkQueueWaitIdle. Every opening uses its own pair of command
-// buffers from a ring that is reused only after that queue is idle: resubmitting a command buffer that
-// is still pending is invalid, and an earlier version that did so hung the GPU of the test phone.
-// t_busy marks each buffer from its submission until the queue is idle; submitting a marked buffer
-// turns the mode off instead. The command pool takes the waited queue's family, recorded by
-// vkGetDeviceQueue, and the mode stays off unless that family supports compute or graphics (needed by
-// vkCmdResetQueryPool) and timestamps. $VKSHIM_TOKEN_OUT gets one line per span: GPU ticks, the
-// submissions inside the span, and host nanoseconds since load at its opening and after the wait.
-#define TSLOTS 16
+// VKSHIM_TOKEN_TS=1: a span opens with a timestamp before the first submission to the waited queue after
+// any wait (vkWaitForFences, or vkQueueWaitIdle on that queue) and closes with a timestamp before the next
+// vkQueueWaitIdle on it, each timestamp in a command buffer of its own, so the work between them runs
+// unsplit. The span includes any gaps inside that work. With ggml's completion wait, each decode step
+// gives one span per input upload and one for the graph; submissions to other queues get no spans.
+// Spans run only on the queue of the first vkQueueWaitIdle. Any vkWaitForFences closes an open span
+// without recording it, so a fence wait inside a graph would shorten its span: check that openings equal
+// spans in the summary. Every opening uses its own pair of command buffers from a ring that is reused only
+// after that queue is idle: resubmitting a command buffer that is still pending is invalid, and an earlier
+// version that did so hung the GPU of the test phone. t_busy marks each buffer from its submission until
+// the queue is idle; submitting a marked buffer turns the mode off instead. The command pool takes the
+// waited queue's family, recorded by vkGetDeviceQueue or vkGetDeviceQueue2, and the mode stays off unless
+// that family supports compute or graphics (needed by vkCmdResetQueryPool) and timestamps. The state is
+// not synchronized: it assumes one thread submits to the waited queue, as in llama-bench.
+// $VKSHIM_TOKEN_OUT gets one line per span: GPU ticks, the submissions inside the span, and host
+// nanoseconds since load at its opening and after the wait.
+#ifndef TSLOTS
+#define TSLOTS 16  // build with -DTSLOTS=1 to exercise the pause path
+#endif
 static int token_ts, t_state, t_learned, t_open, t_cur, t_next;
 static VkQueue t_queue;
 static VkDevice t_dev;
@@ -250,7 +257,6 @@ static qfam_t qfams[16];
 static int nqfams;
 static void note_queue(VkDevice d, uint32_t family, VkQueue q) {
     if (!q) return;
-    if (!g_dev) g_dev = d;
     for (int i = 0; i < nqfams; i++)
         if (qfams[i].q == q) return;
     if (nqfams < 16) qfams[nqfams++] = (qfam_t){ q, d, family };

@@ -8,6 +8,8 @@ are those with at least 4 submissions; the first SKIP of them are left out. Per 
   host     host time from that submission to the return of vkQueueWaitIdle,
   wall     host time from one graph's opening to the next one's,
   outside  wall minus host: readback, sampling, inputs and their uploads until the next graph starts.
+Also reports the shim's state checks (a failed one prints a warning on stderr) and, from trans_stat, the mean
+GPU clock and the 1286 MHz share over the run's time not at 460 MHz (the window includes the model load).
 Prints one JSON line per run.
 """
 import json
@@ -52,13 +54,23 @@ def summarize(skip, tag):
     t0, f0, therm0 = trans_stat(tag + ".before")
     t1, f1, therm1 = trans_stat(tag + ".after")
     clock = {f: f1[f] - f0.get(f, 0) for f in f1 if f1[f] - f0.get(f, 0) > 0}
+    # trans_stat covers the whole run, model load included; 460 MHz is where the GPU sits idle.
+    busy = {f: ms for f, ms in clock.items() if f != 460}
+    busy_ms = sum(busy.values())
     decode_s = (g[-1][3] - g[0][2]) / 1e9
+    t = summary["token"]
+    checks = {"state_active": t["state"] == 1, "openings_equal_spans": t["openings"] == t["spans"],
+              "none_paused": t["paused"] == 0, "none_unread": t["not_ready"] == 0}
+    for name, ok in checks.items():
+        if not ok:
+            print(f"warning: {tag}: shim check {name} failed: {t}", file=sys.stderr)
     return {
         "tag": tag.rsplit("/", 1)[-1],
         "runtime": tag.rsplit("-", 2)[-2],
         "llama_bench_tokens_s": round(bench["avg_ts"], 3),
         "n_gen": bench["n_gen"],
-        "token": summary["token"],
+        "token": t,
+        "shim_checks": checks,
         "graph_spans": len(graphs),
         "graph_submissions": sorted(set(r[1] for r in g)),
         "steps_used": len(g),
@@ -72,6 +84,8 @@ def summarize(skip, tag):
         "decode_s": round(decode_s, 3),
         "window_s": round(t1 - t0, 2),
         "clock_ms_at_mhz": dict(sorted(clock.items())),
+        "clock_mean_mhz_not_460": round(sum(f * ms for f, ms in busy.items()) / busy_ms, 1) if busy_ms else None,
+        "clock_share_1286_of_not_460": round(busy.get(1286, 0) / busy_ms, 3) if busy_ms else None,
         "thermal_status": [therm0, therm1],
     }
 

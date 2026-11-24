@@ -17,10 +17,10 @@ def label(k):
 
 def main():
     runs = [json.loads(line) for line in open(sys.argv[1])]
-    print("run                 rt   " + " ".join(f"{label(k):>12}" for k in KEYS) + "   steps/s  1286MHz-ms  status")
+    print("run                 rt   " + " ".join(f"{label(k):>12}" for k in KEYS) + "   steps/s  MHz(not 460)  1286 share  status")
     for r in runs:
         print(f"{r['tag']:<20}{r['runtime']:<5}" + " ".join(f"{r[k[0]][k[1]]:12.3f}" for k in KEYS)
-              + f"   {r['steps_per_s']:7.2f}  {r['clock_ms_at_mhz'].get('1286', 0):10d}  {r['thermal_status']}")
+              + f"   {r['steps_per_s']:7.2f}  {r['clock_mean_mhz_not_460']:12.1f}  {r['clock_share_1286_of_not_460']:10.3f}  {r['thermal_status']}")
     out = {}
     for rt in sorted(set(r["runtime"] for r in runs)):
         sel = [r for r in runs if r["runtime"] == rt]

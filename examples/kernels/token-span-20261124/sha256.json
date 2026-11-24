@@ -1,8 +1,8 @@
 {
-  "ab1-summary.jsonl": "6c4977f25ca551c293f9d4e725b0e40d97d3be32fae1a33b7169ebb4ee2a7ebe",
+  "ab1-summary.jsonl": "1ddf0577ca2401a8f4f6f44f732bfc1f3951b0b688c984f9355e92a9bd217899",
   "exp/tokenspan.sh": "3fc4262157527e082a7f692d2b898f0d6b739194eabdb2b5b81c53d670a36c74",
-  "exp/tokenspan_compare.py": "15ed11ad5e2871a2e8510bee1035cc705d197b0308a16f294137ffb6386c80ef",
-  "exp/tokenspan_summary.py": "7e0e6b4272eb7b8501af73eae38d100c8285796370f5b9064f5985e404d1daf5",
+  "exp/tokenspan_compare.py": "c41fa48820c014a391031caf040562215af22ea6d642cbdda03ac34c749b639d",
+  "exp/tokenspan_summary.py": "155746d639059415ed8bf716f55ae7d92e66e3cdeee5735a6b640702b84fa3b3",
   "gpu-runs/ab1-r6-111320.after": "ac1d8b01bb7b7d8e0448b654beea611a496124cda010520ed3837be2edbaa9aa",
   "gpu-runs/ab1-r6-111320.before": "ca60c8afbb881eb5a4239630eba8f9d9d25b2bfa92bd665cd6fd90077b962e7b",
   "gpu-runs/ab1-r6-111320.err": "5a74dccd4e10d31a559508c6958a9c43fe7a04d7c83a3177c40d8c7bba2dc521",
@@ -48,6 +48,7 @@
   "gpu-runs/smoke-r7-111127.err": "cb94d46cde1674d8265f42c43e46cc505784a60bcb3cc01617f11e8fa6e0c0ac",
   "gpu-runs/smoke-r7-111127.run": "b4feb5ae1a5e22bf37998b08e7f1ecc5e83cd70f9483c1c7de9d47b6f212264a",
   "gpu-runs/smoke-r7-111127.spans": "d2c80d05b58958f7e8a79fbd673068dd0ac02506be81d1555d5f7da018c04390",
+  "provenance.md": "7565b54d6e5205ef96bcfcbc2b302479a5693b4667c530be08f5354b1992ab27",
   "rehearsal/lvp.err": "5d6384ab8a0c5a982686468394f68b8963fdde0ce3ee9d71807e4ce55c109bc3",
   "rehearsal/lvp.json": "1a49b952b480d734207d8a97f3d59815b393088ae33fc1e1b686204b7f81f9b4",
   "rehearsal/lvp.spans": "95a6d430799e38654a5b9412cc878432b39e6bf4fbe1eb85c049583952f60609",
@@ -55,5 +56,5 @@
   "rehearsal/rehearsal1-lvp.err": "5d6384ab8a0c5a982686468394f68b8963fdde0ce3ee9d71807e4ce55c109bc3",
   "rehearsal/rehearsal1-lvp.json": "9b48994d7df2b3254cd4f9f175e4449b7847a9ea309613407171ba6e68031583",
   "rehearsal/rehearsal1-lvp.stdout": "f9d2a7d13010ad1c10935a313b794962f1ca9bff88d71faccc7189f0b9df7f0e",
-  "smoke-summary.jsonl": "5c36763f292f2a5be914aa7f182bae4db973cdf88e0a8d600556ba476d1d4b95"
+  "smoke-summary.jsonl": "7fa755c7fb99fe69efd65e85c686c434ec087fdcd371ef37067ddeb382345734"
 }
